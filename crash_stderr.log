@@ -1,0 +1,3 @@
+2026-06-06T06:00:04.588751Z  INFO bevy_diagnostic::system_information_diagnostics_plugin::internal: SystemInfo { os: "Windows 10 Pro", kernel: "19045", cpu: "12th Gen Intel(R) Core(TM) i5-12600KF", core_count: "10", memory: "15.8 GiB" }
+2026-06-06T06:00:04.910870Z  INFO bevy_render::renderer: AdapterInfo { name: "NVIDIA GeForce RTX 3070", vendor: 4318, device: 9352, device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "581.29", backend: Vulkan }
+2026-06-06T06:00:05.038532Z  INFO bevy_winit::system: Creating new window "方寸商国·桃花源记" (Entity { index: 0, generation: 1 })

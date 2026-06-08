@@ -1,0 +1,14 @@
+[
+    (source: "stone", target: "stone", result: "shard", extra_offset: (1, 0), hits_required: 2),
+    (source: "wood_like", target: "wood_like", result: "woodStruct", hits_required: 2),
+    (source: "wood_like", target: "shard", result: "fire", hits_required: 2),
+    (source: "hard", target: "shard", handler_id: "shape_shard", hits_required: 2),
+    (source: "player", target: "dryGrass", result: "grassRope", hits_required: 2),
+    (source: "axe", target: "tree", handler_id: "chop_tree", hits_required: 2),
+    (source: "*", target: "wolfDen", handler_id: "wolf_den", hits_required: 2),
+    (source: "*", target: "foxDen", handler_id: "fox_den", hits_required: 2),
+    (source: "mushroomFarmer", target: "shard", handler_id: "farmer_knife", hits_required: 2),
+    (source: "*", target: "mushroomWood", handler_id: "harvest_mushroom", hits_required: 2),
+    (source: "knife", target: "wolfCorpse", handler_id: "butcher_corpse", hits_required: 2, consumes_target: true),
+    (source: "knife", target: "sheep", handler_id: "sheep_butcher", hits_required: 2),
+]

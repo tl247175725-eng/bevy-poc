@@ -1,0 +1,297 @@
+### 2026-05-30 15:00 | deepseek-v4 | PROJECT_BOOTSTRAPPED
+Vendor: DeepSeek
+Harness: CherryStudio / Claude Agent SDK
+Role: 策划助手 (Design & Planning Assistant)
+Capabilities: filesystem-read, filesystem-write, web-search, web-fetch
+Strengths: 设计分析, 方案讨论, 工程核对, 产出策划文档/执行单
+OS: Windows 10
+
+### 2026-05-30 15:00 | deepseek-v4 | PROMPT
+用户: 搭建 AIMemory 协作协议，方便 DeepSeek（策划助手）和 Cursor（主程序）通过文件协作，减少读长文档的 token 消耗。
+
+### 2026-05-30 15:00 | deepseek-v4 | WORK_START
+初始化 AIMemory 协议栈: 写 PROTOCOL.md + work.log + 首批 handoff
+
+### 2026-05-30 15:00 | deepseek-v4 | FILES_CREATED
+- AIMemory/PROTOCOL.md
+- AIMemory/work.log
+- AIMemory/handoff_v3.0-a-engineering-check_deepseek-v4.md
+
+### 2026-05-30 15:00 | deepseek-v4 | HANDOFF
+→ cursor: handoff_v3.0-a-engineering-check_deepseek-v4.md
+Type: TASK_ASSIGN
+内容: 工程核对 v3.0-a-corrective-a2-a3.1.md 实现状态
+
+### 2026-05-30 15:00 | deepseek-v4 | WORK_END
+AIMemory 协议栈初始化完成。已向 Cursor 发出首份工程核对 handoff。
+
+### 2026-05-30 | cursor | WORK_START
+工程核对 handoff_v3.0-a-engineering-check_deepseek-v4.md（只读，不写游戏代码）
+
+### 2026-05-30 | cursor | WORK_END
+已完成 v3.0-a-corrective-a2-a3.1 逐项核对；结论：修正单整体未实现。回复写入 handoff 文件末尾。A2 鹿基础链在；封闭迁出/迁入仍活跃；deerFawn/鹿繁殖/桃源 live spawn/封闭 trace 均无。A3 原案：旅人封存+dining 部分在，桃源仅 CardDB/规则。
+
+### 2026-05-30 | deepseek-v4 | PROMPT
+用户: 审核 Cursor 核对结果，分析下一步方向。
+
+### 2026-05-30 | deepseek-v4 | WORK_START
+审核 Cursor 工程核对结果，分析差距，提出下一步建议。
+
+### 2026-05-30 | deepseek-v4 | HANDOFF_RECEIVED
+← cursor: handoff_v3.0-a-engineering-check_deepseek-v4.md
+认同结论。修正单整体未实现，确认此前用户判断正确。
+
+### 2026-05-30 | deepseek-v4 | WORK_END
+关键发现：① 修正单零实现 ② 羊/狼迁出迁入逻辑仍活跃（违背封闭生态）③ deerFawn 完全不存在 ④ 桃源人代码骨架在但 live 不生成 ⑤ Cursor 顺带修了 wolfCub 误走羊行为的 bug ⑥ 发现新文件 v3.0-a-ecology-initial-values.md 未读。下一步等用户确认方向后更新执行单。
+
+### 2026-05-30 | deepseek-v4 | PROMPT
+用户: 读 v3.0-a-ecology-initial-values.md
+
+### 2026-05-30 | deepseek-v4 | FILES_READ
+- docs/design/v3.0-a-ecology-initial-values.md
+
+### 2026-05-30 | deepseek-v4 | MATH_VERIFIED
+全量数值核算通过：
+- 河岸格 88，恢复 240次/日，消耗 128/日，余量 1.78×
+- 上限 18 是调节器，满载 336/日 超限但种群自裁
+- 发现时间单位分裂隐患：羊鹿用 game_delta（4× 时加速）、兔/草用 real_delta（不变）。步骤1限定 1× 验收。
+- 5 组数值确认可执行，保留微调建议 A/B 在 trace 后视情况启用。
+
+### 2026-05-30 | deepseek-v4 | HANDOFF
+→ cursor: handoff_step1_closed-ecology_deepseek-v4.md
+Type: TASK_ASSIGN
+内容: 步骤 1 六组修改——常量改值、环境管理器、封闭生态禁用迁出入、鹿生态 deerFawn、桃源 live spawn、Trace 补强
+
+### 2026-05-30 | deepseek-v4 | WORK_END
+数值核算已通过，步骤 1 执行单已发 Cursor。等实现结果。
+
+### 2026-05-30 | cursor | STEP1_DONE
+六组全部合入：常量、环境管、封闭门控、deerFawn+鹿繁殖、桃源 spawn、三条 trace。未跑 Godot CLI 验收。
+
+### 2026-05-30 | deepseek-v4 | PROMPT
+用户: 步骤2 测试发现两个问题——狐窝缺砸击计数、多张卡信息栏缺字段。暴露根因：handoff 没说"参考已有实现"和"同步更新 game_ui"。
+
+### 2026-05-30 | deepseek-v4 | FILES_CREATED
+- AIMemory/code-pattern-index.md（基于实际代码核查，非猜测）
+- AIMemory/handoff_step2-ui-fix_deepseek-v4.md
+
+### 2026-05-30 | deepseek-v4 | PROTOCOL_UPDATED
+§5 新增实现纪律：先搜再写、参考模式索引、同步更新 game_ui、检查全部落点。
+
+### 2026-05-30 | deepseek-v4 | HANDOFF
+→ cursor: handoff_step2_mechanism-expansion_deepseek-v4.md
+Type: TASK_ASSIGN
+内容: 步骤 2 机制维度扩展——bush(再生节点)+fieldMouse(依赖消费者)+fox(多策略捕食清道夫)+foxCub+foxDen。不是加动物，是拉高机制维度从 3→6。
+
+### 2026-05-30 | cursor | PROMPT
+用户: 执行 handoff_step1_closed-ecology（initial-values §2–§5）
+
+### 2026-05-30 | cursor | WORK_START
+步骤 1：封闭生态 + deerFawn + 桃源 live + trace 补强
+
+### 2026-05-30 | cursor | WORK_END
+合入 A–F 六组：常量/封闭门控/鹿繁殖链/桃源 spawn/registry/三 trace。handoff 已 # 回复。本环境无 Godot CLI，L0/L1.5/closed+deer+social trace/L2b 待用户本地跑。工具: run_closed_ecology_trace.ps1, run_deer_ecology_trace.ps1
+
+### 2026-05-30 | cursor | WORK_START
+步骤 2：机制维度扩展 bush/fieldMouse/fox 家族
+
+### 2026-05-30 | cursor | WORK_END
+步骤 2 合入：灌木再生节点、田鼠依赖消费、狐狸捕食+清道夫、兔食性分流、狼猎狐低优先、初始 spawn、trace 采样扩展。handoff_step2 # 回复。headless 10s 无 SCRIPT ERROR。
+
+### 2026-05-30 | cursor | WORK_START
+生态标签化调参 handoff_ecology-tag-tuning
+
+### 2026-05-30 | cursor | WORK_END
+草压 12/9s；escape_* + hunt_success_chance/try_hunt_attack；move_* + cover 加速通用化；L0 _test_ecology_tag_tuning。handoff_ecology-tag-tuning # 回复。
+
+### 2026-05-30 | cursor | WORK_START
+handoff_growth-time-fix：幼体 age +12→+1
+
+### 2026-05-30 | cursor | WORK_END
+population_manager 四处 age 步进修正；数值总表 §7.3 同步。handoff_growth-time-fix # 回复。
+
+### 2026-05-30 | cursor | WORK_END
+handoff_care-child-types-fix：_CARE_CHILD_TYPES 补 fieldMouse→fieldMousePup；L0 _test_care_child_field_mouse。
+
+### 2026-05-30 | deepseek-v4 | PROTOCOL_V2
+流程升级：新增"Cursor 实现后 DeepSeek 审查代码"环节，填补设计意图到代码产出之间的架构真空。审查标准：管线完整性 + 标签合规 + 同类复用。任务按类型分流。
+
+### 2026-05-30 | cursor | BUGFIX_BATCH
+- 灌木信息栏显示丛内田鼠（成/幼、性别、血量）
+- 狼窝消化冷却循环 bug：每 tick 重置 cooldown → 永不出窝；改为窝内只倒计时
+- 狐狸不动：眩晕状态残留、惧火不走 move tick 消耗、狐窝休整加冷却防秒进秒出
+- 补充：只有玩家/蘑菇农/旅人/狼有成体饿死逻辑；狐/鹿/羊/兔/鼠靠生态压力调控
+
+### 2026-05-30 | deepseek-v4 | REVIEW
+本轮修复均为边界条件 bug（状态残留、冷却重置、UI 漏显示），无架构违规。v3.0-A 生态底座可封板。
+
+### 2026-05-30 | cursor | BUGFIX
+见 AIMemory/fix-log.md（狼可见/鼠出空丛/草虫再生/全生物饿死/狐筑窝）；L0 741。用户要求：以后每次修必写 fix-log，精准不废话。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_session-report-exporter_deepseek-v4.md：SessionDiagnostics autoload + 关游戏写 AIMemory/session_report.md（§1–§5，smoke/单测禁用）。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_report-idle-fix + handoff_wolf-fox-critical-fix：报告不动判定（state/eat_time）；封闭模式禁狼迁出；狐筑窝可达灌丛+移动失败 fallback。L0 741。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-reachability-filter-fix：删 `_nearest_bush_for_fox_den` 的 `can_reach_neighbor`（方案 A，超时兜底保留）。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-spawn-state-fix：狐狸 spawn 初始状态 寻灌丛→巡林。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fps-monitor：session_report §6，每 30s 真实时间 tick 速率采样。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-tick-diag：fox_behavior 分支诊断 → session_report §7（最新 10 条）。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-fromcard-fix：enter_tick + from_card 回退 actor。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-rewrite-wolf-pattern：fox_behavior 复制狼 tick 结构，保留灌丛筑窝/田鼠猎物/清腐。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_disable-fox-spawn：注释开局 `_spawn_fox_family_near`，狐狸代码/CardDB 保留。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_bfs-optimize：find_path MAX_SEARCH=40；路径空盲向步降级。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_astar-replace-bfs：find_path → AStarGrid2D；删 BFS/MAX_SEARCH/盲向步。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_mouse-balance：田鼠吃虫 1.5s、丛虫↑、饱歇 6s。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_capability-hunt-fragment：capability.hunt 共享 tick_capability_hunt + Registry 接入。
+
+### 2026-05-30 | cursor | TASK_DONE
+handoff_fox-fix-post-hunt-migration：狐分支接回 + 捕猎 move_tick + §7 诊断。
+
+### 2026-06-01 | deepseek-v4 | ARCHITECTURE_AUDIT
+诊断"自动吸附"不成立的原因：行为调度层（ecosystem_behavior_key + EcosystemTickRegistry）是 card_type 硬编码链，标签机只覆盖了静态定义层，未延伸到运行时行为分发。四大硬编码层：行为分发、猎物判定、生态状态、UI 渲染。
+
+### 2026-06-01 | deepseek-v4 | PROTOCOL_V3
+流程升级：架构改造从"DeepSeek 写 handoff → Cursor 执行"改为"DeepSeek 写架构命题 → Cursor 架构审查 → 对齐后 Cursor 拆执行计划"。Cursor 从执行器升级为架构参与者。
+
+### 2026-06-01 | deepseek-v4 | PROPOSITION
+→ cursor: proposition_dispatch-capability_deepseek-v4.md
+Type: ARCHITECTURE_PROPOSITION
+内容: 行为调度层从 card_type 分发改为 capability 组装。请 Cursor 做架构审查（可行性/范围/遗漏风险/执行顺序），暂不写代码。
+
+### 2026-06-01 | deepseek-v4 | WORK_END
+PROTOCOL 已更新至 v3，架构命题已发 Cursor。等审查回复。
+
+### 2026-06-01 | cursor | ARCH_REVIEW
+proposition_dispatch-capability：可行有阻碍；步骤 A 已完成；建议先猎物+生态字段再 Registry 管线；已追加命题 ## Cursor 架构审查。
+
+### 2026-06-01 | cursor | WORK_END
+架构审查完成，未写代码。等 DeepSeek 对齐后 Cursor 拆执行 handoff。
+
+### 2026-06-01 | cursor | HANDOFF
+→ 自执行: handoff_dispatch-step1-prey-tags_cursor.md（调度 Step1 猎物标签化执行单）
+
+### 2026-06-01 | cursor | WORK_END
+Step1 执行 handoff 已撰写，待实现。
+
+### 2026-06-01 | cursor | TASK_DONE
+handoff_dispatch-step1-prey-tags：猎物 profile 化 + is_active_hunt_threat 修狐；L0 756。
+
+### 2026-06-01 | cursor | HANDOFF
+→ 自执行: handoff_dispatch-step2-ecology-feed_cursor.md
+
+### 2026-06-01 | cursor | TASK_DONE
+handoff_dispatch-step2-ecology-feed：饱食 capability 化 + starveDays 统一；L0 772。
+
+### 2026-06-01 | cursor | HANDOFF
+→ 自执行: handoff_dispatch-step3-capability-pipeline_cursor.md
+
+### 2026-06-01 | cursor | TASK_DONE
+handoff_dispatch-step3-capability-pipeline：有序能力管线 + 狼狐片段迁出；L0 779。
+
+### 2026-06-01 | deepseek-v4 | REVIEW
+**PASS** — 片段+优先级调度器。
+
+- 硬编码序 flee→fire→den_work→scavenge→hunt，非 naive 循环 ✓
+- 每片段返回 bool 截断后续 ✓
+- WolfBehavior：151→93 行，FoxBehavior：158→84 行；均仅保留幼体/窝内/眩晕/迁出守卫 ✓
+- 狼 L56 全局 consume_move_tick 早退已删除 ✓
+- 新文件零 card_type，全用 tag/capability 判断 ✓
+- host.den_for_wolf/fox 耦合仍在（Step 4 负债，已显式标注）✓
+- L0 779 断言全绿 ✓
+
+Step 3 封板。可进入 Step 4（宿主收敛）。
+
+### 2026-05-30 | cursor | Step4 宿主收敛
+- `den_for` / `should_build_den` / `update_den_work` / `update_build_den` / `try_scavenge` / `find_meat_source` / `take_meat_from_source`
+- `world_rules.actor_den_build_mode`（grass_den vs bush_den）；狼狐旧名薄 wrapper
+- 本环境无 Godot CLI，L0 待本地验证
+
+### 2026-06-01 | deepseek-v4 | REVIEW
+**PASS（待本地 L0 确认）** — 宿主收敛。
+
+- 统一 API den_for / update_den_work / try_scavenge / find_meat_source 已替代狼狐平行函数 ✓
+- actor_den_build_mode：纯 tag 驱动（predator→grass，mesopredator→bush），零 card_type ✓
+- Pipeline 已全量切换为统一 API ✓
+- 旧名保留薄 wrapper（单测兼容）✓
+- 叼肉无窝→筑窝回归修复正确 ✓
+- **⚠ 本环境无 Godot CLI，L0 未跑。用户需本地验证 `powershell -File tools/run_unit_tests.ps1`，预期 ≥780。**
+
+剩余 card_type 引用：wolf_den_builder/fox_den_builder（Step 5/6 负债）、FoxCard.from_card（清腐逻辑）。未引入新的 card_type 硬编码。
+- pipeline + behaviors 改统一 API；`_test_host_den_convergence`
+- 本环境无 Godot CLI，L0 待用户跑
+
+### 2026-06-01 | cursor | TASK_DONE
+handoff_dispatch-step5-6-capability-keys：ecosystem_behavior_key 签名化 + species behavior 空壳 + lynx/bison 吸附验收。L0 795。
+
+### 2026-06-01 | deepseek-v4 | REVIEW
+**PASS — 六步吸附改造闭环。**
+
+- ecosystem_behavior_key：纯 capability 签名（predator_den / mesopredator_hunt / cover_forager / herbivore_grazer），仅 taoyuan/traveler/mushroom_farmer 保留硬编码（社交域，设计允许）✓
+- 旧 behavior 文件全部空壳转发（Wolf/Fox → PredatorDen，Rabbit/Deer/Sheep → HerbivoreGrazer）✓
+- Registry：从 9 路 match 缩到 6 路（3 能力 + 3 社交）✓
+- Pipeline applies_to：BEHAVIOR_PREDATOR_DEN + BEHAVIOR_MESOPREDATOR_HUNT，猞猁自动进管线 ✓
+- 猞猁（hunt+use_cover+mesopredator tag）→ mesopredator_hunt，自动捕猎 ✓
+- 野牛（forage+flee+move_slow）→ herbivore_grazer profile slow，自动吃草 ✓
+- 猞猁/野牛只需 card_db + CARD_CAPABILITIES + spawn，零分发代码改动 ✓
+- L0 795 断言全绿 ✓
+
+**吸附预期达成。六步改造闭环。用户 F5 一次验收。**
+
+### 2026-05-30 | cursor | Step5–6 capability 签名
+- ecosystem_behavior_key 签名化；PredatorDen + HerbivoreGrazer；Wolf/Fox 等空壳
+- lynx/bison 验收卡；L0 **795** PASS
+
+### 2026-06-01 | deepseek-v4 | REVIEW
+**PASS** — 猎物体系标签化。三函数去 card_type/is_adult_*；零新标签；is_active_hunt_threat 改 predator tag；L0 756。Step 1 封板。
+
+### 2026-06-01 | deepseek-v4 | REVIEW
+**PASS** — 生态饱食字段统一。
+
+- `is_ecology_starvation_subject`：纯 capability+tag（being+animal，排除 actor；forage/hunt/grow+be_cared_for），零 card_type ✓
+- `mark_ecology_fed` / `reset_ecology_feed_flag`：按 `ecology_uses_meat_quota`（can_hunt+predator）分支，不再 match card_type ✓
+- `daysWithoutMeat` 全量废除，统一 `starveDays`；CardBase 声明基类字段 ✓
+- `population_manager` 日馈单循环，去 `is_adult_fox` 分支 ✓
+- L0 772 断言全绿（+16） ✓
+
+Step 2 封板。可进入 Step 3（片段+优先级调度器）。
+
+### 2026-06-02 | deepseek-v4 | PROMPT
+用户：写好 handoff_ui-containment_deepseek-v4.md，发给 Cursor 读 handoff 实现容纳 UI。
+
+### 2026-06-02 | deepseek-v4 | HANDOFF
+`AIMemory/handoff_ui-containment_deepseek-v4.md` — 容纳【】可点击跳转、草棚棚内、格子 overlay 标题、选中不扰动内容物；§3.1b 对齐。
+
+### 2026-06-02 | cursor | WORK_END
+handoff_ui-containment：容纳 LinkButton、草棚/窝/灌条目、选中仅展示、overlay 格标题。L0 887 PASS。
+
+### 2026-06-04 | cursor | WORK_END
+handoff_ui-containment §一–三：狐占灌木删灌木、格子 overlay 标题优先、`is_fox_den_card`、草棚 `ui_hut_occupant_labels`。L0 895 PASS。
+
+### 2026-06-04 | cursor | WORK_END
+handoff_session-report-player-brain：`session_report` §8 玩家大脑快照（意图/SDT/可供性/状态，环形 50、报告 20）。
+
+### 2026-06-04 | cursor | WORK_END
+handoff_player-brain-refactor：可供性/需求/长期意图注册表化；运行时标签 sync；nearest_threat。L0 901 PASS。

@@ -1,0 +1,5 @@
+Godot Engine v4.6.1.stable.official.14d19694e - https://godotengine.org
+
+[unit_test] ===== 结果 =====
+[unit_test] 耗时 2.12s
+[unit_test] PASS (908 assertions)

@@ -1,0 +1,22 @@
+[package]
+name = "bevy-poc"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "bevy_poc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "bevy-poc"
+path = "src/main.rs"
+
+[profile.test]
+opt-level = 2
+
+[dependencies]
+bevy = "0.14"
+bevy_egui = "0.30"
+ron = "0.8"
+serde = { version = "1", features = ["derive"] }
+smallvec = "1.13"

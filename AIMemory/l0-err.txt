@@ -1,0 +1,14 @@
+SCRIPT ERROR: Invalid access to property or key 'log_fn' on a base object of type 'Nil'.
+   at: EnvironmentManager._log (res://scripts/world/environment_manager.gd:38)
+   GDScript backtrace (most recent call first):
+       [0] _log (res://scripts/world/environment_manager.gd:38)
+       [1] _tick_grass_heat (res://scripts/world/environment_manager.gd:158)
+       [2] _test_fire_dry_grass_only (res://scripts/test/unit/unit_test_cases.gd:789)
+       [3] run_all (res://scripts/test/unit/unit_test_cases.gd:51)
+       [4] _ready (res://scripts/test/unit/unit_test_runner.gd:14)
+WARNING: 3 RIDs of type "CanvasItem" were leaked.
+   at: _free_rids (servers/rendering/renderer_canvas_cull.cpp:2692)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2641)
+ERROR: 14 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:810)

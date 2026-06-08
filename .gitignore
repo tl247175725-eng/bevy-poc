@@ -1,0 +1,9 @@
+/target
+/target-phase5
+*.o
+*.tmp
+debug-*.log
+bevy-poc-crash.log
+_tmp_*
+.tmp_*
+_count.*

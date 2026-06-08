@@ -1,0 +1,26 @@
+﻿---
+description: 用户机器规格与 cargo 资源约束，避免编译/测试卡死整机
+alwaysApply: true
+---
+
+# 主机规格与 Cargo 资源规划
+
+## 用户机器
+
+- CPU: 12th Gen Intel Core i5-12600KF @ 3.70 GHz（6P+4E）
+- RAM: 16 GB（约 15.8 GB 可用）
+- 磁盘：`target/` 很大，全量 Bevy 编译 + 多 cargo 进程会拖死整机
+
+## 硬性约束（Rust / Bevy / 本仓库）
+
+1. **同一时间只跑一个 cargo**；遇 build directory 锁不叠跑第二个。
+2. **默认 `cargo check` 或 `cargo test --test <单文件>`**，不默认全量 `cargo test`。
+3. **开发循环**：check → 定向 test → 收尾再全量 test。
+4. **不递归扫描 `target/`**。
+5. **超过 ~1 分钟的重任务**先告知用户再跑。
+6. **不要并行**多个 cargo test/build。
+
+## 本仓库
+
+- Phase 5：`cargo test --test phase5_player`
+- 全量验收：仅用户明确要求时 `cargo test`
