@@ -68,7 +68,7 @@ pub fn parse_size(tags: &[String], type_name: &str) -> u8 {
         return 3;
     }
     if tags.iter().any(|t| t == "body.medium") {
-        return 2;
+        return 1;
     }
     if tags.iter().any(|t| t == "body.small" || t == "body.tiny") {
         return 1;

@@ -239,15 +239,10 @@ impl WorldState {
         self.next_id += 1;
 
         let profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
-        if let Some((nx, ny)) = self.find_spawn_cell(x, y, &profile) {
-            x = nx;
-            y = ny;
-        } else if !self.cell_composition.can_occupy(x, y, &profile) {
-            if let Some((nx, ny)) = self.nearest_vacant_cell(x, y, &profile) {
-                x = nx;
-                y = ny;
-            }
-        }
+        // Spawn at the designer's requested coordinates — capacity is enforced by movement,
+        // not by placement. Over-capacity spawns are intentional (e.g. predator + prey same cell).
+        let _ = profile;
+        // Skip find_spawn_cell / nearest_vacant relocation; respect explicit placement.
 
         let mut profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
         self.cell_composition.occupy(x, y, &profile);
