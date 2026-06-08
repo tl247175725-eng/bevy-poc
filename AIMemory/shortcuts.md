@@ -22,3 +22,24 @@
 - `什么模式`（提醒我告诉你 Cursor 该用什么模式）
 - `Standard，关 Max`
 - `开 Max`
+
+## GitHub CI 工作流
+
+### 仓库
+- 地址：`https://github.com/tl247175725-eng/bevy-poc`
+- CI 页面：`https://github.com/tl247175725-eng/bevy-poc/actions`
+- 每次 push 自动运行 `cargo test --release` + `cargo run --release -- --smoke-test`
+
+### 本地操作
+- `cargo check` — 轻量语法检查（几十秒），本地唯一需要执行的
+- **不要本地跑 `cargo test` 或 `cargo run --release`**，交给 CI
+
+### Cursor 工作流
+1. Cursor 改完代码 → `git add` + `git commit` + `git push`
+2. 自动触发 GitHub Actions
+3. 等几分钟 → 打开 Actions 页面看结果
+4. 全绿 = PASS，有红 = 点进去看失败日志
+
+### 验收标准
+- CI 两个 job 全部绿色：`test` + `smoke`
+- 不绿不继续下一步
