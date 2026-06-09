@@ -9,7 +9,7 @@ use bevy_poc::{
 fn surface_label_pool_is_water_pond() {
     let w = bevy_poc::spawn_initial_world();
     assert_eq!(
-        surface_label_with_stress(&w, 18, 22, 0.0).as_deref(),
+        surface_label_with_stress(&w, 18, 21, 0.0).as_deref(),
         Some("水潭")
     );
 }

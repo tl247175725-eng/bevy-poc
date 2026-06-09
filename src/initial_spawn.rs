@@ -9,6 +9,15 @@ pub fn spawn_initial_world() -> WorldState {
     let px = START_PLAYER_X;
     let py = START_PLAYER_Y;
 
+    for x in 0..GRID_WIDTH {
+        w.spawn("mountain", x, 0);
+        w.spawn("mountain", x, GRID_HEIGHT - 1);
+    }
+    for y in 1..GRID_HEIGHT - 1 {
+        w.spawn("mountain", 0, y);
+        w.spawn("mountain", GRID_WIDTH - 1, y);
+    }
+
     w.spawn("player", px, py);
     w.spawn("stone", px - 4, py);
     w.spawn("stone", px - 3, py);

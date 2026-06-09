@@ -146,14 +146,12 @@ pub fn advance_sim_ticks(
     if clock.paused || clock.speed <= 0.0 {
         return;
     }
-    if playback.in_progress {
-        return;
-    }
+    // TEMP: animation blocking disabled — TweenCompleted events not firing
+    // if playback.in_progress { return; }
     clock.tick_accum += real_delta * clock.speed;
     while clock.tick_accum >= crate::game_constants::TICK_SECONDS {
-        if playback.in_progress {
-            break;
-        }
+        // TEMP: animation blocking disabled
+        // if playback.in_progress { break; }
         clock.tick_accum -= crate::game_constants::TICK_SECONDS;
         let t0 = std::time::Instant::now();
         let move_anims = sim.0.tick_once();
@@ -166,8 +164,6 @@ pub fn advance_sim_ticks(
         for anim in move_anims {
             move_anim_events.send(anim);
         }
-        if had_move_anims {
-            break;
-        }
+        // if had_move_anims { break; }
     }
 }

@@ -10,7 +10,7 @@ use bevy_poc::{
 #[test]
 fn godot_pool_source_at_bottom_center() {
     let w = spawn_initial_world();
-    assert_eq!(terrain_at(&w, 18, 22), "pool");
+    assert_eq!(terrain_at(&w, 18, 21), "pool");
 }
 
 #[test]

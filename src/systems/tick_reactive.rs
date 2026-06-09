@@ -104,6 +104,15 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     };
 
+    // DEL TEMP: debug
+    if world.tick_count <= 3 {
+        let e = &world.entities[&id];
+        eprintln!("TICK_DEBUG tick={} id={} type={} at=({},{}) fed={} drives={}",
+            world.tick_count, id.0, e.type_name, e.x, e.y,
+            e.fed_today,
+            e.profile.drives.iter().filter(|d| d.range > 0).count());
+    }
+
     if card_has_tag(&def, "juvenile") {
         return;
     }

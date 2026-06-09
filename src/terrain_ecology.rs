@@ -102,7 +102,7 @@ impl MapEcology {
         self.wetland_cells.clear();
 
         let max_y = GRID_HEIGHT as i32 - 2;
-        self.pool_source = (GRID_WIDTH / 2, max_y as u8);
+        self.pool_source = (GRID_WIDTH / 2, (max_y - 1) as u8);
 
         for y in 0..GRID_HEIGHT {
             let mut row = Vec::with_capacity(GRID_WIDTH as usize);
@@ -168,7 +168,7 @@ mod tests {
     fn pool_source_bottom_center() {
         let mut eco = MapEcology::default();
         eco.ensure();
-        assert_eq!(eco.pool_source, (18, 22));
+        assert_eq!(eco.pool_source, (18, 21));
     }
 
     #[test]

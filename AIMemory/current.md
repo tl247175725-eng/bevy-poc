@@ -1,4 +1,4 @@
 # Current Handoff
-- file: AIMemory/handoff_capacity-fix.md
+- file: AIMemory/handoff_flock-oscillation.md
 - mode: Standard
 - status: pending

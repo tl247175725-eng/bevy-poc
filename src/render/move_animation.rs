@@ -99,6 +99,9 @@ pub fn process_move_queue(
 
     if batch_count > 0 {
         playback.begin_batch(batch_count);
+        let _ = std::fs::write("E:/debug_anim.log",
+            format!("process_move_queue batch={} pending={}\n",
+                batch_count, playback.pending_completions));
     }
 }
 
@@ -115,6 +118,8 @@ pub fn on_move_anim_completed(
         commands.entity(event.entity).remove::<MoveAnimating>();
         commands.entity(event.entity).remove::<Animator<Transform>>();
         if playback.note_completion() {
+            let _ = std::fs::write("E:/debug_anim.log",
+                format!("all complete pending={}\n", playback.pending_completions));
             complete_writer.send(MoveAnimationsComplete);
         }
     }
