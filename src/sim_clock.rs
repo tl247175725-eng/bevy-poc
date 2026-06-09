@@ -137,6 +137,8 @@ pub fn advance_sim_ticks(
     mut sim: ResMut<crate::grid_render::SimWorld>,
     mut events: ResMut<crate::sim_events::SimEventQueue>,
     mut stats: ResMut<crate::session_report::TickStats>,
+    playback: Res<crate::sim_events::MoveAnimPlayback>,
+    mut move_anim_events: EventWriter<crate::sim_events::MoveAnimEvent>,
 ) {
     let real_delta = time.delta_seconds();
     clock.tick_time_weather(real_delta);
@@ -144,15 +146,28 @@ pub fn advance_sim_ticks(
     if clock.paused || clock.speed <= 0.0 {
         return;
     }
+    if playback.in_progress {
+        return;
+    }
     clock.tick_accum += real_delta * clock.speed;
     while clock.tick_accum >= crate::game_constants::TICK_SECONDS {
+        if playback.in_progress {
+            break;
+        }
         clock.tick_accum -= crate::game_constants::TICK_SECONDS;
         let t0 = std::time::Instant::now();
-        sim.0.tick_once();
+        let move_anims = sim.0.tick_once();
         stats.record_tick_duration(t0.elapsed().as_secs_f32());
         stats.record_entity_count(sim.0.entities.len());
         for event in sim.0.drain_pending_events() {
             events.push(event);
+        }
+        let had_move_anims = !move_anims.is_empty();
+        for anim in move_anims {
+            move_anim_events.send(anim);
+        }
+        if had_move_anims {
+            break;
         }
     }
 }

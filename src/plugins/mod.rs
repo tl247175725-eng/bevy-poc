@@ -14,7 +14,10 @@ use crate::pathfinding::PathGrid;
 use crate::event_registry::EventRegistry;
 use crate::player::{PlayerBrainResource, PlayerPlugin};
 use crate::sim_clock::{advance_sim_ticks, SimClock};
-use crate::sim_events::{drain_sim_events, SimEventQueue, WorldFxQueue};
+use crate::sim_events::{
+    drain_sim_events, MoveAnimEvent, MoveAnimPlayback, MoveAnimationsComplete, SimEventQueue,
+    WorldFxQueue,
+};
 use crate::interaction::InteractionState;
 use crate::ui::minimap::minimap_panel_system;
 use crate::ui_interaction::{
@@ -71,6 +74,9 @@ impl Plugin for SimPlugin {
         app.init_resource::<SimClock>()
             .init_resource::<SimEventQueue>()
             .init_resource::<WorldFxQueue>()
+            .init_resource::<MoveAnimPlayback>()
+            .add_event::<MoveAnimEvent>()
+            .add_event::<MoveAnimationsComplete>()
             .init_resource::<InteractionState>()
             .init_resource::<PathGrid>()
             .init_resource::<EventRegistry>()
@@ -105,6 +111,7 @@ impl Plugin for RenderPlugin {
         .add_systems(
             Update,
             (
+                crate::render::move_animation::process_move_queue,
                 sync_world_root_transform,
                 crate::card_visual::sync_card_visuals,
                 crate::render::terrain_view::sync_terrain_visuals,
@@ -114,7 +121,9 @@ impl Plugin for RenderPlugin {
                 sync_ghost_preview,
                 sync_rain_overlay,
                 sync_world_fx,
-            ),
+                crate::render::move_animation::on_move_anim_completed,
+            )
+                .chain(),
         );
     }
 }

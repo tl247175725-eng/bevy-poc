@@ -107,6 +107,7 @@ pub struct WorldState {
     pub elapsed: f32,
     pub tick_delta: f32,
     pub pending_events: Vec<crate::sim_events::SimEvent>,
+    pub pending_move_anims: Vec<crate::sim_events::MoveAnimEvent>,
     /// Prevents OnMove neighbor notify re-entry (flee → move → hunt loops).
     pub sim_observer_depth: u8,
     /// Spawn-time ecology deferred to end of tick (assert co-spawn before first tick).
@@ -144,6 +145,7 @@ impl WorldState {
             elapsed: 0.0,
             tick_delta: crate::game_constants::TICK_SECONDS,
             pending_events: Vec::new(),
+            pending_move_anims: Vec::new(),
             sim_observer_depth: 0,
             pending_spawn_ecology: Vec::new(),
             tick_scratch: Vec::new(),
@@ -445,6 +447,19 @@ impl WorldState {
         let new_pos = (new_x, new_y);
         if old != new_pos {
             crate::sim_observer::on_move(self, id, old, new_pos);
+            let duration_per_step = self
+                .entities
+                .get(&id)
+                .map(|e| e.profile.move_speed)
+                .unwrap_or(0.25);
+            self.pending_move_anims.push(crate::sim_events::MoveAnimEvent {
+                entity_id: id,
+                from_x: old_x,
+                from_y: old_y,
+                to_x: new_x,
+                to_y: new_y,
+                duration_per_step,
+            });
         }
         MoveResult::Moved
     }
@@ -568,12 +583,13 @@ impl WorldState {
         }
     }
 
-    pub fn tick_once(&mut self) {
+    pub fn tick_once(&mut self) -> Vec<crate::sim_events::MoveAnimEvent> {
         crate::systems::main_tick::main_tick(self, TICK_SECONDS);
         // Headless sim loops (bench) do not drain UI events; drop silent backlog.
         if self.pending_events.len() > 512 {
             self.pending_events.clear();
         }
+        std::mem::take(&mut self.pending_move_anims)
     }
 
     pub fn drain_pending_events(&mut self) -> Vec<crate::sim_events::SimEvent> {

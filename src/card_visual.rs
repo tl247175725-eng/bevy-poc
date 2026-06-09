@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_tweening::{lens::TransformPositionLens, Animator, EaseFunction, Tween};
 
 use crate::card_def::CardDef;
 use crate::card_style::card_style;
@@ -10,6 +8,7 @@ use crate::coords::card_world_pos;
 use crate::grid_render::SimWorld;
 use crate::panel_ui::UiFont;
 use crate::visual_config::{CARD_BORDER_PAD, CARD_SIZE, STACK_OFFSET_Y};
+use crate::render::move_animation::MoveAnimating;
 use crate::world_state::Entity as SimEntity;
 use crate::world_view::{WorldRootEntity, WorldView};
 use bevy::prelude::Entity;
@@ -70,7 +69,13 @@ pub fn sync_card_visuals(
     font: Res<UiFont>,
     view: Res<WorldView>,
     world_root: Res<WorldRootEntity>,
-    mut roots: Query<(Entity, &CardVisual, &mut Transform, &Children)>,
+    mut roots: Query<(
+        Entity,
+        &CardVisual,
+        &mut Transform,
+        &Children,
+        Option<&MoveAnimating>,
+    )>,
     mut card_texts: ParamSet<(
         Query<&mut Text, With<CardIconText>>,
         Query<&mut Text, With<CardNameText>>,
@@ -80,8 +85,7 @@ pub fn sync_card_visuals(
     let icon_font = 22.0 / view.zoom;
     let name_font = 12.0 / view.zoom;
     let mut existing: HashMap<u64, Entity> =
-        roots.iter().map(|(e, c, _, _)| (c.entity_id, e)).collect();
-    let mut slide_animations: Vec<(Entity, Vec3, Vec3)> = Vec::new();
+        roots.iter().map(|(e, c, _, _, _)| (c.entity_id, e)).collect();
 
     for entity in sim.0.entities.values() {
         if entity.in_pool || entity.in_tree || entity.in_ground || entity.in_den || entity.in_burrow {
@@ -100,11 +104,8 @@ pub fn sync_card_visuals(
             .unwrap_or_else(|| card_style("grass", &fallback_def()));
 
         if let Some(entity_id) = existing.remove(&entity.id.0) {
-            if let Ok((_, _, mut transform, children)) = roots.get_mut(entity_id) {
-                let current = transform.translation;
-                if current.distance(pos) > 1.0 {
-                    slide_animations.push((entity_id, current, pos));
-                } else {
+            if let Ok((_, _, mut transform, children, animating)) = roots.get_mut(entity_id) {
+                if animating.is_none() {
                     transform.translation = pos;
                 }
                 for child in children.iter() {
@@ -133,15 +134,6 @@ pub fn sync_card_visuals(
                 name_font,
             );
         }
-    }
-
-    for (entity, start, end) in slide_animations {
-        let tween = Tween::new(
-            EaseFunction::QuadraticOut,
-            Duration::from_secs_f32(0.18),
-            TransformPositionLens { start, end },
-        );
-        commands.entity(entity).insert(Animator::new(tween));
     }
 
     for entity in existing.values() {
