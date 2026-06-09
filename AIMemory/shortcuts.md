@@ -23,6 +23,22 @@
 - `Standard，关 Max`
 - `开 Max`
 
+## 自动驱动 Cursor
+
+### 启动自动化脚本
+- 打开 PowerShell → 执行 `powershell -ExecutionPolicy Bypass -File tools/auto-cursor.ps1`
+- 脚本会在后台每 30 秒检查一次 GitHub 是否有新 handoff
+- 检测到 `AIMemory/current.md` 状态变为"待执行" → 自动切到 Cursor → 粘贴指令 → 发送
+
+### DeepSeek 工作流
+1. 跟我讨论完 → 我写 handoff → 更新 `AIMemory/current.md`（状态=待执行）
+2. push 到 GitHub
+3. 你的 `auto-cursor.ps1` 自动检测到 → 驱动 Cursor 开始干活
+4. Cursor 完成后 git push → CI 自动验证 → 你去看 Actions 结果
+
+### Cursor 完成后（手动）
+- 切到 Actions 页面看结果：全绿 → 继续；有红 → 把错误发给我
+
 ## GitHub CI 工作流
 
 ### 仓库
