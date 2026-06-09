@@ -127,9 +127,9 @@ function Process-Trigger {
 
     # 构造发送文本
     if ($mode -eq "Max") {
-        $msg = "切换到 Max Mode。读取 $handoffFile，按 Max Mode 执行。"
+        $msg = "切换到 Max Mode。读取 $handoffFile，执行。"
     } else {
-        $msg = "读取 $handoffFile，按 Standard 模式执行，关闭 Max Mode。"
+        $msg = "读取 $handoffFile，执行。"
     }
 
     Send-ToCursor -text $msg
