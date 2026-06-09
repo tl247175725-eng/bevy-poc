@@ -185,10 +185,13 @@ pub fn sync_card_visuals(
         let in_group = grouped_members.contains_key(&entity.id.0);
         let stack_index = stacks
             .get(&(entity.x, entity.y))
+            .filter(|list| list.len() > 1)
             .and_then(|list| list.iter().position(|id| *id == entity.id.0))
             .unwrap_or(0) as f32;
         let mut pos = card_world_pos(entity.x, entity.y, entity.id.0, Some(&sim.0));
-        pos.y += stack_index * STACK_OFFSET_Y;
+        if stack_index > 0.0 {
+            pos.y += stack_index * STACK_OFFSET_Y;
+        }
         let def = sim.0.card_defs.get(&entity.type_name);
         let style = def
             .map(|d| card_style(&entity.type_name, d))

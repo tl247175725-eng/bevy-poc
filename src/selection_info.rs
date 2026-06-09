@@ -85,7 +85,12 @@ pub fn resolve_selection_card(world: &WorldState, x: u8, y: u8) -> Option<Entity
         })
         .collect();
 
-    candidates.sort_by_key(|e| if e.hidden_in_grass { 1 } else { 0 });
+    candidates.sort_by_key(|e| {
+        (
+            e.hidden_in_grass as u8,
+            e.profile.incorporeal as u8,
+        )
+    });
 
     candidates.first().map(|e| e.id)
 }
@@ -176,6 +181,10 @@ pub fn build_card_panel(
         _ => {}
     }
 
+    if entity.herd_count > 0 {
+        return build_herd_panel(world, entity, def, cell_x, cell_y);
+    }
+
     let mut lines = Vec::new();
     let identity = identity_tags(def, &entity.type_name);
     if !identity.is_empty() {
@@ -210,6 +219,46 @@ pub fn build_card_panel(
         lines,
         containment,
     }
+}
+
+fn build_herd_panel(
+    world: &WorldState,
+    entity: &Entity,
+    def: &crate::card_def::CardDef,
+    cell_x: u8,
+    cell_y: u8,
+) -> PanelContent {
+    let mut lines = vec![format!("数量：{} 只", entity.herd_count)];
+    let identity = herd_identity_tags(def, &entity.type_name);
+    if !identity.is_empty() {
+        lines.push(format!("标签：{}", identity.join(" · ")));
+    }
+    lines.push(format!("状态：{}", entity_state_label(entity, def)));
+    append_goal_line(&mut lines, entity, def);
+
+    PanelContent {
+        title: format!("【{}·兽群】", def.display_name),
+        lines,
+        containment: ui_containment_entries(world, cell_x, cell_y, Some(entity.id)),
+    }
+}
+
+fn herd_identity_tags(def: &crate::card_def::CardDef, type_name: &str) -> Vec<String> {
+    def.tags
+        .iter()
+        .filter(|t| {
+            *t != type_name
+                && !SKIP_TAGS.contains(&t.as_str())
+                && *t != "flocking"
+                && !t.starts_with("herd_")
+                && !t.starts_with("flock_")
+                && !t.starts_with("social_structure:")
+                && !t.starts_with("sprint:")
+                && !t.starts_with("drive:")
+        })
+        .map(|t| tag_zh(t))
+        .filter(|t| !t.is_empty())
+        .collect()
 }
 
 fn append_goal_line(lines: &mut Vec<String>, entity: &Entity, def: &crate::card_def::CardDef) {

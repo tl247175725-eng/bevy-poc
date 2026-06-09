@@ -61,7 +61,7 @@ impl WorldView {
         let position = self.root_translation(area_size);
         Vec2::new(
             (area_pos.x - position.x) / self.zoom,
-            (area_pos.y - position.y) / self.zoom,
+            (position.y + area_pos.y) / self.zoom,
         )
     }
 
@@ -77,12 +77,12 @@ impl WorldView {
         let position = Self::base_position(area_size, old_zoom) + self.offset;
         let world_pt = Vec2::new(
             (area_mouse.x - position.x) / old_zoom,
-            (area_mouse.y - position.y) / old_zoom,
+            (position.y + area_mouse.y) / old_zoom,
         );
         let new_base = Self::base_position(area_size, self.zoom);
         self.offset = Vec2::new(
             area_mouse.x - new_base.x - world_pt.x * self.zoom,
-            area_mouse.y - new_base.y - world_pt.y * self.zoom,
+            world_pt.y * self.zoom - new_base.y - area_mouse.y,
         );
         self.clamp_offset(area_size);
     }

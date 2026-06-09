@@ -18,6 +18,7 @@ static CAPABILITIES: LazyLock<HashMap<&'static str, &'static [&'static str]>> = 
     m.insert("axe", &["capability.be_carried", "capability.be_stored", "capability.use_tool", "capability.hunt", "capability.respond_to_resource"][..]);
     m.insert("hoe", &["capability.be_carried", "capability.use_tool"][..]);
     m.insert("hammer", &["capability.be_carried", "capability.use_tool", "capability.transform_input"][..]);
+    m.insert("barrenLand", &["capability.define_domain", "capability.incorporeal"][..]);
     m.insert("mountain", &["capability.define_domain", "capability.produce_resource"][..]);
     m.insert("tree", &["capability.define_domain", "capability.produce_resource", "capability.regenerate", "capability.respond_to_tool"][..]);
     m.insert("fire", &["capability.define_domain", "capability.protect", "capability.transform_input", "capability.provide_service"][..]);

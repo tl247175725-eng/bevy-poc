@@ -10,10 +10,14 @@ pub fn spawn_initial_world() -> WorldState {
     let py = START_PLAYER_Y;
 
     for x in 0..GRID_WIDTH {
+        w.spawn("barrenLand", x, 0);
+        w.spawn("barrenLand", x, GRID_HEIGHT - 1);
         w.spawn("mountain", x, 0);
         w.spawn("mountain", x, GRID_HEIGHT - 1);
     }
     for y in 1..GRID_HEIGHT - 1 {
+        w.spawn("barrenLand", 0, y);
+        w.spawn("barrenLand", GRID_WIDTH - 1, y);
         w.spawn("mountain", 0, y);
         w.spawn("mountain", GRID_WIDTH - 1, y);
     }

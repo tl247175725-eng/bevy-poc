@@ -3,8 +3,7 @@
 
 use bevy::prelude::*;
 
-use crate::terrain::elevation_visual_offset_y;
-use crate::visual_config::{CARD_OFFSET, CARD_SIZE, CELL_SIZE};
+use crate::visual_config::CELL_SIZE;
 use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
 use crate::world_state::WorldState;
 use crate::world_view::WorldView;
@@ -19,23 +18,15 @@ pub fn cell_center(x: u8, y: u8) -> Vec3 {
     )
 }
 
-/// Godot `visual_world_pos_for_cell` — sprite center with optional elevation.
+/// Godot `visual_world_pos_for_cell` — card center matches terrain cell center.
 pub fn card_world_pos(
     x: u8,
     y: u8,
     entity_id: u64,
-    world: Option<&WorldState>,
+    _world: Option<&WorldState>,
 ) -> Vec3 {
-    let mut oy = y as f32 * CELL_SIZE + CARD_OFFSET;
-    if let Some(w) = world {
-        oy += elevation_visual_offset_y(w, x, y);
-    }
-    let ox = x as f32 * CELL_SIZE + CARD_OFFSET;
-    Vec3::new(
-        ox + CARD_SIZE / 2.0,
-        oy + CARD_SIZE / 2.0,
-        10.0 + entity_id as f32 * 0.001,
-    )
+    let center = cell_center(x, y);
+    Vec3::new(center.x, center.y, 10.0 + entity_id as f32 * 0.001)
 }
 
 pub fn grid_to_world(x: u8, y: u8) -> Vec3 {

@@ -22,7 +22,7 @@ fn grid_to_world_matches_cell_center() {
     let center = cell_center(x, y);
     let from_card = grid_to_world(x, y);
     assert!((center.x - from_card.x).abs() < 0.01);
-    assert!((center.y - from_card.y).abs() < 1.0);
+    assert!((center.y - from_card.y).abs() < 0.01);
 }
 
 #[test]

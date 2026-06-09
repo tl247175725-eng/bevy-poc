@@ -135,6 +135,15 @@
         is_rooted: false,
     ),
     CardDef(
+        type_name: "barrenLand",
+        display_name: "荒地",
+        icon: "荒",
+        tags: ["terrain", "barren", "capability.incorporeal", "rooted", "environment"],
+        color: (196, 176, 140, 255),
+        hp: 1,
+        is_rooted: true,
+    ),
+    CardDef(
         type_name: "mountain",
         display_name: "山",
         icon: "山",

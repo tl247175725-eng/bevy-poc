@@ -32,7 +32,8 @@ static TAG_DIMENSIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock:
         "camp.anchor", "camp.fire_bond", "camp.storable", "den", "den.candidate.fox", "fire_bond",
         "taoyuan", "home", "shelter", "animalHome", "forest", "bush", "grass", "water", "heat",
         "anchor", "nest", "foodSource", "berry.source", "nut_producer", "cone_producer",
-        "source.lumber", "source.stone", "source.twig", "fertile", "environment", "primary_producer",
+        "source.lumber", "source.stone", "source.twig", "fertile", "environment", "terrain",
+        "barren", "primary_producer",
     ];
     for t in relation {
         m.insert(t, "relation_domain");
@@ -81,6 +82,9 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
     }
     if tag.starts_with("container.") || tag.starts_with("cover.") || tag.starts_with("food.") {
         return Some("material_form");
+    }
+    if tag.starts_with("capability.") {
+        return Some("capability");
     }
     if tag.starts_with("drive:")
         || tag.starts_with("move_speed:")

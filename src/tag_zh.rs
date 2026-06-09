@@ -9,6 +9,7 @@ static TAG_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("animalHome", "兽穴"),
         ("aquatic", "水生"),
         ("autonomous", "自主"),
+        ("barren", "荒地"),
         ("basic", "基础"),
         ("being", "生物"),
         ("berry.source", "浆果源"),
@@ -95,6 +96,7 @@ static TAG_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("source.stone", "石源"),
         ("source.twig", "树枝源"),
         ("structure", "结构"),
+        ("terrain", "地形"),
         ("taoyuan", "桃源"),
         ("tiny", "微小"),
         ("tool", "工具"),
@@ -155,6 +157,7 @@ static CAP_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("capability.expand_domain", "扩展领域"),
         ("capability.respond_to_resource", "响应资源"),
         ("capability.define_domain", "定义领域"),
+        ("capability.incorporeal", "无形"),
         ("capability.produce_resource", "产出资源"),
         ("capability.regenerate", "再生"),
         ("capability.respond_to_tool", "响应工具"),
@@ -223,6 +226,7 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("social_structure:")
         || token.starts_with("flock_")
         || token.starts_with("herd_")
+        || (token.starts_with("capability.") && cap_has_zh_mapping(token))
 }
 
 pub fn cap_has_zh_mapping(cap: &str) -> bool {
