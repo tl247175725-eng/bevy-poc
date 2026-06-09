@@ -18,44 +18,26 @@
 - `把这个思路记下来`
 - `查一下业界做法 / 论文 / 有没有人做过类似的东西`
 
-## 模式提醒
-- `什么模式`（提醒我告诉你 Cursor 该用什么模式）
-- `Standard，关 Max`
-- `开 Max`
+## 完整工作流
 
-## 自动驱动 Cursor
+```
+DeepSeek 写 handoff → push GitHub
+    │
+你切到 Cursor → 说 "读 current.md"
+    │
+Cursor 读 current.md → 找 handoff 文件 → 本地执行
+    │
+你立刻启动游戏看效果（本地改完了，不用等同步）
+    │
+确认 OK → Cursor git push 到 GitHub
+    │
+GitHub CI 自动编译 + cargo test + smoke test
+    │
+去 Actions 页面看结果：全绿 = 通过
+```
 
-### 启动自动化脚本
-- 打开 PowerShell → 执行 `powershell -ExecutionPolicy Bypass -File tools/auto-cursor.ps1`
-- 脚本会在后台每 30 秒检查一次 GitHub 是否有新 handoff
-- 检测到 `AIMemory/current.md` 状态变为"待执行" → 自动切到 Cursor → 粘贴指令 → 发送
-
-### DeepSeek 工作流
-1. 跟我讨论完 → 我写 handoff → 更新 `AIMemory/current.md`（状态=待执行）
-2. push 到 GitHub
-3. 你的 `auto-cursor.ps1` 自动检测到 → 驱动 Cursor 开始干活
-4. Cursor 完成后 git push → CI 自动验证 → 你去看 Actions 结果
-
-### Cursor 完成后（手动）
-- 切到 Actions 页面看结果：全绿 → 继续；有红 → 把错误发给我
-
-## GitHub CI 工作流
-
-### 仓库
-- 地址：`https://github.com/tl247175725-eng/bevy-poc`
-- CI 页面：`https://github.com/tl247175725-eng/bevy-poc/actions`
-- 每次 push 自动运行 `cargo test --release` + `cargo run --release -- --smoke-test`
-
-### 本地操作
-- `cargo check` — 轻量语法检查（几十秒），本地唯一需要执行的
-- **不要本地跑 `cargo test` 或 `cargo run --release`**，交给 CI
-
-### Cursor 工作流
-1. Cursor 改完代码 → `git add` + `git commit` + `git push`
-2. 自动触发 GitHub Actions
-3. 等几分钟 → 打开 Actions 页面看结果
-4. 全绿 = PASS，有红 = 点进去看失败日志
-
-### 验收标准
-- CI 两个 job 全部绿色：`test` + `smoke`
-- 不绿不继续下一步
+### 关键规则
+- **改代码在 Cursor 本地**——改完马上能跑游戏
+- **编译测试在 GitHub**——你本地不编译，不吃 CPU
+- **auto-pull 后台跑着**——保持文件同步
+- **不需要 Cursor Automation**——已关闭
