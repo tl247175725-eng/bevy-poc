@@ -1,0 +1,103 @@
+# 群聚系统设计
+
+## 哲学
+
+群不是"合卡"——群是分离/聚合/对齐三种力的动力学平衡。群卡是视觉表现，底层仍是 N 个独立实体，各自有行为、能独立死亡。
+
+## 社会结构分类
+
+| 结构 | 特征 | 中心锚点 | 物种 |
+|---|---|---|---|
+| **flock 群** | 无中心、聚合共移动、同方向 | 邻居重心 | 羊、鱼、兔 |
+| **pack 包** | 以巢为中心、家庭单位、协作狩猎 | 巢穴 + 家庭成员 | 狼、狐 |
+| **herd 散群** | 大型聚合、无紧密协调、松散 | alignment 主导 | 鹿、野牛 |
+| **none 独居** | 无社会结构 | 无 | 虎 |
+
+## 三种力（Reynolds Boids）
+
+所有群居动物共享同一套底层引擎：
+
+| 力 | 效果 |
+|---|---|
+| **Separation 分离** | 最近的邻居推开——保持个体间距 |
+| **Cohesion 聚合** | 向邻居重心靠拢——不掉队 |
+| **Alignment 对齐** | 和邻居统一方向——协调移动 |
+
+## 标签定义
+
+```
+# 三力参数
+flock_cohesion: N          聚合强度 (0.0-1.0)
+flock_separation: N        分离强度 (0.0-1.0)
+flock_range: N             群感知范围（格）
+flock_max: N               自然上限——超过后张力增大
+
+# 分裂
+flock_split_threshold: N   超过 flock_max × N 后触发分裂（默认 1.5）
+
+# 惊散
+flock_alert: startle|scatter|stampede|school|none
+flock_alert_range: N       惊散信号传播半径（格）
+flock_regroup: N           惊散后重聚耗时（秒，默认 5.0）
+```
+
+## 标杆物种参数
+
+| 物种 | 结构 | coh | sep | range | max | alert |
+|---|---|---|---|---|---|---|
+| 羊 | flock | 0.8 | 0.3 | 4 | 8 | startle |
+| 鹿 | herd | 0.4 | 0.5 | 6 | 12 | scatter |
+| 野牛 | herd | 0.5 | 0.6 | 6 | 20 | stampede |
+| 鱼 | flock | 0.9 | 0.1 | 3 | 30 | school |
+| 兔 | flock | 0.6 | 0.2 | 3 | 6 | scatter |
+| 狼 | pack | 0.7 | 0.4 | 10 | 6 | none* |
+| 狐 | pack | 0.5 | 0.5 | 8 | 4 | none* |
+| 虎 | none | 0.0 | 1.0 | 0 | 1 | — |
+
+*狼和狐 pack 不走惊散——它们 center 是巢穴，遇威胁时回巢而非乱跑。
+
+## 惊散模式详解
+
+| 模式 | 行为 | 散开距离 | 重聚 |
+|---|---|---|---|
+| **startle** 惊散 | 各自随机跑开 2-3 格，几 tick 后 cohesion 拉回 | 2-3 格 | 快（3 tick） |
+| **scatter** 溃散 | 各方向跑开 5-8 格，缓慢重聚 | 5-8 格 | 慢（10 tick） |
+| **stampede** 奔逃 | 整群朝同一方向狂奔 | 10+ 格 | 很远重聚 |
+| **school** 鱼群 | 围绕威胁分成两半，绕过去再合拢 | 不真正散 | 立即合拢 |
+| **none** 无群 | 此实体无群聚本能 | — | — |
+
+## 分裂逻辑
+
+```
+群规模 > flock_max × flock_split_threshold
+  → 群从中间一分为二
+  → 新群向反方向移动 3 格
+  → 两个子群独立运行
+
+群规模 > flock_max 但未达阈值
+  → cohesion 力减弱 (×0.5)
+  → separation 力增强 (×1.5)
+  → 视觉变"松"
+```
+
+## 狼 pack 特殊逻辑
+
+```
+social_structure: pack
+pack_den_center: true        巢穴是引力中心
+pack_cooperative_hunt: true  两只以上可协作猎杀
+pack_alpha_pair: true        仅首领配对繁殖
+pack_food_sharing: true      饱狼回巢 → 幼崽加速成长
+```
+
+## 群卡视觉规格
+
+```
+┌─────────────┐
+│ 群      (5)  │  ← 绿色底圆圈 + 白色数字，右上角
+│             │
+│    羊        │  ← 动物名，白色，居中
+└─────────────┘
+  动物底色（CardDef.color）
+  边框不区分是否成群
+```
