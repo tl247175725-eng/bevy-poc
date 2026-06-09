@@ -1,6 +1,5 @@
 # Current Handoff
-- file: AIMemory/handoff_flock-system_deepseek-v4.md
+- file: AIMemory/handoff_flock-fix.md
 - mode: Standard
-- status: completed
-- completed_at: 2026-06-09
-- result: All tasks executed. cargo test --release PASS. smoke-test PASS. Pushed to main (ca58225).
+- status: pending
+- note: 修复群聚 standoff——分离力范围从 dist≤2 改为 dist==0

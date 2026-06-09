@@ -101,20 +101,26 @@ pub fn sync_card_visuals(
     font: Res<UiFont>,
     view: Res<WorldView>,
     world_root: Res<WorldRootEntity>,
-    mut roots: Query<(
-        Entity,
-        &CardVisual,
-        &mut Transform,
-        &Children,
-        Option<&MoveAnimating>,
-        &mut Visibility,
-    )>,
-    mut group_roots: Query<(
-        Entity,
-        &mut GroupCardMarker,
-        &mut Transform,
-        &Children,
-    )>,
+    mut roots: Query<
+        (
+            Entity,
+            &CardVisual,
+            &mut Transform,
+            &Children,
+            Option<&MoveAnimating>,
+            &mut Visibility,
+        ),
+        Without<GroupCardMarker>,
+    >,
+    mut group_roots: Query<
+        (
+            Entity,
+            &mut GroupCardMarker,
+            &mut Transform,
+            &Children,
+        ),
+        Without<CardVisual>,
+    >,
     mut card_texts: ParamSet<(
         Query<&mut Text, With<CardIconText>>,
         Query<&mut Text, With<CardNameText>>,
@@ -122,6 +128,29 @@ pub fn sync_card_visuals(
         Query<&mut Text, With<GroupLabelText>>,
     )>,
 ) {
+    // #region agent log
+    {
+        use std::io::Write;
+        let path = crate::assets_util::manifest_dir().join("debug-b7ff4e.log");
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+        {
+            let ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0);
+            let _ = writeln!(
+                f,
+                r#"{{"sessionId":"b7ff4e","hypothesisId":"H1","location":"card_visual.rs:sync_card_visuals:entry","message":"system entered","data":{{"roots_count":{},"group_roots_count":{}}},"timestamp":{}}}"#,
+                roots.iter().count(),
+                group_roots.iter().count(),
+                ts
+            );
+        }
+    }
+    // #endregion
     let stacks = stack_indices(&sim.0);
     let groups = flock_groups(&sim.0);
     let grouped_members: HashMap<u64, (u8, u8, String)> = groups
