@@ -58,6 +58,7 @@ pub enum SocialStructure {
     Flock,   // 无中心聚合
     Pack,    // 巢穴中心
     Herd,    // 松散对齐
+    Swarm,   // 虫群——强制合群，无独立卡
     None,    // 独居
 }
 
@@ -213,6 +214,17 @@ match alert_mode:
 3. 群卡 spawn 为特殊的 CardVisual + GroupCardMarker 组件
 4. 原独立卡牌 hide（不 despawn），底层实体仍然存在
 5. 数字变化时更新群卡上的计数字段
+
+### 虫群特殊处理
+
+`social_structure: Swarm` 的实体：
+1. 自由活动时**不渲染独立卡**，仅渲染群卡
+2. `in_pool` / `in_tree` 等容纳状态 → 完全隐藏（同现有逻辑）
+3. 单只游离虫自动向最近同种靠拢（cohesion 权重极高）
+
+群卡的选中逻辑（虫群和普通群都适用）：
+- 点击群卡 → 右侧面板显示群信息：`×N 只` + 基本标签
+- 点击详情展开 → 列出个体信息（HP、状态），与现有容纳详情逻辑一致
 
 ### 群卡组件
 
