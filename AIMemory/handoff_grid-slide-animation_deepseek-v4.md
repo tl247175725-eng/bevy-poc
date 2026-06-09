@@ -231,13 +231,63 @@ pub move_speed: f32,  // 每格秒数，默认 0.25
 
 ---
 
+## P0：模拟层切 Manhattan 移动
+
+**当前**：`move_toward` 使用 Chebyshev（dx 和 dy 可同时非零 = 斜走）。
+
+**改为**：当 dx 和 dy 都非零时，随机选一个方向走一格。不可斜走。
+
+### `src/systems/movement.rs` — move_toward
+
+```rust
+pub fn move_toward(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8, ty: u8) {
+    let dx = (tx as i16 - x as i16).signum();
+    let dy = (ty as i16 - y as i16).signum();
+
+    // Manhattan: never move diagonally — pick one axis randomly
+    let (step_dx, step_dy) = if dx != 0 && dy != 0 {
+        if world.rng_coin() { (dx, 0) } else { (0, dy) }
+    } else {
+        (dx, dy)
+    };
+
+    let gx = (x as i16 + step_dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+    let gy = (y as i16 + step_dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
+
+    // ... rest unchanged
+}
+```
+
+### `src/world_state.rs` — 加 RNG
+
+```rust
+// WorldState 新增
+next_rng: u64,  // 简易 xorshift
+
+pub fn rng_coin(&mut self) -> bool {
+    self.next_rng ^= self.next_rng << 13;
+    self.next_rng ^= self.next_rng >> 7;
+    self.next_rng ^= self.next_rng << 17;
+    (self.next_rng & 1) == 1
+}
+```
+
+同样修改 `flee_from` 和 `move_toward_greedy`。
+
+### `wander` 不受影响
+
+`wander` 已经是"tick 奇偶决定 ±x，不管 y"，始终是单轴移动。
+
+---
+
 ## 涉及文件
 
 | 文件 | 改动 |
 |---|---|
 | `src/render/move_animation.rs` | **新建**：MoveAnimEvent 消费 → tween → 完成检测 |
 | `src/sim_events.rs` | 新增 `MoveAnimEvent` + `MoveAnimationsComplete` |
-| `src/world_state.rs` | `move_entity` 末尾发出 `MoveAnimEvent` |
+| `src/systems/movement.rs` | `move_toward` / `flee_from` / `move_toward_greedy` 改 Manhattan |
+| `src/world_state.rs` | 新增 `rng_coin()` 用于随机选方向；`move_entity` 末尾发出 `MoveAnimEvent` |
 | `src/card_visual.rs` | **移除** `sync_card_visuals` 中旧 tween 逻辑，恢复 snap |
 | `src/systems/main_tick.rs` | tick 前检查 `animations_in_progress` 标记 |
 | `src/axioms/profile.rs` | `EntityProfile` 加 `move_speed: f32`，`parse_move_speed` |
