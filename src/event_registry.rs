@@ -6,12 +6,9 @@ use crate::card_def::CardDef;
 use crate::game_constants::{SHEEP_FEAR_RANGE, WILDPREY_FEAR_RANGE};
 use crate::sim_events::SimEvent;
 use crate::spatial_index::EntityId;
-use crate::systems::movement::{flee_from, wander};
-use crate::systems::tick_predator::{mark_predators_near_prey_needs_patrol, tick_predator_patrol};
-use crate::world_rules::{
-    card_has_capability, card_has_tag, chebyshev_distance, ecosystem_behavior_key,
-    is_aquatic_card, BEHAVIOR_COVER_FORAGER, BEHAVIOR_HERBIVORE_GRAZER,
-};
+use crate::systems::movement::flee_from;
+use crate::systems::tick_reactive::{mark_predators_near_prey_needs_patrol, tick_reactive};
+use crate::world_rules::{chebyshev_distance, card_has_tag};
 use crate::world_state::{EcologyState, WorldState};
 
 #[derive(Resource, Default)]
@@ -22,49 +19,16 @@ pub struct EventRegistry {
 impl EventRegistry {
     /// Godot `EcosystemTickRegistry.tick_card` — retained for direct / test invocation.
     pub fn tick_entity_ecology(world: &mut WorldState, id: EntityId, delta: f32) {
-        let type_name = world.entities.get(&id).map(|e| e.type_name.clone());
-        let Some(type_name) = type_name else {
-            return;
-        };
-        let def = world.card_defs.get(&type_name).cloned();
-        let Some(def) = def else {
-            return;
-        };
-
-        if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
-            tick_predator_patrol(world, id, &def, delta);
-            return;
-        }
-
-        Self::tick_non_predator_ecology(world, id, &def, delta);
+        tick_reactive(world, id, delta);
     }
 
-    pub fn tick_non_predator_ecology(world: &mut WorldState, id: EntityId, def: &CardDef, delta: f32) {
-        let type_name = def.type_name.clone();
-
-        if (is_aquatic_card(def) || matches!(type_name.as_str(), "waterBug" | "fish"))
-            && card_has_capability(def, "capability.move")
-        {
-            crate::systems::tick_aquatic::tick_aquatic_card(world, id, def, delta);
-            return;
-        }
-
-        match ecosystem_behavior_key(def, &type_name) {
-            BEHAVIOR_HERBIVORE_GRAZER => {
-                crate::systems::tick_herbivore::tick_one_grazer(world, id, def);
-            }
-            BEHAVIOR_COVER_FORAGER => {
-                crate::systems::tick_cover_forager::tick_cover_forager(world, id, def, delta);
-            }
-            "traveler" | "mushroom_farmer" | "taoyuan" => {
-                tick_ambient_wander(world, id, world.tick_count);
-            }
-            _ => {
-                if card_has_capability(def, "capability.forage") || card_has_tag(def, "herbivore") {
-                    crate::systems::tick_herbivore::tick_one_grazer(world, id, def);
-                }
-            }
-        }
+    pub fn tick_non_predator_ecology(
+        world: &mut WorldState,
+        id: EntityId,
+        _def: &CardDef,
+        delta: f32,
+    ) {
+        tick_reactive(world, id, delta);
     }
 
     /// `SimEvent::Spawn` — queue ecology; predator arrival notifies nearby prey.
@@ -74,7 +38,7 @@ impl EventRegistry {
         };
         if entity.type_name == "player" || entity.is_corpse {
             return;
-        }
+        };
         let Some(def) = world.card_defs.get(&entity.type_name).cloned() else {
             return;
         };
@@ -179,14 +143,6 @@ fn spawn_ecology_priority(world: &WorldState, id: EntityId) -> u8 {
         "waterBug" => 2,
         _ => 1,
     }
-}
-
-fn tick_ambient_wander(world: &mut WorldState, id: EntityId, tick: u64) {
-    let (x, y) = {
-        let e = &world.entities[&id];
-        (e.x, e.y)
-    };
-    wander(world, id, x, y, tick);
 }
 
 fn is_hunt_prey(def: &CardDef) -> bool {
