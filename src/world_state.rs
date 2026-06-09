@@ -251,6 +251,20 @@ impl WorldState {
         self.next_id += 1;
 
         let mut profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
+        // Spawn: if cell blocked (water, occupied, terrain), find nearby valid cell
+        let terrain = crate::terrain::terrain_at(self, x, y);
+        let blocked = matches!(terrain, "pool" | "river" | "ford" | "dark_river_pool")
+            || (self.cell_composition.slot(x, y).living_count > 0
+                && !(profile.social_structure != crate::axioms::SocialStructure::None
+                    && self.cell_composition.slot(x, y).flock_type == type_name));
+        if blocked {
+            // Use native medium for search, not water medium from blocked cell
+            let mut search_profile = profile.clone();
+            search_profile.current_medium = profile.native_medium.clone();
+            if let Some((nx, ny)) = self.nearest_vacant_cell(x, y, &search_profile) {
+                x = nx; y = ny;
+            }
+        }
         profile.current_medium = self.cell_composition.slot(x, y).medium.clone();
 
         let entity = Entity {
@@ -268,7 +282,7 @@ impl WorldState {
             fed_today: false,
             starve_days: 0,
             in_den: false,
-            in_tree: def.is_rooted && type_name != "grass",
+            in_tree: type_name == "oak" || type_name == "pine" || type_name == "bamboo" || type_name == "bush",
             in_pool: type_name == "algae"
                 || type_name == "waterBug"
                 || type_name == "fish"

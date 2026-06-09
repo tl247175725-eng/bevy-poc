@@ -192,7 +192,16 @@ pub fn sync_card_visuals(
         if stack_index > 0.0 {
             pos.y += stack_index * STACK_OFFSET_Y;
         }
+        // Z-layer: structures above terrain, creatures above structures
         let def = sim.0.card_defs.get(&entity.type_name);
+        if let Some(d) = def {
+            if d.type_name == "mountain" || d.type_name == "stone" {
+                pos.z += 1.0; // structures on top of terrain
+            }
+            if crate::world_rules::card_has_tag(d, "being") {
+                pos.z += 2.0; // creatures on top of everything
+            }
+        }
         let style = def
             .map(|d| card_style(&entity.type_name, d))
             .unwrap_or_else(|| card_style("grass", &fallback_def()));

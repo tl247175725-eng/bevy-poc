@@ -99,7 +99,7 @@ pub fn find_safe_land_near(world: &WorldState, x: u8, y: u8) -> Option<(u8, u8)>
                 let ux = nx as u8;
                 let uy = ny as u8;
                 let terrain = crate::terrain::terrain_at(world, ux, uy);
-                if matches!(terrain, "river" | "ford" | "edge" | "pool") {
+                if matches!(terrain, "river" | "ford" | "barren" | "pool") {
                     continue;
                 }
                 if !world.entities_at(ux, uy).is_empty() {

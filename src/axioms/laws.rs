@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use super::composition::CellSlot;
-use super::profile::{EntityProfile, Medium};
+use super::profile::{EntityProfile, Medium, SocialStructure};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransformAction {
@@ -28,6 +28,12 @@ pub enum Composition {
     Denied { current: u8, max: u8 },
 }
 
+fn all_same_flock(cell: &CellSlot, incoming: &EntityProfile) -> bool {
+    cell.is_flock
+        && cell.flock_type == incoming.type_name
+        && incoming.social_structure != SocialStructure::None
+}
+
 pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
     if incoming.incorporeal {
         return Composition::Allowed { remaining: u8::MAX };
@@ -42,6 +48,9 @@ pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
     }
 
     if cell.living_count > 0 {
+        if all_same_flock(cell, incoming) {
+            return Composition::Allowed { remaining: 0 };
+        }
         return Composition::Denied {
             current: cell.living_count,
             max: 1,

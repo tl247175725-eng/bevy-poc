@@ -19,7 +19,7 @@ fn hex_rgb(hex: &str) -> (u8, u8, u8, u8) {
 
 pub fn terrain_color(terrain_type: &str) -> (u8, u8, u8, u8) {
     match terrain_type {
-        "edge" => hex_rgb("26231e"),
+        "barren" => hex_rgb("8b7d6b"),
         "pool" | "dark_river_pool" => hex_rgb("1a3040"),
         "river" => hex_rgb("7eb8c8"),
         "ford" => hex_rgb("9ec8d4"),
@@ -57,7 +57,7 @@ pub fn cell_color(world: &WorldState, x: u8, y: u8) -> (u8, u8, u8, u8) {
                 hex_rgb("ead7ab")
             }
         }
-        "edge" => hex_rgb("26231e"),
+        "barren" => hex_rgb("8b7d6b"),
         _ => hex_rgb("ead7ab"),
     }
 }

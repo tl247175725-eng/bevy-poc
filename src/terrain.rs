@@ -26,7 +26,7 @@ fn legacy_terrain_at(world: &WorldState, x: u8, y: u8) -> &'static str {
         return "river";
     }
     if x == 0 || x == GRID_WIDTH - 1 || y == GRID_HEIGHT - 1 {
-        return "edge";
+        return "barren";
     }
     "land"
 }
@@ -43,7 +43,7 @@ pub fn terrain_label(terrain: &str) -> &'static str {
         "wetland" => "湿地",
         "land" => "荒地",
         "wasteland" => "焦土",
-        "edge" => "边界",
+        "barren" => "边界",
         _ => "未知地形",
     }
 }
@@ -83,7 +83,7 @@ pub fn surface_label_with_stress(
             }
         }
         "wasteland" => "焦土".into(),
-        "edge" => return None,
+        "barren" => return None,
         _ => return None,
     };
     Some(label)
@@ -111,7 +111,7 @@ fn cell_overlay_label(world: &WorldState, x: u8, y: u8) -> Option<String> {
 }
 
 pub fn is_blocked_terrain(terrain: &str) -> bool {
-    matches!(terrain, "pool" | "river" | "edge" | "dark_river_pool")
+    matches!(terrain, "pool" | "river" | "barren" | "dark_river_pool")
 }
 
 pub fn cell_elevation(world: &WorldState, x: u8, y: u8) -> i32 {

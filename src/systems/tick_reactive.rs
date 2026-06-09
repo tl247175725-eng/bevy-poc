@@ -442,7 +442,7 @@ fn scatter_cells(world: &WorldState, x: u8, y: u8, count: u8) -> Vec<(u8, u8)> {
                     continue;
                 }
                 let terrain = crate::terrain::terrain_at(world, ux, uy);
-                if matches!(terrain, "river" | "ford" | "edge" | "pool") {
+                if matches!(terrain, "river" | "ford" | "barren" | "pool") {
                     continue;
                 }
                 out.push((ux, uy));

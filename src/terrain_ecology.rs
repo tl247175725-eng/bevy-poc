@@ -77,7 +77,7 @@ impl MapEcology {
             return "";
         }
         if x == 0 || y == 0 || x == GRID_WIDTH - 1 || y == GRID_HEIGHT - 1 {
-            return "edge";
+            return "barren";
         }
         if self.is_pool_cell(x, y) {
             return "pool";
@@ -90,7 +90,7 @@ impl MapEcology {
 
     pub fn is_cell_walkable(&self, x: u8, y: u8) -> bool {
         let t = self.base_cell_type(x, y);
-        !t.is_empty() && !matches!(t, "edge" | "pool")
+        !t.is_empty() && !matches!(t, "barren" | "pool")
     }
 
     fn build_map_ecology(&mut self) {
