@@ -155,7 +155,7 @@ pub fn sync_card_visuals(
     let groups = flock_groups(&sim.0);
     let grouped_members: HashMap<u64, (u8, u8, String)> = groups
         .iter()
-        .filter(|(_, members)| members.len() >= 3)
+        .filter(|(_, members)| members.len() >= 2)
         .flat_map(|((x, y, type_name), members)| {
             members
                 .iter()
@@ -238,7 +238,7 @@ pub fn sync_card_visuals(
     }
 
     for (key, members) in &groups {
-        if members.len() < 3 {
+        if members.len() < 2 {
             continue;
         }
         let (cell_x, cell_y, type_name) = key;

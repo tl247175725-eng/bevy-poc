@@ -1,5 +1,4 @@
 # Current Handoff
-- file: AIMemory/handoff_flock-fix.md
+- file: AIMemory/handoff_capacity-one_deepseek-v4.md
 - mode: Standard
 - status: pending
-- note: 修复群聚 standoff——分离力范围从 dist≤2 改为 dist==0

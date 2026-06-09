@@ -561,7 +561,7 @@ fn execute_flock(world: &mut WorldState, id: EntityId, x: u8, y: u8, profile: &E
     for &nid in &neighbors {
         let (nx, ny) = world.spatial_index.position(nid).unwrap_or((x, y));
         let dist = chebyshev_distance(x, y, nx, ny) as i16;
-        if dist <= 2 && dist > 0 {
+        if dist == 0 {
             sep_dx += (x as i16 - nx as i16) * 2;
             sep_dy += (y as i16 - ny as i16) * 2;
         }
