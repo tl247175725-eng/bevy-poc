@@ -219,8 +219,10 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("food.")
         || token.starts_with("drive:")
         || token.starts_with("move_speed:")
+        || token.starts_with("sprint:")
         || token.starts_with("social_structure:")
         || token.starts_with("flock_")
+        || token.starts_with("herd_")
 }
 
 pub fn cap_has_zh_mapping(cap: &str) -> bool {
@@ -254,10 +256,13 @@ pub fn tag_zh(token: &str) -> String {
     if token.starts_with("move_speed:") {
         return "移动速度".to_string();
     }
+    if token.starts_with("sprint:") {
+        return "冲刺速度".to_string();
+    }
     if token.starts_with("social_structure:") {
         return "社会结构".to_string();
     }
-    if token.starts_with("flock_") {
+    if token.starts_with("flock_") || token.starts_with("herd_") {
         return "群聚参数".to_string();
     }
     token_to_fallback_zh(token)

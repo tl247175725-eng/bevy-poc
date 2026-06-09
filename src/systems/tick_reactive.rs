@@ -1,6 +1,5 @@
 use crate::axioms::{
-    AlertMode, AxiomEngine, DriveBehavior, DriveDef, EntityProfile, SocialStructure,
-    TransformAction,
+    AxiomEngine, DriveBehavior, DriveDef, EntityProfile, SocialStructure, TransformAction,
 };
 use crate::card_def::CardDef;
 use crate::ecology_log::eco_log;
@@ -117,11 +116,11 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
-    if profile.flock_alert != AlertMode::None
-        && profile.flock_alert_range > 0
-        && profile.social_structure != SocialStructure::None
-    {
-        try_trigger_flock_alert(world, id, x, y, &profile);
+    if profile.herd_alert_range > 0 && profile.social_structure != SocialStructure::None {
+        try_scatter_herd_on_predator(world, id, x, y, &profile);
+        if !world.entities.contains_key(&id) {
+            return;
+        }
     }
 
     if !world.pool_cells.contains(&(x, y))
@@ -188,7 +187,9 @@ fn active_drives(
     def: &CardDef,
 ) -> Vec<ActiveDrive> {
     let mut drives = Vec::new();
-    let entity = &world.entities[&id];
+    let Some(entity) = world.entities.get(&id) else {
+        return Vec::new();
+    };
 
     for drive_def in &profile.drives {
         if drive_def.condition_fed && entity.fed_today {
@@ -396,212 +397,179 @@ fn average_position(world: &WorldState, ids: &[EntityId]) -> (u8, u8) {
     ((sx / n) as u8, (sy / n) as u8)
 }
 
-fn flock_neighbors(
-    world: &WorldState,
-    x: u8,
-    y: u8,
-    profile: &EntityProfile,
-    id: EntityId,
-) -> Vec<EntityId> {
-    if profile.social_structure == SocialStructure::None || profile.flock_range == 0 {
-        return Vec::new();
-    }
-    world.query_near_filtered(x, y, &profile.type_name, profile.flock_range, id)
-}
-
-fn try_trigger_flock_alert(
+fn try_scatter_herd_on_predator(
     world: &mut WorldState,
     id: EntityId,
     x: u8,
     y: u8,
     profile: &EntityProfile,
 ) {
-    if profile.flock_alert == AlertMode::None || profile.flock_alert_range == 0 {
+    let has_predator = !world
+        .query_near_filtered(x, y, "predator", profile.herd_alert_range, id)
+        .is_empty()
+        || !world
+            .query_near_filtered(x, y, "mesopredator", profile.herd_alert_range, id)
+            .is_empty();
+    if !has_predator {
         return;
     }
+    let herd_count = world.entities.get(&id).map(|e| e.herd_count).unwrap_or(0);
+    if herd_count >= 2 {
+        scatter_herd(world, id);
+    }
+}
+
+fn scatter_cells(world: &WorldState, x: u8, y: u8, count: u8) -> Vec<(u8, u8)> {
+    let mut out = Vec::new();
+    for r in 0..8u8 {
+        for dx in -(r as i16)..=(r as i16) {
+            for dy in -(r as i16)..=(r as i16) {
+                if r > 0 && dx.unsigned_abs().max(dy.unsigned_abs()) != r as u16 {
+                    continue;
+                }
+                let nx = x as i16 + dx;
+                let ny = y as i16 + dy;
+                if nx < 0
+                    || ny < 0
+                    || nx >= GRID_WIDTH as i16
+                    || ny >= GRID_HEIGHT as i16
+                {
+                    continue;
+                }
+                let ux = nx as u8;
+                let uy = ny as u8;
+                if world.cell_composition.slot(ux, uy).living_count > 0 {
+                    continue;
+                }
+                let terrain = crate::terrain::terrain_at(world, ux, uy);
+                if matches!(terrain, "river" | "ford" | "edge" | "pool") {
+                    continue;
+                }
+                out.push((ux, uy));
+                if out.len() >= count as usize {
+                    return out;
+                }
+            }
+        }
+    }
+    out
+}
+
+fn scatter_herd(world: &mut WorldState, id: EntityId) {
+    let Some(entity) = world.entities.get(&id).cloned() else {
+        return;
+    };
+    if entity.herd_count < 2 {
+        return;
+    }
+    let count = entity.herd_count;
+    let type_name = entity.type_name.clone();
+    let (x, y) = (entity.x, entity.y);
+    world.remove_entity(id);
+
+    let mut cells = scatter_cells(world, x, y, count);
+    while cells.len() < count as usize {
+        cells.push((x, y));
+    }
+    for i in 0..count {
+        let (cx, cy) = cells[i as usize];
+        let new_id = world.spawn(&type_name, cx, cy);
+        if let Some(e) = world.entities.get_mut(&new_id) {
+            e.scatter_timer = 5;
+        }
+    }
+}
+
+fn try_merge_herd(world: &mut WorldState, id: EntityId, x: u8, y: u8) -> bool {
+    let Some(entity) = world.entities.get(&id).cloned() else {
+        return false;
+    };
+    if entity.is_corpse || entity.profile.social_structure == SocialStructure::None {
+        return false;
+    }
+    let type_name = entity.type_name.clone();
+    let mut members: Vec<EntityId> = world
+        .entities_at(x, y)
+        .into_iter()
+        .filter(|mid| {
+            world.entities.get(mid).is_some_and(|e| {
+                !e.is_corpse && e.type_name == type_name && e.herd_count <= 1
+            })
+        })
+        .collect();
+    members.sort_by_key(|mid| mid.0);
+    if members.len() < 2 {
+        return false;
+    }
+    let total = members.len() as u8;
+    for mid in members {
+        world.remove_entity(mid);
+    }
+    world.spawn_herd(&type_name, x, y, total);
+    true
+}
+
+fn try_join_adjacent_herd(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+) -> bool {
+    let Some(entity) = world.entities.get(&id).cloned() else {
+        return false;
+    };
+    if entity.herd_count > 1 || entity.is_corpse {
+        return false;
+    }
+    let neighbors = world.query_near_filtered(x, y, &profile.type_name, 1, id);
+    for nid in neighbors {
+        let Some(herd) = world.entities.get(&nid).cloned() else {
+            continue;
+        };
+        if herd.herd_count < 2 || herd.type_name != entity.type_name {
+            continue;
+        }
+        if herd.herd_count >= profile.herd_max {
+            continue;
+        }
+        world.remove_entity(id);
+        if let Some(h) = world.entities.get_mut(&nid) {
+            h.herd_count += 1;
+        }
+        return true;
+    }
+    false
+}
+
+fn execute_herd_drive(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+    drive: &ActiveDrive,
+) {
+    if try_merge_herd(world, id, x, y) {
+        return;
+    }
+    if try_join_adjacent_herd(world, id, x, y, profile) {
+        return;
+    }
+
     if world
         .entities
         .get(&id)
         .is_some_and(|e| e.scatter_timer > 0)
     {
+        world.next_move_speed = Some(profile.move_speed);
+        wander(world, id, x, y, world.tick_count);
         return;
     }
 
-    let has_predator = !world
-        .query_near_filtered(x, y, "predator", profile.flock_alert_range, id)
-        .is_empty()
-        || !world
-            .query_near_filtered(x, y, "mesopredator", profile.flock_alert_range, id)
-            .is_empty();
-    if !has_predator {
-        return;
-    }
-
-    let timer = match profile.flock_alert {
-        AlertMode::Startle => 3,
-        AlertMode::Scatter => 10,
-        AlertMode::Stampede => 12,
-        AlertMode::School => 2,
-        AlertMode::None => return,
-    };
-
-    world.tick_scratch.clear();
-    world.tick_scratch.extend(flock_neighbors(world, x, y, profile, id));
-    world.tick_scratch.push(id);
-    for mid in &world.tick_scratch {
-        if let Some(e) = world.entities.get_mut(mid) {
-            e.scatter_timer = e.scatter_timer.max(timer);
-        }
-    }
-}
-
-fn execute_scatter_move(
-    world: &mut WorldState,
-    id: EntityId,
-    x: u8,
-    y: u8,
-    profile: &EntityProfile,
-) {
-    let range = profile.flock_alert_range.max(4);
-    let predator_pos = world
-        .query_near_filtered(x, y, "predator", range, id)
-        .into_iter()
-        .chain(world.query_near_filtered(x, y, "mesopredator", range, id))
-        .find_map(|pid| world.spatial_index.position(pid));
-
-    match profile.flock_alert {
-        AlertMode::Startle => {
-            let tick = world.tick_count;
-            let dx = if (tick.wrapping_add(id.0)) % 2 == 0 {
-                1i16
-            } else {
-                -1
-            };
-            let dy = if (tick.wrapping_add(id.0)) % 3 == 0 {
-                1
-            } else {
-                0
-            };
-            let gx = (x as i16 + dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
-            let gy = (y as i16 + dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
-            if (gx, gy) != (x, y) {
-                move_toward(world, id, x, y, gx, gy);
-            }
-        }
-        AlertMode::Scatter | AlertMode::Stampede => {
-            if let Some((px, py)) = predator_pos {
-                flee_from(world, id, x, y, px, py);
-            } else {
-                wander(world, id, x, y, world.tick_count);
-            }
-        }
-        AlertMode::School => {
-            if let Some((px, _py)) = predator_pos {
-                let dx = if x <= px { -1i16 } else { 1 };
-                let gx = (x as i16 + dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
-                if gx != x {
-                    move_toward(world, id, x, y, gx, y);
-                }
-            }
-        }
-        AlertMode::None => {}
-    }
-}
-
-fn try_flock_split(
-    world: &mut WorldState,
-    id: EntityId,
-    x: u8,
-    y: u8,
-    profile: &EntityProfile,
-    neighbors: &[EntityId],
-) {
-    let count = neighbors.len() + 1;
-    let threshold = (profile.flock_max as f32 * profile.flock_split_threshold).ceil() as usize;
-    if count <= threshold {
-        return;
-    }
-    let (avg_x, avg_y) = average_position(world, neighbors);
-    let dx = (x as i16 - avg_x as i16).signum();
-    let dy = (y as i16 - avg_y as i16).signum();
-    let gx = (x as i16 + dx * 3).clamp(0, GRID_WIDTH as i16 - 1) as u8;
-    let gy = (y as i16 + dy * 3).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
-    if (gx, gy) != (x, y) {
-        move_toward(world, id, x, y, gx, gy);
-    }
-}
-
-fn execute_flock(world: &mut WorldState, id: EntityId, x: u8, y: u8, profile: &EntityProfile) {
-    let scatter_timer = world
-        .entities
-        .get(&id)
-        .map(|e| e.scatter_timer)
-        .unwrap_or(0);
-    if scatter_timer > 0 {
-        execute_scatter_move(world, id, x, y, profile);
-        return;
-    }
-
-    if profile.social_structure == SocialStructure::None || profile.flock_range == 0 {
-        return;
-    }
-
-    let neighbors = flock_neighbors(world, x, y, profile, id);
-    if neighbors.len() < 2 {
-        return;
-    }
-
-    let count = neighbors.len() + 1;
-    if count > profile.flock_max as usize {
-        try_flock_split(world, id, x, y, profile, &neighbors);
-    }
-
-    let cell_count = world.cell_composition.slot(x, y).living_count;
-    let mut sep_dx: i16 = 0;
-    let mut sep_dy: i16 = 0;
-    for &nid in &neighbors {
-        let (nx, ny) = world.spatial_index.position(nid).unwrap_or((x, y));
-        let dist = chebyshev_distance(x, y, nx, ny) as i16;
-        if dist == 0 && cell_count >= profile.flock_max {
-            sep_dx += (x as i16 - nx as i16) * 2;
-            sep_dy += (y as i16 - ny as i16) * 2;
-        }
-    }
-    sep_dx = sep_dx.clamp(-1, 1);
-    sep_dy = sep_dy.clamp(-1, 1);
-
-    let (avg_x, avg_y) = average_position(world, &neighbors);
-    let coh_dx = (avg_x as i16 - x as i16).signum();
-    let coh_dy = (avg_y as i16 - y as i16).signum();
-
-    let count = neighbors.len() as u8 + 1;
-    let coh_mult = if count > profile.flock_max { 0.5 } else { 1.0 };
-    let sep_mult = if count > profile.flock_max { 1.5 } else { 1.0 };
-
-    let cohesion = if profile.flock_alert == AlertMode::Startle && scatter_timer > 0 {
-        profile.flock_cohesion * 0.5
-    } else {
-        profile.flock_cohesion
-    };
-
-    let total_x = (coh_dx as f32 * cohesion * coh_mult) + (sep_dx as f32 * profile.flock_separation * sep_mult);
-    let total_y = (coh_dy as f32 * cohesion * coh_mult) + (sep_dy as f32 * profile.flock_separation * sep_mult);
-
-    let (mut final_dx, mut final_dy) = if total_x.abs() >= total_y.abs() {
-        (total_x.signum() as i16, 0)
-    } else {
-        (0, total_y.signum() as i16)
-    };
-
-    if sep_dx != 0 || sep_dy != 0 {
-        final_dx = sep_dx;
-        final_dy = sep_dy;
-    }
-
-    let gx = (x as i16 + final_dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
-    let gy = (y as i16 + final_dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
-    if (gx, gy) != (x, y) {
-        move_toward(world, id, x, y, gx, gy);
+    if let Some((_, tx, ty)) = drive.target {
+        world.next_move_speed = Some(profile.move_speed);
+        move_toward(world, id, x, y, tx, ty);
     }
 }
 
@@ -617,8 +585,8 @@ fn execute_drive(
 ) {
     match drive.behavior {
         DriveBehavior::Flock => {
-            if _profile.social_structure != SocialStructure::None && _profile.flock_range > 0 {
-                execute_flock(world, id, x, y, _profile);
+            if _profile.social_structure != SocialStructure::None && _profile.herd_range > 0 {
+                execute_herd_drive(world, id, x, y, _profile, drive);
             } else if let Some((target_id, tx, ty)) = drive.target {
                 let dist = chebyshev_distance(x, y, tx, ty);
                 if dist <= 1 && target_id != EntityId(0) {
@@ -664,6 +632,7 @@ fn execute_drive(
                             e.ecology_state = EcologyState::Hunting;
                         }
                     }
+                    world.next_move_speed = Some(_profile.sprint_speed);
                     move_toward(world, id, x, y, tx, ty);
                     if let Some(e) = world.entities.get_mut(&id) {
                         if e.ecology_state != EcologyState::Hunting {
@@ -675,6 +644,7 @@ fn execute_drive(
         }
         DriveBehavior::Flee => {
             if let Some((_, tx, ty)) = drive.target {
+                world.next_move_speed = Some(_profile.sprint_speed);
                 flee_from(world, id, x, y, tx, ty);
                 if let Some(e) = world.entities.get_mut(&id) {
                     e.ecology_state = EcologyState::Fleeing;
@@ -854,24 +824,67 @@ fn hunt_kill(
     let Some(prey_type) = prey_type else {
         return;
     };
-    let (prey_profile, hunter_profile, hx, hy, px, py) = {
+    let (prey_profile, hunter_profile, herd_count, hx, hy, px, py) = {
         let prey = world.entities.get(&prey_id);
         let hunter = world.entities.get(&hunter_id);
         match (prey, hunter) {
-            (Some(p), Some(h)) => (p.profile.clone(), h.profile.clone(), h.x, h.y, p.x, p.y),
+            (Some(p), Some(h)) => (
+                p.profile.clone(),
+                h.profile.clone(),
+                p.herd_count,
+                h.x,
+                h.y,
+                p.x,
+                p.y,
+            ),
             _ => return,
         }
     };
     if chebyshev_distance(hx, hy, px, py) > 1 {
         return;
     }
-    let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
     let corpse_type = corpse_type_for(&prey_type);
-    let (px, py) = world
-        .entities
-        .get(&prey_id)
-        .map(|p| (p.x, p.y))
-        .unwrap_or((0, 0));
+    if herd_count > 1 {
+        let mut single_profile = prey_profile.clone();
+        single_profile.energy = (prey_profile.energy / herd_count as u32).max(1);
+        let _kill =
+            AxiomEngine::transform(&single_profile, &hunter_profile, TransformAction::Kill);
+        let old_corpses: Vec<EntityId> = world
+            .entities_at(px, py)
+            .into_iter()
+            .filter(|id| {
+                world
+                    .entities
+                    .get(id)
+                    .is_some_and(|e| e.is_corpse || e.type_name.ends_with("Corpse"))
+            })
+            .collect();
+        for old in old_corpses {
+            world.remove_entity(old);
+        }
+        let corpse_id = world.spawn(&corpse_type, px, py);
+        crate::sim_observer::on_kill(world, &hunter_def.type_name, &prey_type, px, py);
+        if let Some(corpse) = world.entities.get_mut(&corpse_id) {
+            corpse.is_corpse = true;
+            corpse.decay_timer = 0.0;
+        }
+        if let Some(prey) = world.entities.get_mut(&prey_id) {
+            prey.herd_count -= 1;
+        }
+        if hunter_def.type_name == "wolf" {
+            if let Some(hunter) = world.entities.get_mut(&hunter_id) {
+                hunter.carrying = Some(corpse_id);
+                mark_ecology_fed(hunter, hunter_def);
+            }
+        } else if let Some(hunter) = world.entities.get_mut(&hunter_id) {
+            mark_ecology_fed(hunter, hunter_def);
+        }
+        if let Some(hunter) = world.entities.get_mut(&hunter_id) {
+            hunter.hunt_cooldown = 2.0;
+        }
+        return;
+    }
+    let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
     world.remove_entity(prey_id);
     let old_corpses: Vec<EntityId> = world
         .entities_at(px, py)

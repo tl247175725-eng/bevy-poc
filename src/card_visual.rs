@@ -68,10 +68,12 @@ fn flock_groups(world: &crate::world_state::WorldState) -> HashMap<(u8, u8, Stri
             if e.in_pool || e.in_tree || e.in_ground || e.in_den || e.in_burrow {
                 continue;
             }
-            groups
-                .entry((e.x, e.y, e.type_name.clone()))
-                .or_default()
-                .push(id);
+            if e.herd_count >= 2 {
+                groups
+                    .entry((e.x, e.y, e.type_name.clone()))
+                    .or_default()
+                    .push(id);
+            }
         }
     }
     groups
@@ -155,7 +157,7 @@ pub fn sync_card_visuals(
     let groups = flock_groups(&sim.0);
     let grouped_members: HashMap<u64, (u8, u8, String)> = groups
         .iter()
-        .filter(|(_, members)| members.len() >= 2)
+        .filter(|(_, members)| !members.is_empty())
         .flat_map(|((x, y, type_name), members)| {
             members
                 .iter()
@@ -238,11 +240,20 @@ pub fn sync_card_visuals(
     }
 
     for (key, members) in &groups {
-        if members.len() < 2 {
+        let Some(&first_id) = members.first() else {
+            continue;
+        };
+        let count = sim
+            .0
+            .entities
+            .get(&crate::spatial_index::EntityId(first_id))
+            .map(|e| e.herd_count)
+            .unwrap_or(0);
+        if count < 2 {
             continue;
         }
         let (cell_x, cell_y, type_name) = key;
-        let count = members.len().min(255) as u8;
+        let count = count.min(255);
         let pos = card_world_pos(*cell_x, *cell_y, members[0], Some(&sim.0));
         let def = sim.0.card_defs.get(type_name);
         let style = def

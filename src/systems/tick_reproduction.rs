@@ -1,10 +1,9 @@
-use crate::card_def::CardDef;
 use crate::game_constants::{
     DEER_POP_CAP, DEER_REPRODUCE_MIN_GRASS, DEER_REPRODUCE_WOLF_CLEAR_RADIUS, FIELD_MOUSE_POP_CAP,
     FIELD_MOUSE_REPRODUCE_MIN_MICRO, POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_LITTER_SIZE,
     PROLIFIC_REPRO_CYCLE_SECONDS, RABBIT_POP_CAP, WOLF_DEN_CAPACITY,
 };
-use crate::world_rules::{flocking_blocks_reproduction, wolves_near};
+use crate::world_rules::wolves_near;
 use crate::world_state::WorldState;
 
 pub fn tick_reproduction(world: &mut WorldState, delta: f32) {
@@ -28,18 +27,8 @@ pub fn tick_reproduction(world: &mut WorldState, delta: f32) {
     }
 }
 
-fn adults_of<'a>(world: &'a WorldState, type_name: &str) -> Vec<&'a CardDef> {
-    world
-        .entities
-        .values()
-        .filter(|e| e.type_name == type_name && !e.is_corpse)
-        .filter_map(|e| world.card_defs.get(&e.type_name))
-        .collect()
-}
-
 fn try_reproduce_sheep(world: &mut WorldState) {
-    let adults = adults_of(world, "sheep");
-    if flocking_blocks_reproduction(&adults) {
+    if world.count_type("sheep") < crate::world_rules::FLOCKING_REPRO_MIN as usize {
         return;
     }
     if world.count_type("lamb") > 0 {
@@ -107,8 +96,7 @@ fn try_reproduce_rabbit(world: &mut WorldState) {
 }
 
 fn try_reproduce_pheasant(world: &mut WorldState) {
-    let adults = adults_of(world, "pheasant");
-    if flocking_blocks_reproduction(&adults) {
+    if world.count_type("pheasant") < crate::world_rules::FLOCKING_REPRO_MIN as usize {
         return;
     }
     if let Some(p) = world.entities.values().find(|e| e.type_name == "pheasant") {
