@@ -25,7 +25,7 @@ fn tw() -> WorldState {
 fn m2_01_sheep_eats_grass_gone() {
     let mut w = tw();
     let g = w.spawn("grass", 5, 5);
-    w.spawn("sheep", 5, 5);
+    w.spawn("sheep", 5, 4);
     w.tick_once();
     assert!(!w.entities.contains_key(&g));
 }
@@ -35,8 +35,8 @@ fn m2_02_deer_flees_wolf() {
     let mut w = tw();
     let d = w.spawn("deer", 10, 10);
     let sx = w.entities[&d].x;
-    w.spawn("wolf", 11, 10);
     w.spawn("wolf", 12, 10);
+    w.spawn("wolf", 13, 10);
     w.tick_once();
     assert_eq!(w.entities[&d].ecology_state, EcologyState::Fleeing);
     assert_ne!(w.entities[&d].x, sx);
@@ -230,10 +230,11 @@ fn m2_21_algae_spawns_in_pool() {
 fn m2_22_fish_eats_water_bug() {
     let mut w = tw();
     w.mark_pool(11, 11);
-    w.spawn("waterBug", 11, 11);
+    w.mark_pool(12, 11);
+    let bug = w.spawn("waterBug", 12, 11);
     w.spawn("fish", 11, 11);
     w.tick_once();
-    assert_eq!(w.count_type("waterBug"), 0);
+    assert!(!w.entities.contains_key(&bug));
 }
 
 #[test]
@@ -279,7 +280,8 @@ fn m2_26_aquatic_in_pool() {
 fn m2_27_water_bug_eats_algae() {
     let mut w = tw();
     w.mark_pool(17, 17);
-    w.spawn("algae", 17, 17);
+    w.mark_pool(18, 17);
+    w.spawn("algae", 18, 17);
     w.spawn("waterBug", 17, 17);
     w.tick_once();
     assert_eq!(w.count_type("algae"), 0);

@@ -224,7 +224,7 @@ fn m3_16_panel_state_labels() {
 fn m3_17_food_web_still_passes() {
     let mut w = tw();
     w.spawn("grass", 8, 8);
-    w.spawn("sheep", 8, 8);
+    w.spawn("sheep", 8, 7);
     let before = w.sheep_count();
     w.tick_once();
     assert_eq!(w.sheep_count(), before);

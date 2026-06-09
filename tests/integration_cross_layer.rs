@@ -16,7 +16,7 @@ fn cross_layer_cell_center_round_trips_to_grid() {
 fn cross_layer_herbivore_baseline_grazing_tick() {
     let mut w = empty_world();
     let grass = w.spawn("grass", 8, 8);
-    let sheep = w.spawn("sheep", 8, 8);
+    let sheep = w.spawn("sheep", 8, 7);
     mark_baseline_herbivore_tick(&mut w);
     assert!(w.entities[&sheep].needs_grazing_tick);
     flush_herbivore_tick(&mut w, 1.0);

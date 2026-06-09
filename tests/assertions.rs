@@ -70,7 +70,7 @@ fn assert_03_pack_hunter_single_wolf_only_small_prey() {
 fn assert_04_sheep_eating_removes_grass() {
     let mut world = test_world();
     let grass_id = world.spawn("grass", 8, 8);
-    let sheep_id = world.spawn("sheep", 8, 8);
+    let sheep_id = world.spawn("sheep", 8, 7);
     world.tick_once();
     assert!(!world.entities.contains_key(&grass_id));
     assert!(world.entities.contains_key(&sheep_id));
@@ -80,7 +80,7 @@ fn assert_04_sheep_eating_removes_grass() {
 fn assert_05_fed_sheep_stops_eating() {
     let mut world = test_world();
     world.spawn("grass", 8, 8);
-    let sheep_id = world.spawn("sheep", 8, 8);
+    let sheep_id = world.spawn("sheep", 8, 7);
     world.tick_once();
     assert!(world.entities[&sheep_id].fed);
     world.spawn("grass", 8, 8);
@@ -94,7 +94,7 @@ fn assert_06_wolf_hunts_sheep_in_range() {
     let mut world = test_world();
     let den_id = world.spawn("wolfDen", 15, 15);
     world.spawn("sheep", 10, 10);
-    world.spawn("wolf", 11, 10);
+    world.spawn("wolf", 9, 12);
     let wolf_id = world.spawn("wolf", 12, 10);
     if let Some(w) = world.entities.get_mut(&wolf_id) {
         w.den_id = Some(den_id);
@@ -108,7 +108,7 @@ fn assert_07_hunt_produces_corpse() {
     let mut world = test_world();
     let den_id = world.spawn("wolfDen", 15, 15);
     world.spawn("sheep", 10, 10);
-    let w1 = world.spawn("wolf", 10, 10);
+    let w1 = world.spawn("wolf", 9, 10);
     let w2 = world.spawn("wolf", 11, 10);
     for wid in [w1, w2] {
         if let Some(w) = world.entities.get_mut(&wid) {
@@ -231,22 +231,22 @@ fn assert_17_wolf_patrols_without_prey() {
 fn assert_18_grass_not_eaten_twice_same_tick() {
     let mut world = test_world();
     let grass_id = world.spawn("grass", 9, 9);
-    world.spawn("sheep", 9, 9);
-    world.spawn("sheep", 9, 9);
+    world.spawn("sheep", 9, 8);
+    world.spawn("sheep", 8, 9);
     world.tick_once();
     assert!(!world.entities.contains_key(&grass_id));
     assert_eq!(world.grass_count(), 0);
 }
 
 #[test]
-fn assert_19_grass_and_sheep_same_cell() {
+fn assert_19_grass_and_sheep_adjacent_cells() {
     let mut world = test_world();
     let grass_id = world.spawn("grass", 6, 6);
-    let sheep_id = world.spawn("sheep", 6, 6);
+    let sheep_id = world.spawn("sheep", 6, 5);
     assert!(world.entities.contains_key(&grass_id));
     assert!(world.entities.contains_key(&sheep_id));
     assert_eq!(world.spatial_index.position(grass_id), Some((6, 6)));
-    assert_eq!(world.spatial_index.position(sheep_id), Some((6, 6)));
+    assert_eq!(world.spatial_index.position(sheep_id), Some((6, 5)));
 }
 
 #[test]

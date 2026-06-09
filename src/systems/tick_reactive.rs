@@ -627,10 +627,11 @@ fn execute_drive(
         }
         DriveBehavior::Seek | DriveBehavior::ReturnDen => {
             if let Some((target_id, tx, ty)) = drive.target {
-                if x == tx && y == ty {
-                    if drive.behavior == DriveBehavior::Seek {
-                        try_interact_at(world, id, target_id, def);
-                    }
+                let dist = chebyshev_distance(x, y, tx, ty);
+                if drive.behavior == DriveBehavior::Seek && dist == 1 {
+                    try_interact_at(world, id, target_id, def);
+                } else if x == tx && y == ty {
+                    // arrived at target cell (e.g. den); no adjacent interaction
                 } else {
                     if drive.behavior == DriveBehavior::Seek
                         && (card_has_tag(def, "predator") || card_has_tag(def, "mesopredator"))
@@ -806,14 +807,24 @@ fn try_consume(
     if consumed {
         return;
     }
-    let (src_profile, eater_profile) = {
+    let (src_profile, eater_profile, ex, ey, tx, ty) = {
         let grass = world.entities.get(&target_id);
         let eater = world.entities.get(&eater_id);
         match (grass, eater) {
-            (Some(g), Some(e)) => (g.profile.clone(), e.profile.clone()),
+            (Some(g), Some(e)) => (
+                g.profile.clone(),
+                e.profile.clone(),
+                e.x,
+                e.y,
+                g.x,
+                g.y,
+            ),
             _ => return,
         }
     };
+    if chebyshev_distance(ex, ey, tx, ty) != 1 {
+        return;
+    }
     let result = AxiomEngine::transform(&src_profile, &eater_profile, TransformAction::Eat);
     if let Some(target) = world.entities.get_mut(&target_id) {
         target.consumed = true;
@@ -837,14 +848,17 @@ fn hunt_kill(
     let Some(prey_type) = prey_type else {
         return;
     };
-    let (prey_profile, hunter_profile) = {
+    let (prey_profile, hunter_profile, hx, hy, px, py) = {
         let prey = world.entities.get(&prey_id);
         let hunter = world.entities.get(&hunter_id);
         match (prey, hunter) {
-            (Some(p), Some(h)) => (p.profile.clone(), h.profile.clone()),
+            (Some(p), Some(h)) => (p.profile.clone(), h.profile.clone(), h.x, h.y, p.x, p.y),
             _ => return,
         }
     };
+    if chebyshev_distance(hx, hy, px, py) != 1 {
+        return;
+    }
     let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
     let corpse_type = corpse_type_for(&prey_type);
     let (px, py) = world

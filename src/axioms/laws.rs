@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use super::composition::CellSlot;
-use super::profile::{EntityProfile, Medium};
+use super::profile::{EntityProfile, Medium, SocialStructure};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransformAction {
@@ -28,22 +28,41 @@ pub enum Composition {
     Denied { current: u8, max: u8 },
 }
 
+fn all_same_flock(cell: &CellSlot, incoming: &EntityProfile) -> bool {
+    cell.is_flock
+        && cell.flock_type == incoming.type_name
+        && incoming.social_structure != SocialStructure::None
+}
+
 pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
     if incoming.incorporeal {
+        return Composition::Allowed { remaining: u8::MAX };
+    }
+
+    if incoming.type_name.ends_with("Corpse") {
+        return Composition::Allowed { remaining: u8::MAX };
+    }
+
+    if cell.has_only_corpses() {
         return Composition::Allowed {
-            remaining: cell.max_size.saturating_sub(cell.current_size),
+            remaining: incoming.flock_max.saturating_sub(1),
         };
     }
-    let new_total = cell.current_size.saturating_add(incoming.size);
-    if new_total <= cell.max_size {
-        Composition::Allowed {
-            remaining: cell.max_size - new_total,
+
+    if cell.living_count > 0 {
+        if all_same_flock(cell, incoming) && cell.living_count < incoming.flock_max {
+            return Composition::Allowed {
+                remaining: incoming.flock_max - cell.living_count - 1,
+            };
         }
-    } else {
-        Composition::Denied {
-            current: cell.current_size,
-            max: cell.max_size,
-        }
+        return Composition::Denied {
+            current: cell.living_count,
+            max: 1,
+        };
+    }
+
+    Composition::Allowed {
+        remaining: incoming.flock_max.saturating_sub(1),
     }
 }
 

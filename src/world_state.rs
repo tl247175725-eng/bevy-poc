@@ -242,14 +242,7 @@ impl WorldState {
         let id = EntityId(self.next_id);
         self.next_id += 1;
 
-        let profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
-        // Spawn at the designer's requested coordinates — capacity is enforced by movement,
-        // not by placement. Over-capacity spawns are intentional (e.g. predator + prey same cell).
-        let _ = profile;
-        // Skip find_spawn_cell / nearest_vacant relocation; respect explicit placement.
-
         let mut profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
-        self.cell_composition.occupy(x, y, &profile);
         profile.current_medium = self.cell_composition.slot(x, y).medium.clone();
 
         let entity = Entity {
@@ -299,6 +292,7 @@ impl WorldState {
         if type_name == "bush" {
             self.bush_microfauna.insert((x, y), crate::game_constants::BUSH_INITIAL_MICROFAUNA);
         }
+        self.cell_composition.occupy_entity(x, y, &entity);
         self.index_entity(&entity, &def);
         self.entities.insert(id, entity);
         AxiomEngine::trace(
@@ -405,10 +399,11 @@ impl WorldState {
             return MoveResult::NoOp;
         }
 
-        let profile = match self.entities.get(&id) {
-            Some(e) => e.profile.clone(),
+        let old_entity = match self.entities.get(&id).cloned() {
+            Some(e) => e,
             None => return MoveResult::Blocked,
         };
+        let profile = old_entity.profile.clone();
 
         let dest_slot = self.cell_composition.slot(new_x, new_y);
         let to_medium = dest_slot.medium.clone();
@@ -426,14 +421,19 @@ impl WorldState {
         }
 
         let (old_x, old_y) = old;
-        self.cell_composition.vacate(old_x, old_y, &profile);
-        self.cell_composition.occupy(new_x, new_y, &profile);
+        self.cell_composition
+            .vacate_entity(old_x, old_y, &old_entity);
 
         if let Some(entity) = self.entities.get_mut(&id) {
             entity.x = new_x;
             entity.y = new_y;
-            entity.profile.current_medium = to_medium;
+            entity.profile.current_medium = to_medium.clone();
             self.spatial_index.move_entity(id, entity.x, entity.y);
+        }
+
+        if let Some(entity) = self.entities.get(&id).cloned() {
+            self.cell_composition
+                .occupy_entity(new_x, new_y, &entity);
         }
 
         AxiomEngine::trace(
@@ -468,17 +468,10 @@ impl WorldState {
     }
 
     pub fn remove_entity(&mut self, id: EntityId) {
-        let meta = self.entities.get(&id).map(|e| {
-            (
-                e.type_name.clone(),
-                e.x,
-                e.y,
-                e.profile.clone(),
-            )
-        });
-        if let Some((type_name, x, y, profile)) = meta {
-            self.cell_composition.vacate(x, y, &profile);
-            crate::sim_observer::on_despawn(self, &type_name, x, y);
+        let entity = self.entities.get(&id).cloned();
+        if let Some(ref e) = entity {
+            self.cell_composition.vacate_entity(e.x, e.y, e);
+            crate::sim_observer::on_despawn(self, &e.type_name, e.x, e.y);
             AxiomEngine::trace(
                 &mut self.causal_storage,
                 CausalEvent {
