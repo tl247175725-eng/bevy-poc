@@ -11,7 +11,9 @@ pub use laws::{
     compose, perceive, transform, traverse, Composition, Perception, TransformAction,
     Transformation, Traversal,
 };
-pub use profile::{ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium};
+pub use profile::{
+    AlertMode, ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium, SocialStructure,
+};
 
 use crate::card_def::CardDef;
 use crate::spatial_index::EntityId;
@@ -41,6 +43,8 @@ impl AxiomEngine {
             }
         }
 
+        let flock = profile::parse_flock_params(tags);
+
         EntityProfile {
             entity_id,
             type_name: type_name.to_string(),
@@ -58,6 +62,14 @@ impl AxiomEngine {
             drives: profile::parse_drives(tags),
             move_speed: profile::parse_move_speed(tags),
             current_medium,
+            social_structure: flock.social_structure,
+            flock_cohesion: flock.cohesion,
+            flock_separation: flock.separation,
+            flock_range: flock.range,
+            flock_max: flock.max,
+            flock_split_threshold: flock.split_threshold,
+            flock_alert: flock.alert,
+            flock_alert_range: flock.alert_range,
         }
     }
 

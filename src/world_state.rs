@@ -71,6 +71,8 @@ pub struct Entity {
     pub needs_grazing_tick: bool,
     /// Precomputed axiom profile (tags parsed once at spawn / refresh).
     pub profile: crate::axioms::EntityProfile,
+    /// Remaining scatter ticks — cohesion suppressed while > 0.
+    pub scatter_timer: i8,
 }
 
 impl Entity {
@@ -292,6 +294,7 @@ impl WorldState {
             needs_patrol: false,
             needs_grazing_tick: false,
             profile,
+            scatter_timer: 0,
         };
         if type_name == "bush" {
             self.bush_microfauna.insert((x, y), crate::game_constants::BUSH_INITIAL_MICROFAUNA);
