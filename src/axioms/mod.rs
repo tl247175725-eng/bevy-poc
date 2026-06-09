@@ -11,7 +11,7 @@ pub use laws::{
     compose, perceive, transform, traverse, Composition, Perception, TransformAction,
     Transformation, Traversal,
 };
-pub use profile::{ChannelDef, EntityProfile, Medium};
+pub use profile::{ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium};
 
 use crate::card_def::CardDef;
 use crate::spatial_index::EntityId;
@@ -55,6 +55,7 @@ impl AxiomEngine {
             keen_eyed_mod: profile::parse_keen_eyed_mod(tags),
             energy: profile::parse_energy(tags, hp),
             efficiencies: profile::parse_efficiencies(tags),
+            drives: profile::parse_drives(tags),
             current_medium,
         }
     }
