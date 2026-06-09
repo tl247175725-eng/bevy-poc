@@ -82,6 +82,9 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
     if tag.starts_with("container.") || tag.starts_with("cover.") || tag.starts_with("food.") {
         return Some("material_form");
     }
+    if tag.starts_with("drive:") {
+        return Some("action");
+    }
     None
 }
 

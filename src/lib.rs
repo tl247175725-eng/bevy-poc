@@ -60,7 +60,9 @@ pub use game_ui_panel::{
     game_ui_panel_system, panel_content_for_test, setup_egui_fonts, setup_ui_font, UiFont,
 };
 pub use card_visual::{stack_indices, sync_card_visuals};
-pub use systems::main_tick::{flush_herbivore_tick, mark_baseline_herbivore_tick};
+pub use systems::main_tick::{
+    flush_herbivore_tick, flush_reactive_entity_tick, mark_baseline_herbivore_tick,
+};
 pub use initial_spawn::{initial_card_count, spawn_initial_world};
 pub use visual_config::{
     world_height, world_width, CELL_SIZE, PANEL_MIN_WIDTH, PANEL_WIDTH, panel_width_for,

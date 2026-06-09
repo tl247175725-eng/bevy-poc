@@ -5,6 +5,27 @@ use super::laws::TransformAction;
 
 pub type Medium = String;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DriveBehavior {
+    Seek,
+    Flee,
+    Flock,
+    Hide,
+    ReturnDen,
+    Scavenge,
+    Wander,
+    Idle,
+}
+
+#[derive(Clone, Debug)]
+pub struct DriveDef {
+    pub behavior: DriveBehavior,
+    pub target_tag: String,
+    pub range: u8,
+    pub priority: u8,
+    pub condition_fed: bool,
+}
+
 /// Precomputed from card tags once at spawn; systems read profiles, not raw tag vecs.
 #[derive(Clone, Debug)]
 pub struct EntityProfile {
@@ -25,6 +46,7 @@ pub struct EntityProfile {
 
     pub energy: u32,
     pub efficiencies: SmallVec<[(TransformAction, f32); 6]>,
+    pub drives: SmallVec<[DriveDef; 6]>,
 
     pub current_medium: Medium,
 }
@@ -51,9 +73,70 @@ impl Default for EntityProfile {
             keen_eyed_mod: 1.0,
             energy: 0,
             efficiencies: SmallVec::new(),
+            drives: SmallVec::new(),
             current_medium: "land".into(),
         }
     }
+}
+
+pub fn parse_drives(tags: &[String]) -> SmallVec<[DriveDef; 6]> {
+    let mut out = SmallVec::new();
+    for t in tags {
+        let Some(rest) = t.strip_prefix("drive:") else {
+            continue;
+        };
+        let (behavior_str, params) = match rest.split_once('(') {
+            Some((b, p)) => (b, p.trim_end_matches(')')),
+            None => (rest, ""),
+        };
+        let behavior = match behavior_str {
+            "seek" => DriveBehavior::Seek,
+            "flee" => DriveBehavior::Flee,
+            "flock" => DriveBehavior::Flock,
+            "hide" => DriveBehavior::Hide,
+            "return_den" => DriveBehavior::ReturnDen,
+            "scavenge" => DriveBehavior::Scavenge,
+            _ => continue,
+        };
+        let target_tag = parse_tag_str_param(params, "target").unwrap_or_default();
+        let range = parse_tag_u8_param(params, "range").unwrap_or(if behavior == DriveBehavior::Hide {
+            4
+        } else {
+            0
+        });
+        let priority = parse_tag_u8_param(params, "priority").unwrap_or(1);
+        let condition_fed = behavior == DriveBehavior::Seek;
+        out.push(DriveDef {
+            behavior,
+            target_tag,
+            range,
+            priority,
+            condition_fed,
+        });
+    }
+    out
+}
+
+fn parse_tag_str_param(s: &str, key: &str) -> Option<String> {
+    let needle = format!("{key}=");
+    for part in s.split(',') {
+        let part = part.trim();
+        if let Some(v) = part.strip_prefix(&needle) {
+            return Some(v.to_string());
+        }
+    }
+    None
+}
+
+fn parse_tag_u8_param(s: &str, key: &str) -> Option<u8> {
+    let needle = format!("{key}=");
+    for part in s.split(',') {
+        let part = part.trim();
+        if let Some(v) = part.strip_prefix(&needle) {
+            return v.parse().ok();
+        }
+    }
+    None
 }
 
 pub fn parse_size(tags: &[String], type_name: &str) -> u8 {
