@@ -2,7 +2,7 @@
 # Periodically pulls latest code from GitHub so local files stay in sync.
 # Usage: powershell -ExecutionPolicy Bypass -File tools/auto-pull.ps1
 
-$repo = "E:\desktop\bevy-poc"
+$repo = "E:\桌面\bevy-poc"
 $interval = 60
 
 Write-Host "=== Auto-Pull started ===" -ForegroundColor Green
