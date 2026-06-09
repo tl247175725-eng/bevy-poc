@@ -618,8 +618,13 @@ fn execute_drive(
         DriveBehavior::Flock => {
             if _profile.social_structure != SocialStructure::None && _profile.flock_range > 0 {
                 execute_flock(world, id, x, y, _profile);
-            } else if let Some((_, tx, ty)) = drive.target {
-                move_toward(world, id, x, y, tx, ty);
+            } else if let Some((target_id, tx, ty)) = drive.target {
+                let dist = chebyshev_distance(x, y, tx, ty);
+                if dist <= 1 && target_id != EntityId(0) {
+                    try_interact_at(world, id, target_id, def);
+                } else {
+                    move_toward(world, id, x, y, tx, ty);
+                }
             }
             if let Some(e) = world.entities.get_mut(&id) {
                 e.ecology_state = EcologyState::SeekingFood;
@@ -628,10 +633,10 @@ fn execute_drive(
         DriveBehavior::Seek | DriveBehavior::ReturnDen => {
             if let Some((target_id, tx, ty)) = drive.target {
                 let dist = chebyshev_distance(x, y, tx, ty);
-                if drive.behavior == DriveBehavior::Seek && dist == 1 {
+                if drive.behavior == DriveBehavior::Seek && dist <= 1 {
                     try_interact_at(world, id, target_id, def);
-                } else if x == tx && y == ty {
-                    // arrived at target cell (e.g. den); no adjacent interaction
+                } else if drive.behavior == DriveBehavior::ReturnDen && x == tx && y == ty {
+                    // arrived at den
                 } else {
                     if drive.behavior == DriveBehavior::Seek
                         && (card_has_tag(def, "predator") || card_has_tag(def, "mesopredator"))
@@ -688,7 +693,7 @@ fn execute_drive(
         }
         DriveBehavior::Scavenge => {
             if let Some((corpse_id, tx, ty)) = drive.target {
-                if x == tx && y == ty {
+                if chebyshev_distance(x, y, tx, ty) <= 1 {
                     world.remove_entity(corpse_id);
                     let today = world
                         .entities
@@ -822,7 +827,7 @@ fn try_consume(
             _ => return,
         }
     };
-    if chebyshev_distance(ex, ey, tx, ty) != 1 {
+    if chebyshev_distance(ex, ey, tx, ty) > 1 {
         return;
     }
     let result = AxiomEngine::transform(&src_profile, &eater_profile, TransformAction::Eat);
@@ -856,7 +861,7 @@ fn hunt_kill(
             _ => return,
         }
     };
-    if chebyshev_distance(hx, hy, px, py) != 1 {
+    if chebyshev_distance(hx, hy, px, py) > 1 {
         return;
     }
     let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
@@ -983,7 +988,7 @@ fn try_scavenge(world: &mut WorldState, id: EntityId, x: u8, y: u8, def: &CardDe
         return false;
     };
     let (cx, cy) = world.spatial_index.position(*corpse_id).unwrap_or((x, y));
-    if x == cx && y == cy {
+    if chebyshev_distance(x, y, cx, cy) <= 1 {
         world.remove_entity(*corpse_id);
         let today = world.entities.get(&id).map(|f| f.scavenge_today + 1).unwrap_or(1);
         if let Some(fox) = world.entities.get_mut(&id) {
