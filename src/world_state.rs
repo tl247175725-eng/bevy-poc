@@ -289,7 +289,7 @@ impl WorldState {
                 || type_name == "shellfish"
                 || type_name == "waterCaltrop"
                 || type_name == "lotus",
-            in_ground: type_name == "wildYam",
+            in_ground: type_name == "wildYam" || type_name == "landBug",
             in_burrow: false,
             carrying: None,
             stunned: false,
