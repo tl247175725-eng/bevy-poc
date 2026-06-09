@@ -104,15 +104,6 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     };
 
-    // DEL TEMP: debug
-    if world.tick_count <= 3 {
-        let e = &world.entities[&id];
-        eprintln!("TICK_DEBUG tick={} id={} type={} at=({},{}) fed={} drives={}",
-            world.tick_count, id.0, e.type_name, e.x, e.y,
-            e.fed_today,
-            e.profile.drives.iter().filter(|d| d.range > 0).count());
-    }
-
     if card_has_tag(&def, "juvenile") {
         return;
     }
@@ -565,12 +556,13 @@ fn execute_flock(world: &mut WorldState, id: EntityId, x: u8, y: u8, profile: &E
         try_flock_split(world, id, x, y, profile, &neighbors);
     }
 
+    let cell_count = world.cell_composition.slot(x, y).living_count;
     let mut sep_dx: i16 = 0;
     let mut sep_dy: i16 = 0;
     for &nid in &neighbors {
         let (nx, ny) = world.spatial_index.position(nid).unwrap_or((x, y));
         let dist = chebyshev_distance(x, y, nx, ny) as i16;
-        if dist == 0 {
+        if dist == 0 && cell_count >= profile.flock_max {
             sep_dx += (x as i16 - nx as i16) * 2;
             sep_dy += (y as i16 - ny as i16) * 2;
         }

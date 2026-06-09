@@ -580,10 +580,6 @@ impl WorldState {
     }
 
     pub fn tick_once(&mut self) -> Vec<crate::sim_events::MoveAnimEvent> {
-        // DEBUG
-        if self.tick_count <= 3 {
-            let _ = std::fs::write("E:/debug_tick.log", format!("tick_once tick={}\n", self.tick_count));
-        }
         crate::systems::main_tick::main_tick(self, TICK_SECONDS);
         // Headless sim loops (bench) do not drain UI events; drop silent backlog.
         if self.pending_events.len() > 512 {

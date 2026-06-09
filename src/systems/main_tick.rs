@@ -26,17 +26,6 @@ pub fn main_tick(world: &mut WorldState, delta: f32) {
 
     flush_reactive_tick(world, delta);
 
-    // DEBUG: write to file
-    if world.tick_count <= 5 {
-        let autonomous = world.entities.values().filter(|e| e.is_autonomous(&world.card_defs)).count();
-        let marked = world.entities.values().filter(|e| e.needs_grazing_tick).count();
-        let _ = std::fs::write(
-            "debug_tick.log",
-            format!("MAIN_TICK tick={} total={} autonomous={} marked={}\n",
-                world.tick_count, world.entities.len(), autonomous, marked),
-        );
-    }
-
     if !world.pending_spawn_ecology.is_empty() {
         EventRegistry::flush_spawn_ecology(world);
     }
