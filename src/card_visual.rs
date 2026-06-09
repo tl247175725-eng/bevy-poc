@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy_tweening::{lens::TransformPositionLens, Animator, EaseFunction, Tween};
 
 use crate::card_def::CardDef;
 use crate::card_style::card_style;
@@ -79,6 +81,7 @@ pub fn sync_card_visuals(
     let name_font = 12.0 / view.zoom;
     let mut existing: HashMap<u64, Entity> =
         roots.iter().map(|(e, c, _, _)| (c.entity_id, e)).collect();
+    let mut slide_animations: Vec<(Entity, Vec3, Vec3)> = Vec::new();
 
     for entity in sim.0.entities.values() {
         if entity.in_pool || entity.in_tree || entity.in_ground || entity.in_den || entity.in_burrow {
@@ -98,7 +101,12 @@ pub fn sync_card_visuals(
 
         if let Some(entity_id) = existing.remove(&entity.id.0) {
             if let Ok((_, _, mut transform, children)) = roots.get_mut(entity_id) {
-                transform.translation = pos;
+                let current = transform.translation;
+                if current.distance(pos) > 1.0 {
+                    slide_animations.push((entity_id, current, pos));
+                } else {
+                    transform.translation = pos;
+                }
                 for child in children.iter() {
                     if let Ok(mut text) = card_texts.p0().get_mut(*child) {
                         if let Some(section) = text.sections.get_mut(0) {
@@ -125,6 +133,15 @@ pub fn sync_card_visuals(
                 name_font,
             );
         }
+    }
+
+    for (entity, start, end) in slide_animations {
+        let tween = Tween::new(
+            EaseFunction::QuadraticOut,
+            Duration::from_secs_f32(0.18),
+            TransformPositionLens { start, end },
+        );
+        commands.entity(entity).insert(Animator::new(tween));
     }
 
     for entity in existing.values() {

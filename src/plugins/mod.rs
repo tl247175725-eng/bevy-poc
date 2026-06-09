@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::render::texture::ImagePlugin;
 use bevy::window::WindowResizeConstraints;
 use bevy_egui::{EguiPlugin, EguiSet};
+use bevy_tweening::TweeningPlugin;
 
 use crate::assets_util::assets_dir;
 use crate::game_ui_panel::{game_ui_panel_system, setup_egui_fonts, setup_ui_font};
@@ -52,6 +53,7 @@ impl Plugin for AppPlugin {
                 }),
         )
         .add_plugins(EguiPlugin)
+        .add_plugins(TweeningPlugin)
         .add_plugins((
             SimPlugin,
             PlayerPlugin,
