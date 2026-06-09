@@ -3,6 +3,50 @@
 use bevy::prelude::*;
 
 use crate::sim_clock::SimClock;
+use crate::spatial_index::EntityId;
+
+/// Move animation request — queued by `move_entity`, consumed by render layer.
+#[derive(Debug, Clone, Event)]
+pub struct MoveAnimEvent {
+    pub entity_id: EntityId,
+    pub from_x: u8,
+    pub from_y: u8,
+    pub to_x: u8,
+    pub to_y: u8,
+    pub duration_per_step: f32,
+}
+
+/// All move animations from the last tick have finished playing.
+#[derive(Debug, Clone, Event)]
+pub struct MoveAnimationsComplete;
+
+/// Tracks in-flight move tweens so sim ticks wait for visuals.
+#[derive(Resource, Default)]
+pub struct MoveAnimPlayback {
+    pub in_progress: bool,
+    pub pending_completions: u32,
+}
+
+impl MoveAnimPlayback {
+    pub fn begin_batch(&mut self, count: u32) {
+        if count > 0 {
+            self.in_progress = true;
+            self.pending_completions = count;
+        }
+    }
+
+    pub fn note_completion(&mut self) -> bool {
+        if self.pending_completions > 0 {
+            self.pending_completions -= 1;
+        }
+        if self.pending_completions == 0 {
+            self.in_progress = false;
+            true
+        } else {
+            false
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SimEvent {

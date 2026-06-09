@@ -1,9 +1,7 @@
 //! Headless smoke test — `cargo run --release -- --smoke-test`
 //! Runs 1000 ticks, checks health criteria, outputs PASS/FAIL.
 
-use crate::game_constants::TICK_SECONDS;
 use crate::initial_spawn::spawn_initial_world;
-use crate::systems::main_tick::main_tick;
 use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
 use std::time::Instant;
 
@@ -13,7 +11,6 @@ pub fn run() {
     let mut world = spawn_initial_world();
     world.set_causal_mode(true);
     let initial_count = world.entities.len();
-    let tick_delta = TICK_SECONDS;
 
     let mut failures: Vec<String> = Vec::new();
     let mut moved_herbivores = 0u32;
@@ -21,7 +18,7 @@ pub fn run() {
 
     for _ in 0..1000 {
         let tick_start = Instant::now();
-        main_tick(&mut world, tick_delta);
+        world.tick_once();
         world.drain_pending_events();
         let tick_ms = tick_start.elapsed().as_secs_f64() * 1000.0;
         if tick_ms > max_tick_ms {

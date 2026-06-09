@@ -48,6 +48,9 @@ pub struct EntityProfile {
     pub efficiencies: SmallVec<[(TransformAction, f32); 6]>,
     pub drives: SmallVec<[DriveDef; 6]>,
 
+    /// Seconds per grid step for move animation (from `move_speed:*` tag).
+    pub move_speed: f32,
+
     pub current_medium: Medium,
 }
 
@@ -74,9 +77,27 @@ impl Default for EntityProfile {
             energy: 0,
             efficiencies: SmallVec::new(),
             drives: SmallVec::new(),
+            move_speed: 0.25,
             current_medium: "land".into(),
         }
     }
+}
+
+/// Lookup table for `move_speed:slow` etc. — see `AIMemory/design_movement-animation-standards_deepseek-v4.md`.
+pub fn parse_move_speed(tags: &[String]) -> f32 {
+    for t in tags {
+        if let Some(name) = t.strip_prefix("move_speed:") {
+            return match name {
+                "slow" => 0.35,
+                "normal" => 0.25,
+                "fast" => 0.18,
+                "very_fast" => 0.12,
+                "sprint" => 0.08,
+                _ => 0.25,
+            };
+        }
+    }
+    0.25
 }
 
 pub fn parse_drives(tags: &[String]) -> SmallVec<[DriveDef; 6]> {

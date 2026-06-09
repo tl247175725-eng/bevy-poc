@@ -56,6 +56,7 @@ impl AxiomEngine {
             energy: profile::parse_energy(tags, hp),
             efficiencies: profile::parse_efficiencies(tags),
             drives: profile::parse_drives(tags),
+            move_speed: profile::parse_move_speed(tags),
             current_medium,
         }
     }
