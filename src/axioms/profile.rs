@@ -6,6 +6,23 @@ use super::laws::TransformAction;
 pub type Medium = String;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SocialStructure {
+    Flock,
+    Pack,
+    Herd,
+    None,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlertMode {
+    Startle,
+    Scatter,
+    Stampede,
+    School,
+    None,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriveBehavior {
     Seek,
     Flee,
@@ -52,6 +69,15 @@ pub struct EntityProfile {
     pub move_speed: f32,
 
     pub current_medium: Medium,
+
+    pub social_structure: SocialStructure,
+    pub flock_cohesion: f32,
+    pub flock_separation: f32,
+    pub flock_range: u8,
+    pub flock_max: u8,
+    pub flock_split_threshold: f32,
+    pub flock_alert: AlertMode,
+    pub flock_alert_range: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -79,7 +105,146 @@ impl Default for EntityProfile {
             drives: SmallVec::new(),
             move_speed: 0.25,
             current_medium: "land".into(),
+            social_structure: SocialStructure::None,
+            flock_cohesion: 0.0,
+            flock_separation: 0.0,
+            flock_range: 0,
+            flock_max: 1,
+            flock_split_threshold: 1.5,
+            flock_alert: AlertMode::None,
+            flock_alert_range: 0,
         }
+    }
+}
+
+pub struct FlockParams {
+    pub social_structure: SocialStructure,
+    pub cohesion: f32,
+    pub separation: f32,
+    pub range: u8,
+    pub max: u8,
+    pub split_threshold: f32,
+    pub alert: AlertMode,
+    pub alert_range: u8,
+}
+
+fn structure_defaults(structure: SocialStructure) -> FlockParams {
+    match structure {
+        SocialStructure::Flock => FlockParams {
+            social_structure: structure,
+            cohesion: 0.8,
+            separation: 0.3,
+            range: 4,
+            max: 8,
+            split_threshold: 1.5,
+            alert: AlertMode::Startle,
+            alert_range: 3,
+        },
+        SocialStructure::Pack => FlockParams {
+            social_structure: structure,
+            cohesion: 0.7,
+            separation: 0.4,
+            range: 10,
+            max: 6,
+            split_threshold: 1.5,
+            alert: AlertMode::None,
+            alert_range: 0,
+        },
+        SocialStructure::Herd => FlockParams {
+            social_structure: structure,
+            cohesion: 0.5,
+            separation: 0.5,
+            range: 6,
+            max: 12,
+            split_threshold: 1.5,
+            alert: AlertMode::Scatter,
+            alert_range: 4,
+        },
+        SocialStructure::None => FlockParams {
+            social_structure: structure,
+            cohesion: 0.0,
+            separation: 0.0,
+            range: 0,
+            max: 1,
+            split_threshold: 1.5,
+            alert: AlertMode::None,
+            alert_range: 0,
+        },
+    }
+}
+
+pub fn parse_flock_params(tags: &[String]) -> FlockParams {
+    let mut structure = SocialStructure::None;
+    for t in tags {
+        if let Some(name) = t.strip_prefix("social_structure:") {
+            structure = match name {
+                "flock" => SocialStructure::Flock,
+                "pack" => SocialStructure::Pack,
+                "herd" => SocialStructure::Herd,
+                _ => SocialStructure::None,
+            };
+            break;
+        }
+    }
+
+    if structure == SocialStructure::None {
+        return structure_defaults(SocialStructure::None);
+    }
+
+    let defaults = structure_defaults(structure);
+    let mut cohesion = defaults.cohesion;
+    let mut separation = defaults.separation;
+    let mut range = defaults.range;
+    let mut max = defaults.max;
+    let mut split_threshold = defaults.split_threshold;
+    let mut alert = defaults.alert;
+    let mut alert_range = defaults.alert_range;
+
+    for t in tags {
+        if let Some(v) = t.strip_prefix("flock_cohesion:") {
+            if let Ok(f) = v.parse::<f32>() {
+                cohesion = f.clamp(0.0, 1.0);
+            }
+        } else if let Some(v) = t.strip_prefix("flock_separation:") {
+            if let Ok(f) = v.parse::<f32>() {
+                separation = f.clamp(0.0, 1.0);
+            }
+        } else if let Some(v) = t.strip_prefix("flock_range:") {
+            if let Ok(n) = v.parse::<u8>() {
+                range = n;
+            }
+        } else if let Some(v) = t.strip_prefix("flock_max:") {
+            if let Ok(n) = v.parse::<u8>() {
+                max = n.max(1);
+            }
+        } else if let Some(v) = t.strip_prefix("flock_split_threshold:") {
+            if let Ok(f) = v.parse::<f32>() {
+                split_threshold = f.max(1.0);
+            }
+        } else if let Some(v) = t.strip_prefix("flock_alert:") {
+            alert = match v {
+                "startle" => AlertMode::Startle,
+                "scatter" => AlertMode::Scatter,
+                "stampede" => AlertMode::Stampede,
+                "school" => AlertMode::School,
+                _ => AlertMode::None,
+            };
+        } else if let Some(v) = t.strip_prefix("flock_alert_range:") {
+            if let Ok(n) = v.parse::<u8>() {
+                alert_range = n;
+            }
+        }
+    }
+
+    FlockParams {
+        social_structure: structure,
+        cohesion,
+        separation,
+        range,
+        max,
+        split_threshold,
+        alert,
+        alert_range,
     }
 }
 

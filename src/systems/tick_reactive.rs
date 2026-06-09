@@ -1,4 +1,7 @@
-use crate::axioms::{AxiomEngine, DriveBehavior, DriveDef, EntityProfile, TransformAction};
+use crate::axioms::{
+    AlertMode, AxiomEngine, DriveBehavior, DriveDef, EntityProfile, SocialStructure,
+    TransformAction,
+};
 use crate::card_def::CardDef;
 use crate::ecology_log::eco_log;
 use crate::game_constants::{
@@ -8,7 +11,7 @@ use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
     card_has_tag, chebyshev_distance, corpse_type_for, hunt_target_score, is_hunt_target_for_pack,
-    mark_ecology_fed, HUNT_RANGE, HUNT_SCORE_INF,
+    mark_ecology_fed, GRID_HEIGHT, GRID_WIDTH, HUNT_RANGE, HUNT_SCORE_INF,
 };
 use crate::world_state::{EcologyState, WorldState};
 
@@ -114,6 +117,13 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
+    if profile.flock_alert != AlertMode::None
+        && profile.flock_alert_range > 0
+        && profile.social_structure != SocialStructure::None
+    {
+        try_trigger_flock_alert(world, id, x, y, &profile);
+    }
+
     if !world.pool_cells.contains(&(x, y))
         && (def.type_name == "fish" || def.type_name == "waterBug")
     {
@@ -152,6 +162,12 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         }
     } else if let Some(e) = world.entities.get_mut(&id) {
         e.ecology_state = EcologyState::Idle;
+    }
+
+    if let Some(e) = world.entities.get_mut(&id) {
+        if e.scatter_timer > 0 {
+            e.scatter_timer -= 1;
+        }
     }
 }
 
@@ -380,6 +396,214 @@ fn average_position(world: &WorldState, ids: &[EntityId]) -> (u8, u8) {
     ((sx / n) as u8, (sy / n) as u8)
 }
 
+fn flock_neighbors(
+    world: &WorldState,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+    id: EntityId,
+) -> Vec<EntityId> {
+    if profile.social_structure == SocialStructure::None || profile.flock_range == 0 {
+        return Vec::new();
+    }
+    world.query_near_filtered(x, y, &profile.type_name, profile.flock_range, id)
+}
+
+fn try_trigger_flock_alert(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+) {
+    if profile.flock_alert == AlertMode::None || profile.flock_alert_range == 0 {
+        return;
+    }
+    if world
+        .entities
+        .get(&id)
+        .is_some_and(|e| e.scatter_timer > 0)
+    {
+        return;
+    }
+
+    let has_predator = !world
+        .query_near_filtered(x, y, "predator", profile.flock_alert_range, id)
+        .is_empty()
+        || !world
+            .query_near_filtered(x, y, "mesopredator", profile.flock_alert_range, id)
+            .is_empty();
+    if !has_predator {
+        return;
+    }
+
+    let timer = match profile.flock_alert {
+        AlertMode::Startle => 3,
+        AlertMode::Scatter => 10,
+        AlertMode::Stampede => 12,
+        AlertMode::School => 2,
+        AlertMode::None => return,
+    };
+
+    world.tick_scratch.clear();
+    world.tick_scratch.extend(flock_neighbors(world, x, y, profile, id));
+    world.tick_scratch.push(id);
+    for mid in &world.tick_scratch {
+        if let Some(e) = world.entities.get_mut(mid) {
+            e.scatter_timer = e.scatter_timer.max(timer);
+        }
+    }
+}
+
+fn execute_scatter_move(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+) {
+    let range = profile.flock_alert_range.max(4);
+    let predator_pos = world
+        .query_near_filtered(x, y, "predator", range, id)
+        .into_iter()
+        .chain(world.query_near_filtered(x, y, "mesopredator", range, id))
+        .find_map(|pid| world.spatial_index.position(pid));
+
+    match profile.flock_alert {
+        AlertMode::Startle => {
+            let tick = world.tick_count;
+            let dx = if (tick.wrapping_add(id.0)) % 2 == 0 {
+                1i16
+            } else {
+                -1
+            };
+            let dy = if (tick.wrapping_add(id.0)) % 3 == 0 {
+                1
+            } else {
+                0
+            };
+            let gx = (x as i16 + dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+            let gy = (y as i16 + dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
+            if (gx, gy) != (x, y) {
+                move_toward(world, id, x, y, gx, gy);
+            }
+        }
+        AlertMode::Scatter | AlertMode::Stampede => {
+            if let Some((px, py)) = predator_pos {
+                flee_from(world, id, x, y, px, py);
+            } else {
+                wander(world, id, x, y, world.tick_count);
+            }
+        }
+        AlertMode::School => {
+            if let Some((px, _py)) = predator_pos {
+                let dx = if x <= px { -1i16 } else { 1 };
+                let gx = (x as i16 + dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+                if gx != x {
+                    move_toward(world, id, x, y, gx, y);
+                }
+            }
+        }
+        AlertMode::None => {}
+    }
+}
+
+fn try_flock_split(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    profile: &EntityProfile,
+    neighbors: &[EntityId],
+) {
+    let count = neighbors.len() + 1;
+    let threshold = (profile.flock_max as f32 * profile.flock_split_threshold).ceil() as usize;
+    if count <= threshold {
+        return;
+    }
+    let (avg_x, avg_y) = average_position(world, neighbors);
+    let dx = (x as i16 - avg_x as i16).signum();
+    let dy = (y as i16 - avg_y as i16).signum();
+    let gx = (x as i16 + dx * 3).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+    let gy = (y as i16 + dy * 3).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
+    if (gx, gy) != (x, y) {
+        move_toward(world, id, x, y, gx, gy);
+    }
+}
+
+fn execute_flock(world: &mut WorldState, id: EntityId, x: u8, y: u8, profile: &EntityProfile) {
+    let scatter_timer = world
+        .entities
+        .get(&id)
+        .map(|e| e.scatter_timer)
+        .unwrap_or(0);
+    if scatter_timer > 0 {
+        execute_scatter_move(world, id, x, y, profile);
+        return;
+    }
+
+    if profile.social_structure == SocialStructure::None || profile.flock_range == 0 {
+        return;
+    }
+
+    let neighbors = flock_neighbors(world, x, y, profile, id);
+    if neighbors.len() < 2 {
+        return;
+    }
+
+    let count = neighbors.len() + 1;
+    if count > profile.flock_max as usize {
+        try_flock_split(world, id, x, y, profile, &neighbors);
+    }
+
+    let mut sep_dx: i16 = 0;
+    let mut sep_dy: i16 = 0;
+    for &nid in &neighbors {
+        let (nx, ny) = world.spatial_index.position(nid).unwrap_or((x, y));
+        let dist = chebyshev_distance(x, y, nx, ny) as i16;
+        if dist <= 2 && dist > 0 {
+            sep_dx += (x as i16 - nx as i16) * 2;
+            sep_dy += (y as i16 - ny as i16) * 2;
+        }
+    }
+    sep_dx = sep_dx.clamp(-1, 1);
+    sep_dy = sep_dy.clamp(-1, 1);
+
+    let (avg_x, avg_y) = average_position(world, &neighbors);
+    let coh_dx = (avg_x as i16 - x as i16).signum();
+    let coh_dy = (avg_y as i16 - y as i16).signum();
+
+    let count = neighbors.len() as u8 + 1;
+    let coh_mult = if count > profile.flock_max { 0.5 } else { 1.0 };
+    let sep_mult = if count > profile.flock_max { 1.5 } else { 1.0 };
+
+    let cohesion = if profile.flock_alert == AlertMode::Startle && scatter_timer > 0 {
+        profile.flock_cohesion * 0.5
+    } else {
+        profile.flock_cohesion
+    };
+
+    let total_x = (coh_dx as f32 * cohesion * coh_mult) + (sep_dx as f32 * profile.flock_separation * sep_mult);
+    let total_y = (coh_dy as f32 * cohesion * coh_mult) + (sep_dy as f32 * profile.flock_separation * sep_mult);
+
+    let (mut final_dx, mut final_dy) = if total_x.abs() >= total_y.abs() {
+        (total_x.signum() as i16, 0)
+    } else {
+        (0, total_y.signum() as i16)
+    };
+
+    if sep_dx != 0 || sep_dy != 0 {
+        final_dx = sep_dx;
+        final_dy = sep_dy;
+    }
+
+    let gx = (x as i16 + final_dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+    let gy = (y as i16 + final_dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
+    if (gx, gy) != (x, y) {
+        move_toward(world, id, x, y, gx, gy);
+    }
+}
+
 fn execute_drive(
     world: &mut WorldState,
     id: EntityId,
@@ -391,7 +615,17 @@ fn execute_drive(
     _delta: f32,
 ) {
     match drive.behavior {
-        DriveBehavior::Seek | DriveBehavior::Flock | DriveBehavior::ReturnDen => {
+        DriveBehavior::Flock => {
+            if _profile.social_structure != SocialStructure::None && _profile.flock_range > 0 {
+                execute_flock(world, id, x, y, _profile);
+            } else if let Some((_, tx, ty)) = drive.target {
+                move_toward(world, id, x, y, tx, ty);
+            }
+            if let Some(e) = world.entities.get_mut(&id) {
+                e.ecology_state = EcologyState::SeekingFood;
+            }
+        }
+        DriveBehavior::Seek | DriveBehavior::ReturnDen => {
             if let Some((target_id, tx, ty)) = drive.target {
                 if x == tx && y == ty {
                     if drive.behavior == DriveBehavior::Seek {
