@@ -91,7 +91,6 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("sprint:")
         || tag.starts_with("social_structure:")
         || tag.starts_with("flock_")
-        || tag.starts_with("herd_")
     {
         return Some("action");
     }

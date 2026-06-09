@@ -43,7 +43,7 @@ impl AxiomEngine {
             }
         }
 
-        let herd = profile::parse_herd_params(tags);
+        let flock = profile::parse_flock_params(tags);
 
         EntityProfile {
             entity_id,
@@ -63,10 +63,10 @@ impl AxiomEngine {
             move_speed: profile::parse_move_speed(tags),
             sprint_speed: profile::parse_sprint_speed(tags),
             current_medium,
-            social_structure: herd.social_structure,
-            herd_range: herd.range,
-            herd_max: herd.max,
-            herd_alert_range: herd.alert_range,
+            social_structure: flock.social_structure,
+            flock_range: flock.range,
+            flock_max: flock.max,
+            flock_alert_range: flock.alert_range,
         }
     }
 

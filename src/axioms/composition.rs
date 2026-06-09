@@ -108,6 +108,10 @@ impl CellComposition {
         if slot.living_count == 0 {
             slot.flock_type = entity.profile.type_name.clone();
             slot.is_flock = entity.profile.social_structure != super::profile::SocialStructure::None;
+        } else if entity.profile.social_structure != super::profile::SocialStructure::None
+            && slot.flock_type == entity.profile.type_name
+        {
+            slot.is_flock = true;
         }
         slot.living_count = slot.living_count.saturating_add(1);
     }

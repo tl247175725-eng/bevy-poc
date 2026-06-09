@@ -71,10 +71,6 @@ pub struct Entity {
     pub needs_grazing_tick: bool,
     /// Precomputed axiom profile (tags parsed once at spawn / refresh).
     pub profile: crate::axioms::EntityProfile,
-    /// Remaining scatter ticks after herd splits.
-    pub scatter_timer: i8,
-    /// 0 = individual; >0 = herd entity representing N animals of this type.
-    pub herd_count: u8,
 }
 
 impl Entity {
@@ -199,10 +195,7 @@ impl WorldState {
                 let Some(target) = self.entities.get(id) else {
                     return false;
                 };
-                let mut tgt_profile = target.profile.clone();
-                if target.herd_count > 1 {
-                    tgt_profile.visibility_mod = (tgt_profile.visibility_mod * 1.5).min(1.0);
-                }
+                let tgt_profile = target.profile.clone();
                 let dist =
                     crate::world_rules::chebyshev_distance(x, y, target.x, target.y) as u8;
                 matches!(
@@ -309,8 +302,6 @@ impl WorldState {
             needs_patrol: false,
             needs_grazing_tick: false,
             profile,
-            scatter_timer: 0,
-            herd_count: 0,
         };
         if type_name == "bush" {
             self.bush_microfauna.insert((x, y), crate::game_constants::BUSH_INITIAL_MICROFAUNA);
@@ -329,16 +320,6 @@ impl WorldState {
             },
         );
         crate::sim_observer::on_spawn(self, id, type_name, x, y);
-        id
-    }
-
-    /// Spawn a herd entity — one card representing `count` animals on one cell.
-    pub fn spawn_herd(&mut self, type_name: &str, x: u8, y: u8, count: u8) -> EntityId {
-        let count = count.max(2);
-        let id = self.spawn(type_name, x, y);
-        if let Some(entity) = self.entities.get_mut(&id) {
-            entity.herd_count = count;
-        }
         id
     }
 
@@ -566,8 +547,7 @@ impl WorldState {
         self.entities
             .values()
             .filter(|e| e.type_name == type_name && !e.is_corpse)
-            .map(|e| if e.herd_count > 0 { e.herd_count as usize } else { 1 })
-            .sum()
+            .count()
     }
 
     pub fn sheep_count(&self) -> usize {

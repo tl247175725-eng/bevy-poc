@@ -64,9 +64,9 @@ pub struct EntityProfile {
     pub current_medium: Medium,
 
     pub social_structure: SocialStructure,
-    pub herd_range: u8,
-    pub herd_max: u8,
-    pub herd_alert_range: u8,
+    pub flock_range: u8,
+    pub flock_max: u8,
+    pub flock_alert_range: u8,
 }
 
 #[derive(Clone, Debug)]
@@ -96,41 +96,41 @@ impl Default for EntityProfile {
             sprint_speed: 0.12,
             current_medium: "land".into(),
             social_structure: SocialStructure::None,
-            herd_range: 0,
-            herd_max: 1,
-            herd_alert_range: 0,
+            flock_range: 0,
+            flock_max: 1,
+            flock_alert_range: 0,
         }
     }
 }
 
-pub struct HerdParams {
+pub struct FlockParams {
     pub social_structure: SocialStructure,
     pub range: u8,
     pub max: u8,
     pub alert_range: u8,
 }
 
-fn structure_defaults(structure: SocialStructure) -> HerdParams {
+fn structure_defaults(structure: SocialStructure) -> FlockParams {
     match structure {
-        SocialStructure::Flock => HerdParams {
+        SocialStructure::Flock => FlockParams {
             social_structure: structure,
             range: 4,
             max: 8,
             alert_range: 3,
         },
-        SocialStructure::Pack => HerdParams {
+        SocialStructure::Pack => FlockParams {
             social_structure: structure,
             range: 10,
             max: 6,
             alert_range: 0,
         },
-        SocialStructure::Herd => HerdParams {
+        SocialStructure::Herd => FlockParams {
             social_structure: structure,
             range: 6,
             max: 12,
             alert_range: 4,
         },
-        SocialStructure::None => HerdParams {
+        SocialStructure::None => FlockParams {
             social_structure: structure,
             range: 0,
             max: 1,
@@ -139,7 +139,7 @@ fn structure_defaults(structure: SocialStructure) -> HerdParams {
     }
 }
 
-pub fn parse_herd_params(tags: &[String]) -> HerdParams {
+pub fn parse_flock_params(tags: &[String]) -> FlockParams {
     let mut structure = SocialStructure::None;
     for t in tags {
         if let Some(name) = t.strip_prefix("social_structure:") {
@@ -163,25 +163,22 @@ pub fn parse_herd_params(tags: &[String]) -> HerdParams {
     let mut alert_range = defaults.alert_range;
 
     for t in tags {
-        if let Some(v) = t.strip_prefix("herd_range:").or_else(|| t.strip_prefix("flock_range:")) {
+        if let Some(v) = t.strip_prefix("flock_range:") {
             if let Ok(n) = v.parse::<u8>() {
                 range = n;
             }
-        } else if let Some(v) = t.strip_prefix("herd_max:").or_else(|| t.strip_prefix("flock_max:"))
-        {
+        } else if let Some(v) = t.strip_prefix("flock_max:") {
             if let Ok(n) = v.parse::<u8>() {
                 max = n.max(1);
             }
-        } else if let Some(v) =
-            t.strip_prefix("herd_alert_range:").or_else(|| t.strip_prefix("flock_alert_range:"))
-        {
+        } else if let Some(v) = t.strip_prefix("flock_alert_range:") {
             if let Ok(n) = v.parse::<u8>() {
                 alert_range = n;
             }
         }
     }
 
-    HerdParams {
+    FlockParams {
         social_structure: structure,
         range,
         max,

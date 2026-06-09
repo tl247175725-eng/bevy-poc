@@ -44,12 +44,16 @@ pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
     }
 
     if cell.has_only_corpses() {
-        return Composition::Allowed { remaining: 0 };
+        return Composition::Allowed {
+            remaining: incoming.flock_max.saturating_sub(1),
+        };
     }
 
     if cell.living_count > 0 {
-        if all_same_flock(cell, incoming) {
-            return Composition::Allowed { remaining: 0 };
+        if all_same_flock(cell, incoming) && cell.living_count < incoming.flock_max {
+            return Composition::Allowed {
+                remaining: incoming.flock_max - cell.living_count - 1,
+            };
         }
         return Composition::Denied {
             current: cell.living_count,
@@ -57,7 +61,9 @@ pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
         };
     }
 
-    Composition::Allowed { remaining: 0 }
+    Composition::Allowed {
+        remaining: incoming.flock_max.saturating_sub(1),
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
