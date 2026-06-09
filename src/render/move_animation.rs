@@ -52,7 +52,7 @@ pub fn process_move_queue(
         let dx = (event.to_x as i16 - event.from_x as i16).abs();
         let dy = (event.to_y as i16 - event.from_y as i16).abs();
 
-        let tweenable = if dx > 0 && dy > 0 {
+        if dx > 0 && dy > 0 {
             let step1_target = visual_pos(
                 event.to_x,
                 event.from_y,
@@ -77,9 +77,11 @@ pub fn process_move_queue(
                 },
             )
             .with_completed_event(MOVE_ANIM_COMPLETED);
-            tween1.then(tween2)
+            commands
+                .entity(bevy_entity)
+                .insert((Animator::new(tween1.then(tween2)), MoveAnimating));
         } else {
-            Tween::new(
+            let tween = Tween::new(
                 EaseFunction::CubicOut,
                 dur,
                 TransformPositionLens {
@@ -87,12 +89,11 @@ pub fn process_move_queue(
                     end: end_pos,
                 },
             )
-            .with_completed_event(MOVE_ANIM_COMPLETED)
-        };
-
-        commands
-            .entity(bevy_entity)
-            .insert((Animator::new(tweenable), MoveAnimating));
+            .with_completed_event(MOVE_ANIM_COMPLETED);
+            commands
+                .entity(bevy_entity)
+                .insert((Animator::new(tween), MoveAnimating));
+        }
         batch_count += 1;
     }
 
