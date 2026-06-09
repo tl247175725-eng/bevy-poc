@@ -10,9 +10,13 @@
 - `读代码找出 [具体现象] 的根因`
 
 ## 让 DeepSeek 写执行单
-- `写 handoff`
+- `写 handoff` — 每个 handoff 必须含"架构计划"和"架构反馈"两段
 - `发 Standard`（发 handoff 给 Cursor，Standard 模式关 Max）
 - `发 Max`（发 handoff 给 Cursor，Max Mode）
+
+### Handoff 前置检查
+1. 这次任务如何复用公理/标签/引擎？
+2. 有没有暴露出架构底层缺陷？
 
 ## 问问进度
 - `Cursor 在干嘛`
