@@ -1,0 +1,25 @@
+# Cursor Rules — Rust/Bevy Project
+
+## 代码风格
+- 所有函数签名显式标注参数类型，不用 `_` 省略
+- `unwrap()` 只允许在测试和 `Default` trait 中使用。业务逻辑用 `if let Some(x) = ...` 或 `match`
+- 禁止 `clone()` 在 hot path 中使用。传引用或 `Copy`
+- Entity 和 Component 分离：模拟层（WorldState/Entity）不依赖 Bevy ECS
+- System 参数顺序：先 Commands，再 Query，最后 EventReader/Writer、Res
+
+## 所有权
+- 禁止隐式 move：结构体字段有 Copy 需求的加 `#[derive(Clone, Copy)]`
+- `&mut` 和 `&` 不能共存于同一调用链。需要时走 EntityId + 查表模式
+- Query 提取用 `entity.profile.clone()` → 不在 Query 迭代中持有 borrow
+
+## Bevy ECS
+- System 间通信优先用 Event（`EventWriter`/`EventReader`），不用 ResMut 偷传状态
+- Query 过滤必须精确：`With<T>` / `Without<T>` / `Changed<T>` 避免过宽扫描
+- Commands 只用于生成/销毁 entity，不在其中做业务逻辑
+
+## 项目约定
+- 不改 AIMemory/ 目录下的任何文件
+- 不改 .cursorrules
+- 不改 .github/workflows/
+- 所有改动 commit 前 `cargo check` 必须通过
+- 不删已有测试。新增功能可加新测试
