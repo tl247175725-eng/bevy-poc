@@ -247,9 +247,7 @@ impl WorldState {
         // Spawn: if cell blocked (water, occupied, terrain), find nearby valid cell
         let terrain = crate::terrain::terrain_at(self, x, y);
         let blocked = matches!(terrain, "pool" | "river" | "ford" | "dark_river_pool")
-            || (self.cell_composition.slot(x, y).living_count > 0
-                && !(profile.social_structure != crate::axioms::SocialStructure::None
-                    && self.cell_composition.slot(x, y).flock_type == type_name));
+            || self.cell_composition.slot(x, y).living_count > 0;
         if blocked {
             // Use native medium for search, not water medium from blocked cell
             let mut search_profile = profile.clone();

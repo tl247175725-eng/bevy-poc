@@ -12,8 +12,6 @@ pub struct CellSlot {
     pub medium: Medium,
     pub living_count: u8,
     pub corpse_count: u8,
-    pub is_flock: bool,
-    pub flock_type: String,
 }
 
 impl CellSlot {
@@ -31,8 +29,6 @@ fn empty_slot(medium: Medium) -> CellSlot {
         medium,
         living_count: 0,
         corpse_count: 0,
-        is_flock: false,
-        flock_type: String::new(),
     }
 }
 
@@ -105,14 +101,6 @@ impl CellComposition {
             slot.corpse_count = slot.corpse_count.saturating_add(1);
             return;
         }
-        if slot.living_count == 0 {
-            slot.flock_type = entity.profile.type_name.clone();
-            slot.is_flock = entity.profile.social_structure != super::profile::SocialStructure::None;
-        } else if entity.profile.social_structure != super::profile::SocialStructure::None
-            && slot.flock_type == entity.profile.type_name
-        {
-            slot.is_flock = true;
-        }
         slot.living_count = slot.living_count.saturating_add(1);
     }
 
@@ -126,10 +114,6 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_sub(1);
-        if slot.living_count == 0 {
-            slot.is_flock = false;
-            slot.flock_type.clear();
-        }
     }
 
     pub fn occupy(&mut self, x: u8, y: u8, profile: &EntityProfile) {
@@ -141,9 +125,6 @@ impl CellComposition {
         if is_corpse {
             slot.corpse_count = slot.corpse_count.saturating_add(1);
             return;
-        }
-        if slot.living_count == 0 {
-            slot.flock_type = profile.type_name.clone();
         }
         slot.living_count = slot.living_count.saturating_add(1);
     }
@@ -159,10 +140,6 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_sub(1);
-        if slot.living_count == 0 {
-            slot.is_flock = false;
-            slot.flock_type.clear();
-        }
     }
 
     pub fn can_occupy(&self, x: u8, y: u8, profile: &EntityProfile) -> bool {
