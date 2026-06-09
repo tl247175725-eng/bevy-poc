@@ -117,7 +117,12 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
-    try_trigger_flock_alert(world, id, x, y, &profile);
+    if profile.flock_alert != AlertMode::None
+        && profile.flock_alert_range > 0
+        && profile.social_structure != SocialStructure::None
+    {
+        try_trigger_flock_alert(world, id, x, y, &profile);
+    }
 
     if !world.pool_cells.contains(&(x, y))
         && (def.type_name == "fish" || def.type_name == "waterBug")
@@ -422,17 +427,13 @@ fn try_trigger_flock_alert(
         return;
     }
 
-    let mut predators = world.query_near_filtered(x, y, "predator", profile.flock_alert_range, id);
-    predators.extend(world.query_near_filtered(
-        x,
-        y,
-        "mesopredator",
-        profile.flock_alert_range,
-        id,
-    ));
-    predators.sort_unstable_by_key(|p| p.0);
-    predators.dedup();
-    if predators.is_empty() {
+    let has_predator = !world
+        .query_near_filtered(x, y, "predator", profile.flock_alert_range, id)
+        .is_empty()
+        || !world
+            .query_near_filtered(x, y, "mesopredator", profile.flock_alert_range, id)
+            .is_empty();
+    if !has_predator {
         return;
     }
 
@@ -444,12 +445,11 @@ fn try_trigger_flock_alert(
         AlertMode::None => return,
     };
 
-    let mut affected = flock_neighbors(world, x, y, profile, id);
-    affected.push(id);
-    affected.sort_unstable_by_key(|m| m.0);
-    affected.dedup();
-    for mid in affected {
-        if let Some(e) = world.entities.get_mut(&mid) {
+    world.tick_scratch.clear();
+    world.tick_scratch.extend(flock_neighbors(world, x, y, profile, id));
+    world.tick_scratch.push(id);
+    for mid in &world.tick_scratch {
+        if let Some(e) = world.entities.get_mut(mid) {
             e.scatter_timer = e.scatter_timer.max(timer);
         }
     }
@@ -551,7 +551,10 @@ fn execute_flock(world: &mut WorldState, id: EntityId, x: u8, y: u8, profile: &E
         return;
     }
 
-    try_flock_split(world, id, x, y, profile, &neighbors);
+    let count = neighbors.len() + 1;
+    if count > profile.flock_max as usize {
+        try_flock_split(world, id, x, y, profile, &neighbors);
+    }
 
     let mut sep_dx: i16 = 0;
     let mut sep_dy: i16 = 0;
