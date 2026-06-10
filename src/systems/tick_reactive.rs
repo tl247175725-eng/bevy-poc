@@ -170,6 +170,15 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         e.ecology_state = EcologyState::Idle;
     }
 
+    // Idle cover-user: auto-hide if on grass/bush when no other drive active
+    if let Some(e) = world.entities.get(&id) {
+        if e.ecology_state == EcologyState::Idle
+            && !e.in_cover
+            && crate::world_rules::card_has_tag(&def, "cover_user")
+        {
+            try_auto_hide_after_flee(world, id, &profile);
+        }
+    }
 }
 
 struct ActiveDrive {
