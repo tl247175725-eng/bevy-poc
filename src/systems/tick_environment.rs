@@ -239,9 +239,18 @@ fn tick_underground_spread(world: &mut WorldState, delta: f32) {
     }
     let humus_keys: Vec<(u8, u8)> = world.humus_age.keys().copied().collect();
     for key in humus_keys {
-        let age = world.humus_age.get_mut(&key).unwrap();
-        *age += delta;
-        if *age >= HUMUS_DURATION_SECONDS {
+        let age = {
+            let age = world.humus_age.get_mut(&key).unwrap();
+            *age += delta;
+            *age
+        };
+        if age >= crate::game_constants::HUMUS_GRASS_SECONDS
+            && !world.has_tag_at(key.0, key.1, "grass")
+        {
+            world.spawn("grass", key.0, key.1);
+            eco_log(world, "腐殖土 → 草芽");
+        }
+        if age >= HUMUS_DURATION_SECONDS {
             world.humus_age.remove(&key);
             world.humus_layers.remove(&key);
             let to_remove: Vec<_> = world

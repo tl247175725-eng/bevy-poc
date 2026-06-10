@@ -451,7 +451,13 @@ fn execute_drive(
         DriveBehavior::Flee => {
             if let Some((_, tx, ty)) = drive.target {
                 world.next_move_speed = Some(_profile.sprint_speed);
-                flee_from(world, id, x, y, tx, ty);
+                if let Some((hx, hy)) =
+                    crate::systems::movement::hunting_predator_adjacent(world, x, y, id)
+                {
+                    crate::systems::movement::flee_pathfind(world, id, x, y, hx, hy);
+                } else {
+                    flee_from(world, id, x, y, tx, ty);
+                }
                 if let Some(e) = world.entities.get_mut(&id) {
                     e.ecology_state = EcologyState::Fleeing;
                 }

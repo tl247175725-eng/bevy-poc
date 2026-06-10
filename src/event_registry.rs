@@ -205,7 +205,12 @@ fn notify_prey_near_predator(
         if before <= fear || after > fear {
             continue;
         }
-        flee_from(world, prey_id, prey.x, prey.y, to.0, to.1);
+        world.next_move_speed = Some(prey.profile.sprint_speed);
+        if chebyshev_distance(prey.x, prey.y, to.0, to.1) <= 1 {
+            crate::systems::movement::flee_pathfind(world, prey_id, prey.x, prey.y, to.0, to.1);
+        } else {
+            flee_from(world, prey_id, prey.x, prey.y, to.0, to.1);
+        }
         if let Some(e) = world.entities.get_mut(&prey_id) {
             e.ecology_state = EcologyState::Fleeing;
         }

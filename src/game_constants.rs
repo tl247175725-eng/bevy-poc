@@ -20,6 +20,7 @@ pub const FIRE_DRY_GRASS_RANGE: u8 = 2;
 pub const FIRE_DRY_GRASS_TICKS: f32 = 3.0;
 pub const HUMUS_MAX_LAYERS: i32 = 2;
 pub const HUMUS_DURATION_SECONDS: f32 = 360.0;
+pub const HUMUS_GRASS_SECONDS: f32 = 120.0;
 pub const GRASS_REGEN_HUMUS_MULT: f32 = 0.5;
 pub const AQUATIC_MIGRATION_INTERVAL: f32 = 20.0;
 pub const LAND_BUG_POP_CAP: i32 = 8;

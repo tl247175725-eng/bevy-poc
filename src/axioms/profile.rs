@@ -200,6 +200,7 @@ pub fn parse_sprint_speed(tags: &[String]) -> f32 {
                 "normal" => 0.12,
                 "fast" => 0.08,
                 "burst" => 0.05,
+                "endurance" => 0.14,
                 _ => 0.12,
             };
         }

@@ -25,6 +25,25 @@ pub fn card_has_tag(def: &CardDef, tag: &str) -> bool {
     def.tags.iter().any(|t| t == tag || t.starts_with(&format!("{tag}.")))
 }
 
+pub fn parse_tag_u32(tags: &[String], prefix: &str, default: u32) -> u32 {
+    for t in tags {
+        if let Some(v) = t.strip_prefix(prefix) {
+            return v.parse().unwrap_or(default);
+        }
+    }
+    default
+}
+
+pub fn parse_meat_yield(def: &CardDef) -> u32 {
+    parse_tag_u32(&def.tags, "meat_yield:", 1)
+}
+
+pub fn parse_meat_product(def: &CardDef) -> Option<String> {
+    def.tags
+        .iter()
+        .find_map(|t| t.strip_prefix("meat_product:").map(str::to_string))
+}
+
 pub fn card_has_capability(def: &CardDef, capability: &str) -> bool {
     card_capabilities(&def.type_name).contains(&capability)
 }

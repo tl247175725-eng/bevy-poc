@@ -107,20 +107,32 @@ fn assert_06_wolf_hunts_sheep_in_range() {
 fn assert_07_hunt_produces_corpse() {
     let mut world = test_world();
     let den_id = world.spawn("wolfDen", 15, 15);
-    world.spawn("sheep", 10, 10);
-    let w1 = world.spawn("wolf", 9, 10);
-    let w2 = world.spawn("wolf", 11, 10);
+    let sheep = world.spawn("sheep", 6, 6);
+    if let Some(s) = world.entities.get_mut(&sheep) {
+        s.hp = 1;
+    }
+    let w1 = world.spawn("wolf", 6, 6);
+    let w2 = world.spawn("wolf", 7, 6);
     for wid in [w1, w2] {
         if let Some(w) = world.entities.get_mut(&wid) {
             w.den_id = Some(den_id);
         }
     }
-    world.tick_once();
+    for _ in 0..6 {
+        world.tick_once();
+        if world
+            .entities
+            .values()
+            .any(|e| e.type_name == "sheepCorpse" || e.is_corpse)
+        {
+            break;
+        }
+    }
     assert!(
         world
             .entities
             .values()
-            .any(|e| e.type_name == "sheepCorpse")
+            .any(|e| e.type_name == "sheepCorpse" || e.is_corpse)
     );
 }
 

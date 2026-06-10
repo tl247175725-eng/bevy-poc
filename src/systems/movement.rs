@@ -281,6 +281,117 @@ fn move_toward_greedy(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8
     let _ = attempt_move_with_resolution(world, id, x, y, step_dx, step_dy);
 }
 
+fn find_farthest_escape_cell(
+    world: &WorldState,
+    x: u8,
+    y: u8,
+    threat_x: u8,
+    threat_y: u8,
+    radius: i16,
+    exclude: Option<u64>,
+) -> Option<(u8, u8)> {
+    let mut best = (x, y);
+    let mut best_dist = chebyshev_distance(x, y, threat_x, threat_y);
+    for dy in -radius..=radius {
+        for dx in -radius..=radius {
+            let nx = x as i16 + dx;
+            let ny = y as i16 + dy;
+            if nx < 0
+                || ny < 0
+                || nx >= GRID_WIDTH as i16
+                || ny >= GRID_HEIGHT as i16
+            {
+                continue;
+            }
+            let ux = nx as u8;
+            let uy = ny as u8;
+            if is_blocked_for(world, ux, uy, exclude) {
+                continue;
+            }
+            let d = chebyshev_distance(ux, uy, threat_x, threat_y);
+            if d > best_dist {
+                best_dist = d;
+                best = (ux, uy);
+            }
+        }
+    }
+    if best != (x, y) {
+        Some(best)
+    } else {
+        None
+    }
+}
+
+pub fn hunting_predator_adjacent(
+    world: &WorldState,
+    x: u8,
+    y: u8,
+    self_id: EntityId,
+) -> Option<(u8, u8)> {
+    for dy in -1i16..=1 {
+        for dx in -1i16..=1 {
+            if dx == 0 && dy == 0 {
+                continue;
+            }
+            let nx = x as i16 + dx;
+            let ny = y as i16 + dy;
+            if nx < 0
+                || ny < 0
+                || nx >= GRID_WIDTH as i16
+                || ny >= GRID_HEIGHT as i16
+            {
+                continue;
+            }
+            for &pid in &world.entities_at(nx as u8, ny as u8) {
+                if pid == self_id {
+                    continue;
+                }
+                let Some(e) = world.entities.get(&pid) else {
+                    continue;
+                };
+                let Some(def) = world.card_defs.get(&e.type_name) else {
+                    continue;
+                };
+                if !(card_has_tag(def, "predator") || card_has_tag(def, "mesopredator")) {
+                    continue;
+                }
+                if e.ecology_state != EcologyState::Hunting {
+                    continue;
+                }
+                return Some((e.x, e.y));
+            }
+        }
+    }
+    None
+}
+
+/// Path-based flee when a hunter is adjacent — avoids corner deadlock.
+pub fn flee_pathfind(
+    world: &mut WorldState,
+    id: EntityId,
+    x: u8,
+    y: u8,
+    threat_x: u8,
+    threat_y: u8,
+) {
+    if let Some((goal_x, goal_y)) =
+        find_farthest_escape_cell(world, x, y, threat_x, threat_y, 5, Some(id.0))
+    {
+        if let Some((nx, ny)) = find_path(world, x, y, goal_x, goal_y, Some(id.0))
+            .first()
+            .copied()
+        {
+            let raw_pdx = nx as i16 - x as i16;
+            let raw_pdy = ny as i16 - y as i16;
+            let (pdx, pdy) = manhattan_step(raw_pdx, raw_pdy, world.rng_coin_for(id.0 ^ 0xF1EE));
+            if attempt_move_with_resolution(world, id, x, y, pdx, pdy) == MoveResult::Moved {
+                return;
+            }
+        }
+    }
+    flee_from(world, id, x, y, threat_x, threat_y);
+}
+
 pub fn flee_from(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8, ty: u8) {
     let mut dx = (x as i16 - tx as i16).signum();
     let mut dy = (y as i16 - ty as i16).signum();

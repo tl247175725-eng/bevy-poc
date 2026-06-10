@@ -192,6 +192,18 @@ pub fn finalize_prey_kill(
         world.remove_entity(old);
     }
     let corpse_id = world.spawn(&corpse_type, px, py);
+    if let Some(prey_def) = world.card_defs.get(&prey_type) {
+        if crate::world_rules::card_has_tag(prey_def, "being")
+            && !crate::world_rules::card_has_tag(prey_def, "tiny")
+        {
+            let meat_count = crate::world_rules::parse_meat_yield(prey_def);
+            if let Some(meat_type) = crate::world_rules::parse_meat_product(prey_def) {
+                for _ in 0..meat_count {
+                    world.spawn(&meat_type, px, py);
+                }
+            }
+        }
+    }
     if let Some(kid) = killer_id {
         crate::sim_observer::on_kill(world, killer_type, &prey_type, px, py);
         if let Some(kdef) = world.card_defs.get(killer_type) {

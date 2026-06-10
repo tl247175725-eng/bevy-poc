@@ -229,6 +229,8 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("flock_")
         || token.starts_with("repro_")
         || token.starts_with("corpse_type:")
+        || token.starts_with("meat_yield:")
+        || token.starts_with("meat_product:")
         || token.starts_with("forages:")
         || token.starts_with("harvest_product:")
         || token.starts_with("perception:")
@@ -281,6 +283,8 @@ pub fn tag_zh(token: &str) -> String {
         return "繁殖参数".to_string();
     }
     if token.starts_with("corpse_type:")
+        || token.starts_with("meat_yield:")
+        || token.starts_with("meat_product:")
         || token.starts_with("forages:")
         || token.starts_with("harvest_product:")
         || token.starts_with("perception:")

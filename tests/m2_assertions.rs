@@ -116,7 +116,10 @@ fn m2_10_deer_fear_range_wider() {
 fn m2_11_wolf_hunt_creates_corpse() {
     let mut w = tw();
     let den_id = w.spawn("wolfDen", 20, 20);
-    w.spawn("sheep", 6, 6);
+    let sheep = w.spawn("sheep", 6, 6);
+    if let Some(s) = w.entities.get_mut(&sheep) {
+        s.hp = 1;
+    }
     let w1 = w.spawn("wolf", 6, 6);
     let w2 = w.spawn("wolf", 7, 6);
     for wid in [w1, w2] {

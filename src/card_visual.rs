@@ -97,7 +97,7 @@ pub fn sync_card_visuals(
         .collect();
 
     for entity in sim.0.entities.values() {
-        if entity.in_pool || entity.in_tree || entity.in_ground || entity.in_den || entity.in_burrow {
+        if entity.in_pool || entity.in_tree || entity.in_ground || entity.in_den {
             existing.remove(&entity.id.0);
             continue;
         }
@@ -244,6 +244,7 @@ fn spawn_card_visual(
                     visual_pos: pos,
                     target_pos: pos,
                 },
+                crate::render::sprint_visual::SprintFxState::default(),
             ))
             .with_children(|parent| {
                 parent.spawn(SpriteBundle {
