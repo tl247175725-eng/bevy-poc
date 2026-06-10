@@ -1,15 +1,15 @@
 # Current Handoff
-- file: AIMemory/handoff_ecology-starve-hide.md
+- file: AIMemory/handoff_height-weight-perception.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-标签驱动：草存量 HP、饿死 max_starve、藏在容纳体系。
+高度/重量/感知域三标签联动 compose/perceive/smash。
 
 ## 架构反馈
-新增 in_cover 状态。饿死在公理层完成。
+公理参数标签化完善。
 
 ## 智能验收
-- 草 HP=4 有存量消耗
-- 动物饿死且尸体正确
-- 兔藏于草不占格
+- flat 卡不挡路，high 不可挤
+- feather 砸不死生物
+- dull 反应慢

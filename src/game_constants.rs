@@ -2,6 +2,12 @@
 
 pub const REAL_TICK: f32 = 1.0 / 60.0;
 pub const TICK_SECONDS: f32 = 1.0;
+/// One sim tick = 60 game-seconds (`GAME_SECONDS_PER_REAL_SECOND` in `sim_clock`).
+pub const TICKS_PER_DAY: u64 = 86_400 / 60;
+pub const GRASS_REGEN_HP_INTERVAL: u64 = 15;
+pub const BUSH_REGEN_HP_INTERVAL: u64 = 30;
+pub const WETLAND_REGEN_RADIUS: u8 = 2;
+pub const GRASS_WETLAND_HP_CAP: i32 = 3;
 
 pub const LIVING_GRASS_CAP: i32 = 30;
 pub const SHEEP_FEAR_RANGE: u8 = 3;

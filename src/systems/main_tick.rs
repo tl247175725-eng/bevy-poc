@@ -29,6 +29,16 @@ pub fn main_tick(world: &mut WorldState, delta: f32) {
     if !world.pending_spawn_ecology.is_empty() {
         EventRegistry::flush_spawn_ecology(world);
     }
+
+    let player_ids: Vec<EntityId> = world
+        .entities
+        .values()
+        .filter(|e| e.type_name == "player" && !e.is_corpse)
+        .map(|e| e.id)
+        .collect();
+    for id in player_ids {
+        crate::player::tick_player_world(world, id, delta);
+    }
 }
 
 pub fn mark_baseline_herbivore_tick(world: &mut WorldState) {

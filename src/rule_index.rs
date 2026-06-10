@@ -394,7 +394,7 @@ fn prey_in_range(
         if !is_hunt_target_for_pack(hunter_def, prey_def, pack_size) {
             continue;
         }
-        if prey.hidden_in_grass && chebyshev_distance(x, y, prey.x, prey.y) > 1 {
+        if prey.in_cover && chebyshev_distance(x, y, prey.x, prey.y) > 1 {
             continue;
         }
         return Some(prey_id);

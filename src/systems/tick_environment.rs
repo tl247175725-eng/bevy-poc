@@ -11,6 +11,8 @@ use crate::world_state::WorldState;
 
 pub fn tick_environment(world: &mut WorldState, delta: f32) {
     crate::systems::grass_regen::tick_grass_regen(world);
+    crate::systems::grass_regen::tick_bush_regen(world);
+    crate::systems::tick_starvation::tick_starvation(world);
     tick_river_bounce(world);
     tick_fire_on_water(world);
     tick_riparian_grass(world, delta);

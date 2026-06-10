@@ -93,6 +93,8 @@ pub fn try_place_entity(world: &mut WorldState, id: EntityId, x: u8, y: u8) -> P
     }
     if let Some(e) = world.entities.get_mut(&id) {
         e.hidden_in_grass = false;
+        e.in_cover = false;
+        e.host_cover_id = None;
     }
     world.reindex_entity(id);
     PlaceResult::Moved

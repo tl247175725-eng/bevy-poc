@@ -96,6 +96,7 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("corpse_type:")
         || tag.starts_with("meat_yield:")
         || tag.starts_with("meat_product:")
+        || tag.starts_with("max_starve:")
         || tag.starts_with("forages:")
         || tag.starts_with("harvest_product:")
         || tag.starts_with("perception:")

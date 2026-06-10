@@ -1,5 +1,6 @@
 pub mod grass_regen;
 pub mod main_tick;
+pub mod tick_starvation;
 pub mod movement;
 pub mod tick_aquatic;
 pub mod tick_containment;

@@ -342,7 +342,7 @@ fn best_seek_target(
             if !is_hunt_target_for_pack(hunter_def, prey_def, pack_size) {
                 continue;
             }
-            if prey.hidden_in_grass && chebyshev_distance(x, y, prey.x, prey.y) > 1 {
+            if prey.in_cover && chebyshev_distance(x, y, prey.x, prey.y) > 1 {
                 continue;
             }
             let dist = chebyshev_distance(x, y, prey.x, prey.y) as f32;
@@ -461,12 +461,17 @@ fn execute_drive(
             }
         }
         DriveBehavior::Hide => {
-            // FIX: should derive from conceal axiom instead of manual state flags.
-            if let Some(e) = world.entities.get_mut(&id) {
-                if drive.hide_tag == "grass" {
-                    e.hidden_in_grass = true;
+            if let Some(cover_id) =
+                crate::systems::grass_regen::cover_at_cell(world, x, y, &drive.hide_tag)
+            {
+                if let Some(e) = world.entities.get_mut(&id) {
+                    e.in_cover = true;
+                    e.hidden_in_grass = drive.hide_tag == "grass";
+                    e.host_cover_id = Some(cover_id);
                     e.ecology_state = EcologyState::Fleeing;
-                } else {
+                }
+            } else if drive.hide_tag == "bush" {
+                if let Some(e) = world.entities.get_mut(&id) {
                     e.in_burrow = true;
                     e.ecology_state = EcologyState::Burrowed;
                 }
@@ -614,6 +619,30 @@ fn try_consume(
     if chebyshev_distance(ex, ey, tx, ty) > 1 {
         return;
     }
+    let target_type = world
+        .entities
+        .get(&target_id)
+        .map(|e| e.type_name.clone())
+        .unwrap_or_default();
+    if target_type == "grass" {
+        let remove = {
+            if let Some(target) = world.entities.get_mut(&target_id) {
+                target.hp = (target.hp - 1).max(0);
+                target.hp <= 0
+            } else {
+                false
+            }
+        };
+        if remove {
+            world.remove_entity(target_id);
+        }
+        if let Some(eater) = world.entities.get_mut(&eater_id) {
+            mark_ecology_fed(eater, def);
+            eater.ecology_state = EcologyState::Idle;
+        }
+        return;
+    }
+
     let result = AxiomEngine::transform(&src_profile, &eater_profile, TransformAction::Eat);
     if let Some(target) = world.entities.get_mut(&target_id) {
         target.consumed = true;

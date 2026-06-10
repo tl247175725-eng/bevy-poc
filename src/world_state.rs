@@ -57,6 +57,8 @@ pub struct Entity {
     pub perish_ticks: i32,
     pub produce_timer: f32,
     pub hidden_in_grass: bool,
+    pub in_cover: bool,
+    pub host_cover_id: Option<EntityId>,
     pub decay_timer: f32,
     pub den_id: Option<EntityId>,
     pub meat_fed_today: i32,
@@ -120,6 +122,8 @@ pub struct WorldState {
     pub medium_conductions: HashMap<Medium, Vec<(String, f32)>>,
     /// One-shot override for the next `move_entity` animation duration.
     pub next_move_speed: Option<f32>,
+    /// Last completed game-day index (`tick_count / TICKS_PER_DAY`).
+    pub last_processed_day: u64,
     next_id: u64,
 }
 
@@ -154,6 +158,7 @@ impl WorldState {
             causal_storage: CausalStorage::default(),
             medium_conductions: AxiomEngine::default_medium_conductions(),
             next_move_speed: None,
+            last_processed_day: 0,
             next_id: 1,
         }
     }
@@ -295,6 +300,8 @@ impl WorldState {
             perish_ticks: -1,
             produce_timer: 0.0,
             hidden_in_grass: false,
+            in_cover: false,
+            host_cover_id: None,
             decay_timer: 0.0,
             den_id: None,
             meat_fed_today: 0,
@@ -446,6 +453,9 @@ impl WorldState {
             entity.x = new_x;
             entity.y = new_y;
             entity.profile.current_medium = to_medium.clone();
+            entity.in_cover = false;
+            entity.hidden_in_grass = false;
+            entity.host_cover_id = None;
             self.spatial_index.move_entity(id, entity.x, entity.y);
         }
 
@@ -485,7 +495,18 @@ impl WorldState {
         MoveResult::Moved
     }
 
+    pub fn release_cover_host(&mut self, cover_id: EntityId) {
+        for entity in self.entities.values_mut() {
+            if entity.host_cover_id == Some(cover_id) {
+                entity.in_cover = false;
+                entity.hidden_in_grass = false;
+                entity.host_cover_id = None;
+            }
+        }
+    }
+
     pub fn remove_entity(&mut self, id: EntityId) {
+        self.release_cover_host(id);
         let entity = self.entities.get(&id).cloned();
         if let Some(ref e) = entity {
             self.cell_composition.vacate_entity(e.x, e.y, e);

@@ -22,7 +22,7 @@ pub fn sync_hide_badges(
 ) {
     let mut want: std::collections::HashSet<u64> = std::collections::HashSet::new();
     for entity in sim.0.entities.values() {
-        if entity.hidden_in_grass || entity.in_burrow {
+        if entity.in_cover || entity.in_burrow {
             want.insert(entity.id.0);
         }
     }

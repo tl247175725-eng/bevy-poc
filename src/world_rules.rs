@@ -448,6 +448,14 @@ pub fn ecology_uses_meat_quota(def: &CardDef) -> bool {
     can_hunt_def(def) && is_predator(def)
 }
 
+pub fn parse_max_starve(def: &CardDef) -> i32 {
+    def.tags
+        .iter()
+        .find_map(|t| t.strip_prefix("max_starve:"))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(3)
+}
+
 pub fn mark_ecology_fed(entity: &mut crate::world_state::Entity, def: &CardDef) {
     if ecology_uses_meat_quota(def) {
         entity.meat_fed_today += 1;

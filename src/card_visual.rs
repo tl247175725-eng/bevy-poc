@@ -61,7 +61,7 @@ pub fn stack_indices(world: &crate::world_state::WorldState) -> HashMap<(u8, u8)
     ids.sort_unstable();
     for id in ids {
         if let Some(e) = world.entities.get(&crate::spatial_index::EntityId(id)) {
-            if e.in_pool || e.in_tree || e.in_ground || e.in_den || e.in_burrow {
+            if e.in_pool || e.in_tree || e.in_ground || e.in_den || e.in_burrow || e.in_cover {
                 continue;
             }
             cells.entry((e.x, e.y)).or_default().push(id);
@@ -97,7 +97,13 @@ pub fn sync_card_visuals(
         .collect();
 
     for entity in sim.0.entities.values() {
-        if entity.in_pool || entity.in_tree || entity.in_ground || entity.in_den {
+        if entity.in_pool
+            || entity.in_tree
+            || entity.in_ground
+            || entity.in_den
+            || entity.in_cover
+            || entity.in_burrow
+        {
             existing.remove(&entity.id.0);
             continue;
         }

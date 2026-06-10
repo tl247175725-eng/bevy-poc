@@ -21,22 +21,19 @@ fn def<'a>(world: &'a WorldState, name: &str) -> &'a CardDef {
 // --- POC 20 ---
 
 #[test]
-fn assert_01_grass_regen_on_empty_land() {
+fn assert_01_grass_spawns_with_four_hp() {
     let mut world = empty_world();
-    assert_eq!(world.grass_count(), 0);
-    world.run_ticks(GRASS_REGEN_INTERVAL);
-    assert!(world.grass_count() > 0);
+    let grass_id = world.spawn("grass", 5, 5);
+    assert_eq!(world.entities[&grass_id].hp, 4);
 }
 
 #[test]
-fn assert_01b_grass_recovers_above_ten_within_thirty_ticks() {
-    let mut world = empty_world();
-    world.run_ticks(30);
-    assert!(
-        world.grass_count() > 10,
-        "expected >10 grass after 30 ticks, got {}",
-        world.grass_count()
-    );
+fn assert_01b_grass_hp_drops_one_per_graze() {
+    let mut world = test_world();
+    let grass_id = world.spawn("grass", 8, 8);
+    world.spawn("sheep", 8, 7);
+    world.tick_once();
+    assert_eq!(world.entities[&grass_id].hp, 3);
 }
 
 #[test]
@@ -80,7 +77,8 @@ fn assert_04_sheep_eating_removes_grass() {
     let grass_id = world.spawn("grass", 8, 8);
     let sheep_id = world.spawn("sheep", 8, 7);
     world.tick_once();
-    assert!(!world.entities.contains_key(&grass_id));
+    assert!(world.entities.contains_key(&grass_id));
+    assert_eq!(world.entities[&grass_id].hp, 3);
     assert!(world.entities.contains_key(&sheep_id));
 }
 
@@ -158,14 +156,15 @@ fn assert_08_sheep_flees_from_wolf() {
 }
 
 #[test]
-fn assert_09_land_grass_regen_interval() {
-    let mut world = empty_world();
-    world.spawn("grass", 10, 10);
-    let grass_id = world.spatial_index.query_tag("grass")[0];
-    world.remove_entity(grass_id);
-    assert_eq!(world.grass_count(), 0);
-    world.run_ticks(GRASS_REGEN_INTERVAL);
-    assert!(world.grass_count() >= 1);
+fn assert_09_grass_removed_at_zero_hp() {
+    let mut world = test_world();
+    let grass_id = world.spawn("grass", 10, 10);
+    if let Some(g) = world.entities.get_mut(&grass_id) {
+        g.hp = 1;
+    }
+    world.spawn("sheep", 10, 9);
+    world.tick_once();
+    assert!(!world.entities.contains_key(&grass_id));
 }
 
 #[test]
@@ -253,8 +252,8 @@ fn assert_18_grass_not_eaten_twice_same_tick() {
     world.spawn("sheep", 9, 8);
     world.spawn("sheep", 8, 9);
     world.tick_once();
-    assert!(!world.entities.contains_key(&grass_id));
-    assert_eq!(world.grass_count(), 0);
+    assert!(world.entities.contains_key(&grass_id));
+    assert_eq!(world.entities[&grass_id].hp, 2);
 }
 
 #[test]

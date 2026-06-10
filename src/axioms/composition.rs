@@ -39,7 +39,7 @@ pub fn entity_occupies_active_cell(entity: &Entity) -> bool {
         && !entity.in_ground
         && !entity.in_den
         && !entity.in_burrow
-        && !entity.hidden_in_grass
+        && !entity.in_cover
 }
 
 impl CellComposition {

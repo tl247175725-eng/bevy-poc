@@ -27,7 +27,8 @@ fn m2_01_sheep_eats_grass_gone() {
     let g = w.spawn("grass", 5, 5);
     w.spawn("sheep", 5, 4);
     w.tick_once();
-    assert!(!w.entities.contains_key(&g));
+    assert!(w.entities.contains_key(&g));
+    assert_eq!(w.entities[&g].hp, 3);
 }
 
 #[test]
@@ -49,7 +50,7 @@ fn m2_03_rabbit_hides_in_grass() {
     let r = w.spawn("rabbit", 8, 8);
     w.spawn("wolf", 9, 8);
     w.tick_once();
-    assert!(w.entities[&r].hidden_in_grass);
+    assert!(w.entities[&r].in_cover);
 }
 
 #[test]
@@ -59,7 +60,7 @@ fn m2_04_pheasant_no_hide() {
     let p = w.spawn("pheasant", 8, 8);
     w.spawn("wolf", 9, 8);
     w.tick_once();
-    assert!(!w.entities[&p].hidden_in_grass);
+    assert!(!w.entities[&p].in_cover);
 }
 
 #[test]

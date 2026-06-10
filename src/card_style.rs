@@ -100,7 +100,7 @@ pub fn card_style(type_name: &str, def: &CardDef) -> CardStyle {
         },
         "foxCorpse" => hex_light("a07050", "603820"),
         "waterBuffaloCorpse" => hex_light("6a5a50", "3a2a20"),
-        "fishCorpse" => hex_light("6a90a8", "3a6078"),
+        "fishCorpse" | "waterBugCorpse" => hex_light("6a90a8", "3a6078"),
         "bucket" => hex("d8b76a", "7b5b2d"),
         "waterbucket" => hex("8fd0f5", "2879a9"),
         "spear" => hex("c8a870", "7a5225"),
