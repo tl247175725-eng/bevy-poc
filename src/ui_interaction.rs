@@ -34,6 +34,8 @@ pub struct DragState {
     /// While dragging: last target we smashed — must pull away before another hit.
     pub smash_contact: Option<EntityId>,
     pub smash_armed: bool,
+    /// Target center to repulse from after a smash (edge clamp + brief bounce).
+    pub smash_repulse_from: Option<Vec2>,
 }
 
 #[derive(Resource, Default)]
@@ -209,6 +211,7 @@ pub fn handle_pointer_input(
                     drag.hit_target = None;
                     drag.smash_contact = None;
                     drag.smash_armed = false;
+                    drag.smash_repulse_from = None;
                     if let Some(entity) = sim.0.entities.get(&card_id) {
                         drag.origin_x = entity.x;
                         drag.origin_y = entity.y;
@@ -264,6 +267,7 @@ pub fn handle_pointer_input(
                 drag.dragging = false;
                 drag.smash_contact = None;
                 drag.smash_armed = false;
+                drag.smash_repulse_from = None;
                 if let Some((gx, gy)) = grid_from_cursor(cursor, &layout, &view) {
                     if let Some(target) = drag.hit_target.take() {
                         if !smashed_this_drag
@@ -320,13 +324,45 @@ pub fn update_ghost_follow(
     }
 }
 
+const SMASH_CONTACT_DIST: f32 = CARD_SIZE * 0.8;
+
+fn clamp_outside_smash_radius(pos: Vec2, center: Vec2) -> Vec2 {
+    let delta = pos - center;
+    let dist = delta.length();
+    if dist >= SMASH_CONTACT_DIST {
+        return pos;
+    }
+    if dist > 0.001 {
+        center + delta / dist * SMASH_CONTACT_DIST
+    } else {
+        center + Vec2::X * SMASH_CONTACT_DIST
+    }
+}
+
+fn clamp_drag_pos(
+    pos: Vec2,
+    repulse_from: Option<Vec2>,
+    other_centers: impl Iterator<Item = Vec2>,
+) -> Vec2 {
+    let mut clamped = pos;
+    if let Some(center) = repulse_from {
+        clamped = clamp_outside_smash_radius(clamped, center);
+    }
+    for center in other_centers {
+        if clamped.distance(center) <= SMASH_CONTACT_DIST {
+            clamped = clamp_outside_smash_radius(clamped, center);
+        }
+    }
+    clamped
+}
+
 pub fn detect_drag_smash(
     mut drag: ResMut<DragState>,
     mut sim: ResMut<SimWorld>,
     mut interaction: ResMut<InteractionState>,
     mut events: ResMut<SimEventQueue>,
     mut smash_vis: ResMut<SmashVisualState>,
-    cards: Query<(&CardVisual, &Transform)>,
+    mut cards: Query<(&CardVisual, &mut Transform)>,
 ) {
     if !drag.dragging {
         clear_smash_session(&mut smash_vis);
@@ -345,27 +381,25 @@ pub fn detect_drag_smash(
         return;
     };
 
-    let smash_radius = CARD_SIZE * 0.8;
-    let mut nearest: Option<(EntityId, f32)> = None;
+    let mut nearest: Option<(EntityId, f32, Vec2)> = None;
     for (cv, transform) in &cards {
         if cv.entity_id == source_id.0 {
             continue;
         }
-        let dist = source_pos.distance(transform.translation.truncate());
-        if dist <= smash_radius {
+        let target_pos = transform.translation.truncate();
+        let dist = source_pos.distance(target_pos);
+        if dist <= SMASH_CONTACT_DIST {
             let id = EntityId(cv.entity_id);
-            if nearest.is_none_or(|(_, best)| dist < best) {
-                nearest = Some((id, dist));
+            if nearest.is_none_or(|(_, best, _)| dist < best) {
+                nearest = Some((id, dist, target_pos));
             }
         }
     }
 
-    let Some((target_id, _)) = nearest else {
+    let Some((target_id, _, target_pos)) = nearest else {
         drag.smash_contact = None;
         drag.smash_armed = false;
-        interaction
-            .hit_counts
-            .retain(|(src, _), _| *src != source_id);
+        drag.smash_repulse_from = None;
         clear_smash_session(&mut smash_vis);
         return;
     };
@@ -396,12 +430,21 @@ pub fn detect_drag_smash(
     );
     if outcome != SmashOutcome::NoEffect {
         drag.smash_armed = true;
+        drag.smash_repulse_from = Some(target_pos);
         let count = interaction
             .hit_counts
             .get(&(source_id, target_id))
             .copied()
             .unwrap_or(1);
         bump_smash_shake(&mut smash_vis, target_id, count);
+        let bounced = clamp_outside_smash_radius(source_pos, target_pos);
+        for (cv, mut transform) in &mut cards {
+            if cv.entity_id == source_id.0 {
+                transform.translation.x = bounced.x;
+                transform.translation.y = bounced.y;
+                transform.translation.z = 10.0 + source_id.0 as f32 * 0.001;
+            }
+        }
     }
 }
 
@@ -427,7 +470,16 @@ pub fn update_drag_follow(
     let Some(world) = cursor_to_world(cursor, &layout, &view) else {
         return;
     };
-    let pos = world - drag.cursor_offset;
+    let other_centers: Vec<Vec2> = cards
+        .iter()
+        .filter(|(cv, _)| cv.entity_id != id.0)
+        .map(|(_, t)| t.translation.truncate())
+        .collect();
+    let pos = clamp_drag_pos(
+        world - drag.cursor_offset,
+        drag.smash_repulse_from,
+        other_centers.into_iter(),
+    );
     for (mut card, mut transform) in &mut cards {
         if card.entity_id == id.0 {
             transform.translation.x = pos.x;

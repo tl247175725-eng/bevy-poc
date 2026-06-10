@@ -132,6 +132,12 @@ pub fn apply_hunt_smash(
         hunter.hunt_cooldown = crate::game_constants::TICK_SECONDS;
     }
 
+    if !killed {
+        if let Some(prey) = world.entities.get_mut(&prey_id) {
+            prey.needs_grazing_tick = true;
+        }
+    }
+
     if killed {
         let hunter_type = hunter_def.type_name.clone();
         finalize_prey_kill(world, prey_id, Some(hunter_id), hunter_type.as_str());

@@ -1,15 +1,15 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-smash.md
+- file: AIMemory/handoff_manhattan-move.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-砸击不锁 AI、碰撞不穿透、配方修复。
+move_toward 改曼哈顿 + 三层碰撞（dodge/yield/shove），走现有 compose/traverse。
 
 ## 架构反馈
-transform(Smash) 和 tick_reactive 需解耦。
+EntityProfile 可考虑加 entity_priority 字段。目前用 ecology_state 映射。
 
 ## 智能验收
-- 狼攻羊时羊仍可 flee
-- 拖动卡停在目标边缘不穿透
-- 石+石 2 砸 → 碎石生成
+- dx/dy 不同时非零（无斜走）
+- smoke herbivore > 100（不卡死）
+- 面对面能互换位置
