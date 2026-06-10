@@ -155,10 +155,13 @@ pub fn advance_sim_ticks(
         clock.tick_accum -= crate::game_constants::TICK_SECONDS;
         let t0 = std::time::Instant::now();
         let move_anims = sim.0.tick_once();
+        let pending = sim.0.drain_pending_events();
+        sim_stats.interactions_this_tick =
+            crate::sim_events::count_tick_interactions(&pending);
         crate::sim_events::sync_sim_stats(&sim.0, &mut sim_stats);
         stats.record_tick_duration(t0.elapsed().as_secs_f32());
         stats.record_entity_count(sim.0.entities.len());
-        for event in sim.0.drain_pending_events() {
+        for event in pending {
             events.push(event);
         }
         let had_move_anims = !move_anims.is_empty();

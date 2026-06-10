@@ -279,7 +279,7 @@ impl WorldState {
             fed_today: false,
             starve_days: 0,
             in_den: false,
-            in_tree: type_name == "oak" || type_name == "pine" || type_name == "bamboo" || type_name == "bush",
+            in_tree: type_name == "oak" || type_name == "pine" || type_name == "bamboo",
             in_pool: type_name == "algae"
                 || type_name == "waterBug"
                 || type_name == "fish"

@@ -4,8 +4,10 @@ use bevy::prelude::*;
 
 use crate::sim_clock::SimClock;
 use crate::spatial_index::EntityId;
+use std::collections::HashMap;
+
 use crate::world_rules::card_has_tag;
-use crate::world_state::WorldState;
+use crate::world_state::{EcologyState, WorldState};
 
 /// Move animation request — queued by `move_entity`, consumed by render layer.
 #[derive(Debug, Clone, Event)]
@@ -99,6 +101,12 @@ pub struct SimStats {
     pub herbivore_count: usize,
     pub predator_count: usize,
     pub deaths: u64,
+    /// Active `(type, ecology_state)` counts, e.g. `"sheep:Fleeing×3"`.
+    pub state_breakdown: Vec<String>,
+    /// Per-type population, e.g. `"sheep:15"`.
+    pub top_entities: Vec<String>,
+    /// Hunt/kill/harvest/reproduce events in the last sim tick.
+    pub interactions_this_tick: u32,
 }
 
 pub fn setup_sim_stats_brp(
@@ -114,6 +122,35 @@ pub fn mirror_sim_stats_brp(stats: Res<SimStats>, mut q: Query<&mut SimStats, Wi
     if let Ok(mut mirror) = q.get_single_mut() {
         *mirror = stats.clone();
     }
+}
+
+fn ecology_state_label(state: EcologyState) -> &'static str {
+    match state {
+        EcologyState::Idle => "Idle",
+        EcologyState::SeekingFood => "SeekingFood",
+        EcologyState::Fleeing => "Fleeing",
+        EcologyState::Hunting => "Hunting",
+        EcologyState::Patrolling => "Patrolling",
+        EcologyState::Burrowed => "Burrowed",
+        EcologyState::InDen => "InDen",
+        EcologyState::Scavenging => "Scavenging",
+        EcologyState::Wandering => "Wandering",
+    }
+}
+
+pub fn count_tick_interactions(events: &[SimEvent]) -> u32 {
+    events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                SimEvent::Kill { .. }
+                    | SimEvent::Hunt { .. }
+                    | SimEvent::Reproduce { .. }
+                    | SimEvent::Harvest { .. }
+            )
+        })
+        .count() as u32
 }
 
 pub fn sync_sim_stats(world: &WorldState, stats: &mut SimStats) {
@@ -138,6 +175,59 @@ pub fn sync_sim_stats(world: &WorldState, stats: &mut SimStats) {
             })
         })
         .count();
+
+    let mut state_counts: HashMap<String, usize> = HashMap::new();
+    let mut type_counts: HashMap<String, usize> = HashMap::new();
+    for e in world.entities.values() {
+        *type_counts.entry(e.type_name.clone()).or_default() += 1;
+        if e.ecology_state != EcologyState::Idle {
+            let key = format!(
+                "{}:{}",
+                e.type_name,
+                ecology_state_label(e.ecology_state)
+            );
+            *state_counts.entry(key).or_default() += 1;
+        }
+    }
+
+    let mut state_breakdown: Vec<String> = state_counts
+        .iter()
+        .map(|(key, count)| format!("{key}×{count}"))
+        .collect();
+    state_breakdown.sort();
+    stats.state_breakdown = state_breakdown;
+
+    let mut top_entities: Vec<String> = type_counts
+        .iter()
+        .map(|(type_name, count)| format!("{type_name}:{count}"))
+        .collect();
+    top_entities.sort();
+    stats.top_entities = top_entities;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world_state::empty_world;
+
+    #[test]
+    fn state_breakdown_lists_active_ecology_states() {
+        let mut world = empty_world();
+        let sheep_a = world.spawn("sheep", 5, 5);
+        let sheep_b = world.spawn("sheep", 7, 5);
+        let wolf = world.spawn("wolf", 6, 6);
+        world.entities.get_mut(&sheep_a).unwrap().ecology_state = EcologyState::Fleeing;
+        world.entities.get_mut(&sheep_b).unwrap().ecology_state = EcologyState::SeekingFood;
+        world.entities.get_mut(&wolf).unwrap().ecology_state = EcologyState::Hunting;
+
+        let mut stats = SimStats::default();
+        sync_sim_stats(&world, &mut stats);
+
+        assert!(stats.state_breakdown.iter().any(|s| s == "sheep:Fleeing×1"));
+        assert!(stats.state_breakdown.iter().any(|s| s == "sheep:SeekingFood×1"));
+        assert!(stats.state_breakdown.iter().any(|s| s == "wolf:Hunting×1"));
+        assert!(stats.top_entities.iter().any(|s| s == "sheep:2"));
+    }
 }
 
 #[derive(Resource, Default)]
