@@ -230,4 +230,77 @@
 
 ---
 
-*每条规则对应一个测试或审查 grep。*
+---
+
+## 9. 行为契约
+
+### 9.1 move_entity 返回值检查
+
+```
+契约：所有调用 world.move_entity() 的代码必须检查返回值
+违规：丢弃 MoveResult（如 wander、flee_from 曾犯）
+检测：grep 'world\.move_entity' src/ | grep -v '== MoveResult|!= MoveResult'
+审查文件：movement.rs, tick_environment.rs, ui_interaction.rs, interaction/mod.rs
+```
+
+### 9.2 spawn 必须注册 tag-dictionary
+
+```
+契约：card_defs.ron 中每个新标签必须已在 tag-dictionary.md 中注册
+检测：对比 card_defs.ron 中的标签与 tag-dictionary.md 中的注册表
+```
+
+### 9.3 compose 调用前必须 check
+
+```
+契约：不能假设 compose 返回 Allowed。所有 spawn/move 前必须调用 can_occupy 或 traverse
+违规：直接设 entity.x/entity.y 不经过 move_entity
+检测：grep 'entity\.x\s*=' src/ （仅允许在 move_entity 函数体内）
+```
+
+### 9.4 Cursor 提交前必须
+
+```
+契约：
+  1. cargo check 0 错误
+  2. cargo test --release 全 PASS
+  3. cargo run --release -- --smoke-test PASS
+  4. git commit + git push
+违规：只 commit 不 push
+```
+
+---
+
+## 10. 测试映射
+
+| 机读断言 | 对应测试 |
+|---|---|
+| 1.1 一格一卡 | smoke_test entity count check |
+| 1.2 昆虫无实卡 | m2_22b_landbug_kill_no_corpse_panic |
+| 1.3 不可移动实体 | movement::rooted_mountain_not_displaced_by_yield |
+| 2.1 钻进 | m2_03_rabbit_hides_in_grass |
+| 2.3 释放 | cross_layer_initial_bird_nest_contained_in_tree |
+| 4. 曼哈顿 | movement::manhattan_step_never_diagonal |
+| 4. 避让 | movement::higher_priority_yield_enters_blocked_cell |
+| 4. 互换 | movement::face_to_face_swap_via_yield |
+| 6.1 砸 | assert_07_hunt_produces_corpse |
+| 7.2 饿死 | smoke_test predation_ticks > 0 |
+| 7.4 草存量 | 待添加 |
+| 7.1 腐败 | 待添加 |
+| 5.x 公理 | 通过 smoke_test + unit tests 间接覆盖 |
+
+---
+
+## 变更记录
+
+| 日期 | 变更 | 原因 |
+|---|---|---|
+| 2026-06-10 | 初版 | 设计讨论完成 |
+| 2026-06-11 | 补标签字典 | 防止 Cursor 发明不存在的标签 |
+| 2026-06-11 | 补行为契约 | move_entity 返回值被忽略是反复出现的 bug |
+| 2026-06-11 | 补测试映射 | 链接断言和实际测试 |
+| 2026-06-11 | 机读版与 tag-dictionary 分离 | 机读版管断言，字典管合法标签集 |
+
+---
+
+*此文件与人读版 design_human-readable_v4.md、标签字典 tag-dictionary.md 三件套互配。修改任一需同步另二。*
