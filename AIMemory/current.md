@@ -1,13 +1,14 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_fix-landbug-corpse.md
+# Current Handoff
+- file: AIMemory/handoff_player-headless.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-昆虫无尸体，finalize_prey_kill 跳过生成。
+扩展玩家觅食/逃跑条件，不重写 AI 逻辑。
 
 ## 架构反馈
-无。
+PlayerMind 依赖交互上下文，headless 需补齐食物和威胁来源。
 
 ## 智能验收
-游戏不崩溃
+- 玩家主动移动
+- BRP 中玩家有状态
