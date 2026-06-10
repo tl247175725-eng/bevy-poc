@@ -1,14 +1,14 @@
 # Current Handoff
-- file: AIMemory/handoff_design-alignment.md
+- file: AIMemory/handoff_spatial-query-optimize.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-藏走容纳体系（in_tree 同路径），玩家 AI 激活全部五层且 headless 兼容。
+spatial_index 加网格桶索引，query_near 改局部扫描。
 
 ## 架构反馈
-in_cover 过滤不完整，PlayerMind 依赖交互输入。
+HashMap 索引结构不变，加 grid_buckets 层。
 
 ## 智能验收
-- 兔入草消失
-- 玩家自主觅食→建棚→做刀
+- query_near 耗时 ≤ 当前 1/10
+- 所有测试 PASS
