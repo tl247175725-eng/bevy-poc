@@ -1,6 +1,7 @@
 pub mod card_view;
 pub mod move_animation;
 pub mod overlays;
+pub mod smash_visual;
 pub mod terrain_view;
 
 pub use overlays::*;

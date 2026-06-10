@@ -103,5 +103,8 @@ pub use player::{
     tick_brain, tick_player_world, PlayerMind, PlayerPlugin, TaskPhase,
 };
 pub use event_registry::EventRegistry;
-pub use interaction::{try_ghost_drop, try_harvest, try_impact, try_relation, InteractionState, RecipeBook};
+pub use interaction::{
+    apply_hunt_smash, apply_smash_hit, try_ghost_drop, try_harvest, try_impact, try_relation,
+    InteractionState, RecipeBook, SmashOutcome,
+};
 pub use sim_events::{SimEvent, SimEventQueue, WorldFxQueue};

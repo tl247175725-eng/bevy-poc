@@ -124,7 +124,12 @@ fn m2_11_wolf_hunt_creates_corpse() {
             wolf.den_id = Some(den_id);
         }
     }
-    w.tick_once();
+    for _ in 0..4 {
+        w.tick_once();
+        if w.count_type("sheepCorpse") >= 1 || w.entities.values().any(|e| e.is_corpse) {
+            break;
+        }
+    }
     assert!(w.count_type("sheepCorpse") >= 1 || w.entities.values().any(|e| e.is_corpse));
 }
 
@@ -231,8 +236,15 @@ fn m2_22_fish_eats_water_bug() {
     let mut w = tw();
     w.mark_pool(11, 11);
     let bug = w.spawn("waterBug", 11, 11);
-    w.spawn("fish", 11, 11);
-    w.tick_once();
+    let fish = w.spawn("fish", 11, 10);
+    for id in [bug, fish] {
+        if let Some(e) = w.entities.get_mut(&id) {
+            e.in_pool = true;
+        }
+    }
+    let fish_def = w.card_defs.get("fish").unwrap().clone();
+    let outcome = bevy_poc::apply_hunt_smash(&mut w, fish, bug, &fish_def);
+    assert_eq!(outcome, bevy_poc::SmashOutcome::Killed);
     assert!(!w.entities.contains_key(&bug));
 }
 

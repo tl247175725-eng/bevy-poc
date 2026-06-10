@@ -1,7 +1,9 @@
 use crate::card_visual::CardVisual;
 use crate::coords::{card_world_pos, cursor_to_world, grid_from_cursor};
 use crate::grid_render::SimWorld;
-use crate::interaction::{try_ghost_drop, try_harvest, try_impact, InteractionState};
+use crate::interaction::{try_ghost_drop, try_harvest, try_impact, InteractionState, SmashOutcome};
+use crate::render::smash_visual::{bump_smash_shake, clear_smash_session, SmashVisualState};
+use crate::visual_config::CARD_SIZE;
 use crate::selection_info::{resolve_selection_card, SelectionTarget};
 use crate::sim_events::SimEventQueue;
 use crate::spatial_index::EntityId;
@@ -29,6 +31,9 @@ pub struct DragState {
     pub origin_y: u8,
     pub cursor_offset: Vec2,
     pub hit_target: Option<EntityId>,
+    /// While dragging: last target we smashed — must pull away before another hit.
+    pub smash_contact: Option<EntityId>,
+    pub smash_armed: bool,
 }
 
 #[derive(Resource, Default)]
@@ -202,6 +207,8 @@ pub fn handle_pointer_input(
                     drag.dragging = true;
                     drag.entity_id = Some(card_id);
                     drag.hit_target = None;
+                    drag.smash_contact = None;
+                    drag.smash_armed = false;
                     if let Some(entity) = sim.0.entities.get(&card_id) {
                         drag.origin_x = entity.x;
                         drag.origin_y = entity.y;
@@ -252,11 +259,16 @@ pub fn handle_pointer_input(
             }
         }
         if buttons.just_released(MouseButton::Left) {
+            let smashed_this_drag = drag.smash_armed;
             if let Some(id) = drag.entity_id.take() {
                 drag.dragging = false;
+                drag.smash_contact = None;
+                drag.smash_armed = false;
                 if let Some((gx, gy)) = grid_from_cursor(cursor, &layout, &view) {
                     if let Some(target) = drag.hit_target.take() {
-                        if try_impact(&mut sim.0, id, target, &mut *interaction, &mut *events) {
+                        if !smashed_this_drag
+                            && try_impact(&mut sim.0, id, target, &mut *interaction, &mut *events)
+                        {
                             handle_selection_click(&sim.0, gx, gy, &mut selection);
                             return;
                         }
@@ -305,6 +317,91 @@ pub fn update_ghost_follow(
             card.visual_pos = transform.translation;
             card.target_pos = transform.translation;
         }
+    }
+}
+
+pub fn detect_drag_smash(
+    mut drag: ResMut<DragState>,
+    mut sim: ResMut<SimWorld>,
+    mut interaction: ResMut<InteractionState>,
+    mut events: ResMut<SimEventQueue>,
+    mut smash_vis: ResMut<SmashVisualState>,
+    cards: Query<(&CardVisual, &Transform)>,
+) {
+    if !drag.dragging {
+        clear_smash_session(&mut smash_vis);
+        return;
+    }
+    let Some(source_id) = drag.entity_id else {
+        return;
+    };
+
+    let source_pos = cards
+        .iter()
+        .find(|(cv, _)| cv.entity_id == source_id.0)
+        .map(|(_, t)| t.translation.truncate());
+
+    let Some(source_pos) = source_pos else {
+        return;
+    };
+
+    let smash_radius = CARD_SIZE * 0.8;
+    let mut nearest: Option<(EntityId, f32)> = None;
+    for (cv, transform) in &cards {
+        if cv.entity_id == source_id.0 {
+            continue;
+        }
+        let dist = source_pos.distance(transform.translation.truncate());
+        if dist <= smash_radius {
+            let id = EntityId(cv.entity_id);
+            if nearest.is_none_or(|(_, best)| dist < best) {
+                nearest = Some((id, dist));
+            }
+        }
+    }
+
+    let Some((target_id, _)) = nearest else {
+        drag.smash_contact = None;
+        drag.smash_armed = false;
+        interaction
+            .hit_counts
+            .retain(|(src, _), _| *src != source_id);
+        clear_smash_session(&mut smash_vis);
+        return;
+    };
+
+    if drag.smash_contact != Some(target_id) {
+        drag.smash_contact = Some(target_id);
+        drag.smash_armed = false;
+    }
+
+    if drag.smash_armed {
+        let count = interaction
+            .hit_counts
+            .get(&(source_id, target_id))
+            .copied()
+            .unwrap_or(0);
+        if count > 0 {
+            bump_smash_shake(&mut smash_vis, target_id, count);
+        }
+        return;
+    }
+
+    let outcome = crate::interaction::apply_smash_hit(
+        &mut sim.0,
+        source_id,
+        target_id,
+        &mut interaction,
+        &mut events,
+    );
+    if outcome != SmashOutcome::NoEffect {
+        drag.smash_armed = true;
+        let count = interaction
+            .hit_counts
+            .get(&(source_id, target_id))
+            .copied()
+            .unwrap_or(1);
+        bump_smash_shake(&mut smash_vis, target_id, count);
     }
 }
 

@@ -9,7 +9,7 @@ use crate::game_constants::{
 use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
-    card_has_capability, card_has_tag, chebyshev_distance, corpse_type_for, hunt_target_score,
+    card_has_capability, card_has_tag, chebyshev_distance, hunt_target_score,
     is_hunt_target_for_pack, mark_ecology_fed, HUNT_RANGE, HUNT_SCORE_INF,
 };
 use crate::world_state::{EcologyState, WorldState};
@@ -539,7 +539,7 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
             .get(&target_id)
             .is_some_and(|t| !t.is_corpse && is_prey)
     {
-        hunt_kill(world, actor_id, target_id, def);
+        crate::interaction::apply_hunt_smash(world, actor_id, target_id, def);
         return;
     }
 
@@ -621,69 +621,6 @@ fn try_consume(
         mark_ecology_fed(eater, def);
         eater.profile.energy = eater.profile.energy.saturating_add(result.energy_received);
         eater.ecology_state = EcologyState::Idle;
-    }
-}
-
-fn hunt_kill(
-    world: &mut WorldState,
-    hunter_id: EntityId,
-    prey_id: EntityId,
-    hunter_def: &CardDef,
-) {
-    let prey_type = world.entities.get(&prey_id).map(|p| p.type_name.clone());
-    let Some(prey_type) = prey_type else {
-        return;
-    };
-    let (prey_profile, hunter_profile, hx, hy, px, py) = {
-        let prey = world.entities.get(&prey_id);
-        let hunter = world.entities.get(&hunter_id);
-        match (prey, hunter) {
-            (Some(p), Some(h)) => (
-                p.profile.clone(),
-                h.profile.clone(),
-                h.x,
-                h.y,
-                p.x,
-                p.y,
-            ),
-            _ => return,
-        }
-    };
-    if chebyshev_distance(hx, hy, px, py) > 1 {
-        return;
-    }
-    let corpse_type = corpse_type_for(world, &prey_type);
-    let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
-    world.remove_entity(prey_id);
-    let old_corpses: Vec<EntityId> = world
-        .entities_at(px, py)
-        .into_iter()
-        .filter(|id| {
-            world
-                .entities
-                .get(id)
-                .is_some_and(|e| e.is_corpse || e.type_name.ends_with("Corpse"))
-        })
-        .collect();
-    for old in old_corpses {
-        world.remove_entity(old);
-    }
-    let corpse_id = world.spawn(&corpse_type, px, py);
-    crate::sim_observer::on_kill(world, &hunter_def.type_name, &prey_type, px, py);
-    if let Some(corpse) = world.entities.get_mut(&corpse_id) {
-        corpse.is_corpse = true;
-        corpse.decay_timer = 0.0;
-    }
-    if card_has_capability(hunter_def, "capability.carry") {
-        if let Some(hunter) = world.entities.get_mut(&hunter_id) {
-            hunter.carrying = Some(corpse_id);
-            mark_ecology_fed(hunter, hunter_def);
-        }
-    } else if let Some(hunter) = world.entities.get_mut(&hunter_id) {
-        mark_ecology_fed(hunter, hunter_def);
-    }
-    if let Some(hunter) = world.entities.get_mut(&hunter_id) {
-        hunter.hunt_cooldown = 2.0;
     }
 }
 

@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use crate::world_state::WorldState;
 
 mod recipes;
+mod smash;
 
 use std::collections::HashMap;
 
@@ -13,6 +14,7 @@ use crate::sim_events::{SimEvent, SimEventQueue};
 use crate::spatial_index::EntityId;
 
 pub use recipes::{ImpactRecipe, RelationRecipe, RecipeBook};
+pub use smash::{apply_hunt_smash, apply_smash_hit, finalize_prey_kill, SmashOutcome};
 
 #[derive(Resource)]
 pub struct InteractionState {
@@ -37,49 +39,10 @@ pub fn try_impact(
     state: &mut InteractionState,
     events: &mut SimEventQueue,
 ) -> bool {
-    let Some(src) = world.entities.get(&source).cloned() else {
-        return false;
-    };
-    let Some(tgt) = world.entities.get(&target).cloned() else {
-        return false;
-    };
-    if source == target {
-        return false;
-    }
-
-    let recipe = state
-        .book
-        .resolve_impact(&src.type_name, &tgt.type_name);
-    let key = (source, target);
-    let hits = state.hit_counts.entry(key).or_insert(0);
-    *hits += 1;
-
-    let src_name = display_name(world, &src.type_name);
-    let tgt_name = display_name(world, &tgt.type_name);
-
-    if let Some(recipe) = recipe {
-        if *hits < recipe.hits_required {
-            events.push(SimEvent::Impact {
-                source: src_name.clone(),
-                target: tgt_name.clone(),
-                x: tgt.x,
-                y: tgt.y,
-            });
-            return true;
-        }
-        *hits = 0;
-        apply_impact_recipe(world, &recipe, &src, &tgt);
-        events.push(SimEvent::Impact {
-            source: src_name,
-            target: tgt_name,
-            x: tgt.x,
-            y: tgt.y,
-        });
-        return true;
-    }
-
-    events.push(SimEvent::Generic(format!("{src_name} 碰到 {tgt_name}，无有效配方")));
-    *hits >= 1
+    !matches!(
+        smash::apply_smash_hit(world, source, target, state, events),
+        SmashOutcome::NoEffect
+    )
 }
 
 pub fn try_relation(
@@ -182,7 +145,7 @@ pub fn try_harvest(
     Some(product)
 }
 
-fn apply_impact_recipe(
+pub(crate) fn apply_impact_recipe(
     world: &mut WorldState,
     recipe: &ImpactRecipe,
     _source: &crate::world_state::Entity,
@@ -204,7 +167,7 @@ fn apply_impact_recipe(
     }
 }
 
-fn display_name(world: &WorldState, type_name: &str) -> String {
+pub(crate) fn display_name(world: &WorldState, type_name: &str) -> String {
     world
         .card_defs
         .get(type_name)

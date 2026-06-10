@@ -94,6 +94,7 @@ pub struct RenderPlugin;
 impl Plugin for RenderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<crate::render::terrain_view::TerrainVisualRevision>()
+            .init_resource::<crate::render::smash_visual::SmashVisualState>()
             .add_systems(
             Startup,
             (
@@ -113,9 +114,11 @@ impl Plugin for RenderPlugin {
                 crate::card_visual::sync_card_visuals,
                 crate::card_visual::slide_cards,
                 crate::ui_interaction::update_drag_follow,
+                crate::ui_interaction::detect_drag_smash,
                 crate::ui_interaction::update_ghost_follow,
                 crate::render::terrain_view::sync_terrain_visuals,
                 crate::render::card_view::sync_card_overlays,
+                crate::render::smash_visual::sync_smash_badges,
                 sync_selection_border,
                 sync_hover_ring,
                 sync_ghost_preview,

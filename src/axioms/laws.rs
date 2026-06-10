@@ -6,6 +6,7 @@ use super::profile::{EntityProfile, Medium};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransformAction {
     Eat,
+    Smash,
     Kill,
     Spawn,
     Harvest,
@@ -15,6 +16,7 @@ impl TransformAction {
     pub fn from_tag(s: &str) -> Self {
         match s {
             "kill" => Self::Kill,
+            "smash" => Self::Smash,
             "spawn" => Self::Spawn,
             "harvest" => Self::Harvest,
             _ => Self::Eat,

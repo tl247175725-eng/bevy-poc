@@ -54,7 +54,7 @@ pub fn sync_card_overlays(
         for child in children.iter() {
             if let Ok(mut sprite) = sprites.get_mut(*child) {
                 let a = if is_ghost_drag {
-                    0.55
+                    0.5
                 } else if is_left_drag {
                     0.92
                 } else {
