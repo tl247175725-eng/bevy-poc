@@ -1,12 +1,10 @@
 # Current Handoff
-- file: AIMemory/handoff_test-workflow.md
+- file: AIMemory/handoff_fix-ci-tests.md
 - mode: Standard
-- status: completed
-- completed_at: 2026-06-10
-- result: Workflow test done. Updated current.md status pending → completed per handoff; no code changes.
+- status: pending
 
 ## 架构计划
-纯文档操作——将 current.md 状态从 pending 改为 completed。
+测试修复——收获/火焰标签驱动重构后未同步更新测试。
 
 ## 架构反馈
-任务完成后未更新 current.md 是流程断裂的根源。
+改代码→改测试的检查点缺失。
