@@ -124,36 +124,30 @@ fn try_shove(
     if step_dx == 0 && step_dy == 0 || blocker_is_immovable(world, blocker_id) {
         return false;
     }
-    let mut push_x = gx as i16 + step_dx;
-    let mut push_y = gy as i16 + step_dy;
-    let mut dest = None;
-    while push_x >= 0
-        && push_y >= 0
-        && push_x < GRID_WIDTH as i16
-        && push_y < GRID_HEIGHT as i16
+    let push_x = gx as i16 + step_dx;
+    let push_y = gy as i16 + step_dy;
+    if push_x < 0
+        || push_y < 0
+        || push_x >= GRID_WIDTH as i16
+        || push_y >= GRID_HEIGHT as i16
     {
-        let ux = push_x as u8;
-        let uy = push_y as u8;
-        if world.cell_composition.slot(ux, uy).living_count > 0
-            || is_blocked_for(world, ux, uy, Some(blocker_id.0))
-        {
-            break;
-        }
-        dest = Some((ux, uy));
-        push_x += step_dx;
-        push_y += step_dy;
+        return false;
     }
-    if let Some((bx, by)) = dest {
-        let ok = with_collision_resolve(world, |world| {
-            world.move_entity(blocker_id, bx, by) == MoveResult::Moved
-                && world.move_entity(mover_id, gx, gy) == MoveResult::Moved
-        });
-        if ok {
-            mark_blocker_displaced(world, blocker_id);
-        }
-        return ok;
+    let ux = push_x as u8;
+    let uy = push_y as u8;
+    if world.cell_composition.slot(ux, uy).living_count > 0
+        || is_blocked_for(world, ux, uy, Some(blocker_id.0))
+    {
+        return false;
     }
-    false
+    let ok = with_collision_resolve(world, |world| {
+        world.move_entity(blocker_id, ux, uy) == MoveResult::Moved
+            && world.move_entity(mover_id, gx, gy) == MoveResult::Moved
+    });
+    if ok {
+        mark_blocker_displaced(world, blocker_id);
+    }
+    ok
 }
 
 fn try_yield_and_enter(
@@ -448,6 +442,31 @@ mod tests {
         assert_ne!(w.entities[&mover].x, 6);
         assert_eq!(w.entities[&blocker].x, 6);
         assert_eq!(w.entities[&blocker].y, 5);
+    }
+
+    #[test]
+    fn shove_pushes_blocker_only_one_cell() {
+        let mut w = empty_world();
+        let mover = w.spawn("sheep", 5, 5);
+        let blocker = w.spawn("sheep", 6, 5);
+        w.entities.get_mut(&mover).unwrap().ecology_state = EcologyState::SeekingFood;
+        w.entities.get_mut(&blocker).unwrap().ecology_state = EcologyState::Idle;
+        move_toward(&mut w, mover, 5, 5, 6, 5);
+        assert_eq!(w.entities[&mover].x, 6);
+        assert_eq!(w.entities[&blocker].x, 7);
+        assert_eq!(w.entities[&blocker].y, 5);
+    }
+
+    #[test]
+    fn stone_shoved_at_most_one_cell() {
+        let mut w = empty_world();
+        let stone = w.spawn("stone", 6, 5);
+        let mover = w.spawn("sheep", 5, 5);
+        w.entities.get_mut(&mover).unwrap().ecology_state = EcologyState::SeekingFood;
+        move_toward(&mut w, mover, 5, 5, 6, 5);
+        assert_eq!(w.entities[&mover].x, 6);
+        assert_eq!(w.entities[&stone].x, 7);
+        assert!(w.entities[&stone].x < GRID_WIDTH - 2);
     }
 
     #[test]
