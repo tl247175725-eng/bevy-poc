@@ -21,7 +21,7 @@ use crate::sim_events::{
 use crate::interaction::InteractionState;
 use crate::ui::minimap::minimap_panel_system;
 use crate::ui_interaction::{
-    handle_pointer_input, handle_view_pan, handle_view_zoom, update_drag_follow, CameraPanState,
+    handle_pointer_input, handle_view_pan, handle_view_zoom, CameraPanState,
     DragState, GhostPlaceMode, SelectionState,
 };
 use crate::viewport_layout::{
@@ -114,6 +114,8 @@ impl Plugin for RenderPlugin {
                 crate::render::move_animation::process_move_queue,
                 sync_world_root_transform,
                 crate::card_visual::sync_card_visuals,
+                crate::ui_interaction::update_drag_follow,
+                crate::ui_interaction::update_ghost_follow,
                 crate::render::terrain_view::sync_terrain_visuals,
                 crate::render::card_view::sync_card_overlays,
                 sync_selection_border,
@@ -141,8 +143,6 @@ impl Plugin for InputPlugin {
                 Update,
                 (
                     handle_pointer_input,
-                    update_drag_follow,
-                    crate::ui_interaction::update_ghost_follow,
                     handle_view_zoom,
                     handle_view_pan,
                 ),

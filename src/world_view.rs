@@ -56,13 +56,28 @@ impl WorldView {
         self.offset.y = self.offset.y.clamp(-max_oy, max_oy);
     }
 
-    /// Area-local cursor (top-left origin) → Godot-style world coords (Y down).
+    /// Area-local pointer (origin top-left, Y down) → Godot-style world pixels (Y down).
     pub fn area_to_world(&self, area_pos: Vec2, area_size: Vec2) -> Vec2 {
         let position = self.root_translation(area_size);
         Vec2::new(
             (area_pos.x - position.x) / self.zoom,
             (position.y + area_pos.y) / self.zoom,
         )
+    }
+
+    /// Inverse of [`area_to_world`] — Godot world pixels → area-local pointer.
+    pub fn world_to_area(&self, world: Vec2, area_size: Vec2) -> Vec2 {
+        let position = self.root_translation(area_size);
+        Vec2::new(
+            world.x * self.zoom + position.x,
+            world.y * self.zoom - position.y,
+        )
+    }
+
+    /// Bevy camera-space Y (0 = bottom of world viewport) for a Godot world point.
+    pub fn world_to_bevy_y(&self, world_y: f32, area_size: Vec2) -> f32 {
+        let position = self.root_translation(area_size);
+        position.y + area_size.y - world_y * self.zoom
     }
 
     pub fn zoom_wheel(&mut self, wheel_dir: i32, area_mouse: Vec2, area_size: Vec2) {

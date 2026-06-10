@@ -9,6 +9,35 @@ use crate::world_state::WorldState;
 use crate::world_view::WorldView;
 use crate::viewport_layout::ViewportLayout;
 
+/// Unified screen ↔ Godot-world ↔ grid conversions (see `WorldView` for zoom/pan).
+pub struct CoordinateSystem;
+
+impl CoordinateSystem {
+    pub fn area_to_godot(area_pos: Vec2, layout: &ViewportLayout, view: &WorldView) -> Option<Vec2> {
+        if !layout.cursor_in_world_area(area_pos) {
+            return None;
+        }
+        Some(view.area_to_world(area_pos, layout.world_area_size()))
+    }
+
+    pub fn godot_to_area(world: Vec2, layout: &ViewportLayout, view: &WorldView) -> Vec2 {
+        view.world_to_area(world, layout.world_area_size())
+    }
+
+    pub fn area_to_grid(area_pos: Vec2, layout: &ViewportLayout, view: &WorldView) -> Option<(u8, u8)> {
+        world_to_grid(Self::area_to_godot(area_pos, layout, view)?)
+    }
+
+    pub fn grid_center_to_area(
+        gx: u8,
+        gy: u8,
+        layout: &ViewportLayout,
+        view: &WorldView,
+    ) -> Vec2 {
+        Self::godot_to_area(cell_center(gx, gy).truncate(), layout, view)
+    }
+}
+
 /// Cell center in Godot-style world pixels (Y down).
 pub fn cell_center(x: u8, y: u8) -> Vec3 {
     Vec3::new(
@@ -48,10 +77,7 @@ pub fn world_to_grid(world_pos: Vec2) -> Option<(u8, u8)> {
 }
 
 pub fn cursor_to_world(cursor: Vec2, layout: &ViewportLayout, view: &WorldView) -> Option<Vec2> {
-    if !layout.cursor_in_world_area(cursor) {
-        return None;
-    }
-    Some(view.area_to_world(cursor, layout.world_area_size()))
+    CoordinateSystem::area_to_godot(cursor, layout, view)
 }
 
 pub fn grid_from_cursor(
@@ -59,7 +85,7 @@ pub fn grid_from_cursor(
     layout: &ViewportLayout,
     view: &WorldView,
 ) -> Option<(u8, u8)> {
-    world_to_grid(cursor_to_world(cursor, layout, view)?)
+    CoordinateSystem::area_to_grid(cursor, layout, view)
 }
 
 /// Round-trip: grid → world center → grid.

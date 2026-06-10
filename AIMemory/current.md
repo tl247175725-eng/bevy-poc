@@ -1,10 +1,10 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-interaction.md
+- file: AIMemory/handoff_fix-animation.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-追踪 screen→world→grid 坐标转换链，不引入新公理。
+手写 lerp 替代失效的 bevy_tweening，视觉层改动不碰模拟层。
 
 ## 架构反馈
-坐标系统耦合点多，后续需统一为 CoordinateSystem。
+外部 crate 依赖不可靠，手写更可控。

@@ -1,8 +1,9 @@
 use bevy_poc::{
     cell_center, grid_from_cursor, grid_round_trip, grid_to_world, world_to_grid,
-    zoom_anchor_invariant, WorldView, GRID_HEIGHT, GRID_WIDTH,
+    zoom_anchor_invariant, CoordinateSystem, WorldView, GRID_HEIGHT, GRID_WIDTH,
 };
 use bevy_poc::viewport_layout::ViewportLayout;
+use bevy::math::Vec2;
 
 #[test]
 fn grid_world_round_trip_center() {
@@ -50,6 +51,40 @@ fn zoom_anchor_keeps_world_point_fixed() {
     );
     let delta2 = zoom_anchor_invariant(&mut view, mouse, area, -1);
     assert!(delta2.length() < 0.05);
+}
+
+#[test]
+fn area_world_round_trip_with_zoom_and_pan() {
+    let area = Vec2::new(920.0, 720.0);
+    let mut view = WorldView::default();
+    view.zoom = 1.5;
+    view.offset = Vec2::new(-80.0, 40.0);
+    view.clamp_offset(area);
+    for ay in [0.0, 360.0, 719.0] {
+        for ax in [0.0, 460.0, 919.0] {
+            let area_pos = Vec2::new(ax, ay);
+            let world = view.area_to_world(area_pos, area);
+            let back = view.world_to_area(world, area);
+            assert!(
+                (back - area_pos).length() < 0.01,
+                "round-trip drift at ({ax},{ay}): back={back:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn click_on_cell_center_selects_that_cell() {
+    let layout = ViewportLayout {
+        window_width: 1280.0,
+        window_height: 720.0,
+        scale_factor: 1.0,
+    };
+    let view = WorldView::default();
+    let (gx, gy) = (10u8, 12u8);
+    let area_pos = CoordinateSystem::grid_center_to_area(gx, gy, &layout, &view);
+    let hit = CoordinateSystem::area_to_grid(area_pos, &layout, &view).expect("in area");
+    assert_eq!(hit, (gx, gy));
 }
 
 #[test]

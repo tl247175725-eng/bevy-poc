@@ -1,5 +1,5 @@
 use crate::card_visual::CardVisual;
-use crate::coords::{cursor_to_world, grid_from_cursor, grid_to_world_in};
+use crate::coords::{card_world_pos, cursor_to_world, grid_from_cursor};
 use crate::grid_render::SimWorld;
 use crate::interaction::{try_ghost_drop, try_harvest, try_impact, InteractionState};
 use crate::selection_info::{resolve_selection_card, SelectionTarget};
@@ -174,12 +174,14 @@ pub fn handle_pointer_input(
                 if can_drag_entity(&sim.0, card_id) {
                     ghost.dragging = true;
                     ghost.entity_id = Some(card_id);
-                    ghost.origin_x = gx;
-                    ghost.origin_y = gy;
-                    ghost.preview_cell = Some((gx, gy));
-                    let world_pos = grid_to_world_in(&sim.0, gx, gy, card_id.0);
-                    if let Some(world_cursor) = cursor_to_world(cursor, &layout, &view) {
-                        ghost.cursor_offset = world_cursor - world_pos.truncate();
+                    if let Some(entity) = sim.0.entities.get(&card_id) {
+                        ghost.origin_x = entity.x;
+                        ghost.origin_y = entity.y;
+                        ghost.preview_cell = Some((entity.x, entity.y));
+                        let world_pos = card_world_pos(entity.x, entity.y, card_id.0, Some(&sim.0));
+                        if let Some(world_cursor) = cursor_to_world(cursor, &layout, &view) {
+                            ghost.cursor_offset = world_cursor - world_pos.truncate();
+                        }
                     }
                     handle_selection_click(&sim.0, gx, gy, &mut selection);
                     return;
@@ -199,12 +201,14 @@ pub fn handle_pointer_input(
                 if can_drag_entity(&sim.0, card_id) {
                     drag.dragging = true;
                     drag.entity_id = Some(card_id);
-                    drag.origin_x = gx;
-                    drag.origin_y = gy;
                     drag.hit_target = None;
-                    let world_pos = grid_to_world_in(&sim.0, gx, gy, card_id.0);
-                    if let Some(world_cursor) = cursor_to_world(cursor, &layout, &view) {
-                        drag.cursor_offset = world_cursor - world_pos.truncate();
+                    if let Some(entity) = sim.0.entities.get(&card_id) {
+                        drag.origin_x = entity.x;
+                        drag.origin_y = entity.y;
+                        let world_pos = card_world_pos(entity.x, entity.y, card_id.0, Some(&sim.0));
+                        if let Some(world_cursor) = cursor_to_world(cursor, &layout, &view) {
+                            drag.cursor_offset = world_cursor - world_pos.truncate();
+                        }
                     }
                     handle_selection_click(&sim.0, gx, gy, &mut selection);
                     return;

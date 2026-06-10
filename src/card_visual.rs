@@ -9,6 +9,7 @@ use crate::grid_render::SimWorld;
 use crate::panel_ui::UiFont;
 use crate::visual_config::{CARD_BORDER_PAD, CARD_SIZE, STACK_OFFSET_Y};
 use crate::render::move_animation::MoveAnimating;
+use crate::ui_interaction::{DragState, GhostPlaceMode};
 use crate::world_state::Entity as SimEntity;
 use crate::world_view::{WorldRootEntity, WorldView};
 use bevy::prelude::Entity;
@@ -68,6 +69,8 @@ pub fn sync_card_visuals(
     sim: Res<SimWorld>,
     font: Res<UiFont>,
     view: Res<WorldView>,
+    drag: Res<DragState>,
+    ghost: Res<GhostPlaceMode>,
     world_root: Res<WorldRootEntity>,
     mut roots: Query<
         (
@@ -120,9 +123,11 @@ pub fn sync_card_visuals(
             .map(|d| card_style(&entity.type_name, d))
             .unwrap_or_else(|| card_style("grass", &fallback_def()));
 
+        let skip_position = entity_dragged(entity.id.0, &drag, &ghost);
+
         if let Some(entity_id) = existing.remove(&entity.id.0) {
             if let Ok((_, _, mut transform, children, animating)) = roots.get_mut(entity_id) {
-                if animating.is_none() {
+                if animating.is_none() && !skip_position {
                     transform.translation = pos;
                 }
                 for child in children.iter() {
@@ -172,6 +177,11 @@ pub fn sync_card_visuals(
         );
     }
     // #endregion
+}
+
+fn entity_dragged(entity_id: u64, drag: &DragState, ghost: &GhostPlaceMode) -> bool {
+    (drag.dragging && drag.entity_id.is_some_and(|id| id.0 == entity_id))
+        || (ghost.dragging && ghost.entity_id.is_some_and(|id| id.0 == entity_id))
 }
 
 fn fallback_def() -> CardDef {

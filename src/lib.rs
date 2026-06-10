@@ -76,7 +76,7 @@ pub use systems::tick_containment::{entities_in_pool, entities_in_tree, entities
 pub use ecology_log::{card_display_name, eco_log};
 pub use coords::{
     card_world_pos, cell_center, cursor_to_world, grid_from_cursor, grid_round_trip,
-    grid_to_world, grid_to_world_in, world_to_grid, zoom_anchor_invariant,
+    grid_to_world, grid_to_world_in, world_to_grid, zoom_anchor_invariant, CoordinateSystem,
 };
 pub use selection_info::{
     build_card_panel, build_cell_panel, build_panel, build_panel_with_stress, entity_state_label,
