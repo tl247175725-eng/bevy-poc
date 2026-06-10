@@ -225,6 +225,16 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("sprint:")
         || token.starts_with("social_structure:")
         || token.starts_with("flock_")
+        || token.starts_with("repro_")
+        || token.starts_with("corpse_type:")
+        || token.starts_with("forages:")
+        || token.starts_with("harvest_product:")
+        || token.starts_with("perception:")
+        || token.starts_with("bridge:")
+        || token == "player"
+        || token == "meat_diet"
+        || token == "den_resident"
+        || token == "underground_crop"
         || (token.starts_with("capability.") && cap_has_zh_mapping(token))
 }
 
@@ -265,8 +275,16 @@ pub fn tag_zh(token: &str) -> String {
     if token.starts_with("social_structure:") {
         return "社会结构".to_string();
     }
-    if token.starts_with("flock_") {
-        return "群聚参数".to_string();
+    if token.starts_with("flock_") || token.starts_with("repro_") {
+        return "繁殖参数".to_string();
+    }
+    if token.starts_with("corpse_type:")
+        || token.starts_with("forages:")
+        || token.starts_with("harvest_product:")
+        || token.starts_with("perception:")
+        || token.starts_with("bridge:")
+    {
+        return "规则参数".to_string();
     }
     token_to_fallback_zh(token)
 }

@@ -78,8 +78,7 @@ pub fn count_living_grasses_near_xy(
     radius: u8,
 ) -> usize {
     world
-        .spatial_index
-        .query_near(x, y, "grass", radius)
+        .query_near_filtered(x, y, "grass", radius, crate::spatial_index::EntityId(0))
         .iter()
         .filter(|id| world.entities.get(id).is_some_and(|e| !e.is_corpse))
         .count()
@@ -98,7 +97,7 @@ pub fn is_large_prey(def: &CardDef) -> bool {
 }
 
 pub fn is_grass(def: &CardDef) -> bool {
-    card_has_tag(def, "grass") || def.type_name == "grass"
+    card_has_tag(def, "grass")
 }
 
 pub fn is_aquatic_card(def: &CardDef) -> bool {
@@ -448,14 +447,17 @@ pub fn ecology_was_fed_today(entity: &crate::world_state::Entity, def: &CardDef)
     }
 }
 
-pub fn corpse_type_for(living_type: &str) -> &'static str {
-    match living_type {
-        "sheep" | "lamb" => "sheepCorpse",
-        "deer" | "deerFawn" => "deerCorpse",
-        "wolf" | "wolfCub" => "wolfCorpse",
-        "player" => "playerCorpse",
-        _ => "sheepCorpse",
-    }
+pub fn corpse_type_for(world: &crate::world_state::WorldState, living_type: &str) -> String {
+    world
+        .card_defs
+        .get(living_type)
+        .and_then(|def| {
+            def.tags
+                .iter()
+                .find_map(|t| t.strip_prefix("corpse_type:"))
+        })
+        .map(str::to_string)
+        .unwrap_or_else(|| "sheepCorpse".to_string())
 }
 
 pub fn is_sessile(def: &CardDef) -> bool {
@@ -466,23 +468,22 @@ pub fn is_floating(def: &CardDef) -> bool {
     card_has_tag(def, "floating")
 }
 
-pub fn predators_near(world: &crate::world_state::WorldState, x: u8, y: u8, range: u8) -> Vec<crate::spatial_index::EntityId> {
-    world.spatial_index.query_near(x, y, "predator", range)
+pub fn predators_near(
+    world: &crate::world_state::WorldState,
+    x: u8,
+    y: u8,
+    range: u8,
+) -> Vec<crate::spatial_index::EntityId> {
+    world.query_near_filtered(x, y, "predator", range, crate::spatial_index::EntityId(0))
 }
 
-pub fn wolves_near(world: &crate::world_state::WorldState, x: u8, y: u8, range: u8) -> Vec<crate::spatial_index::EntityId> {
-    world
-        .spatial_index
-        .query_near(x, y, "predator", range)
-        .into_iter()
-        .filter(|id| {
-            world
-                .entities
-                .get(id)
-                .map(|e| e.type_name == "wolf" && !e.is_corpse)
-                .unwrap_or(false)
-        })
-        .collect()
+pub fn wolves_near(
+    world: &crate::world_state::WorldState,
+    x: u8,
+    y: u8,
+    range: u8,
+) -> Vec<crate::spatial_index::EntityId> {
+    predators_near(world, x, y, range)
 }
 
 // --- ecosystem behavior keys (Godot `ecosystem_behavior_key`) ---

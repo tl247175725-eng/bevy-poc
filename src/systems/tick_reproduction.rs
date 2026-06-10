@@ -1,10 +1,68 @@
 use crate::game_constants::{
-    DEER_POP_CAP, DEER_REPRODUCE_MIN_GRASS, DEER_REPRODUCE_WOLF_CLEAR_RADIUS, FIELD_MOUSE_POP_CAP,
-    FIELD_MOUSE_REPRODUCE_MIN_MICRO, POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_LITTER_SIZE,
-    PROLIFIC_REPRO_CYCLE_SECONDS, RABBIT_POP_CAP, WOLF_DEN_CAPACITY,
+    FIELD_MOUSE_REPRODUCE_MIN_MICRO, POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_REPRO_CYCLE_SECONDS,
 };
-use crate::world_rules::wolves_near;
 use crate::world_state::WorldState;
+
+#[derive(Clone, Debug)]
+struct ReproParams {
+    offspring: String,
+    prolific: bool,
+    pop_cap: Option<usize>,
+    min_pop: Option<usize>,
+    litter: usize,
+    require_grass: Option<usize>,
+    predator_clear_radius: Option<u8>,
+    require_den_type: Option<String>,
+    block_offspring: Option<String>,
+    require_microfauna: bool,
+    require_tree: bool,
+    spawn_adjacent: bool,
+}
+
+fn parse_repro_params(tags: &[String]) -> Option<ReproParams> {
+    let offspring = tags
+        .iter()
+        .find_map(|t| t.strip_prefix("repro_offspring:"))
+        .map(str::to_string)?;
+    let mut params = ReproParams {
+        offspring,
+        prolific: tags.iter().any(|t| t == "repro_prolific"),
+        pop_cap: None,
+        min_pop: None,
+        litter: 1,
+        require_grass: None,
+        predator_clear_radius: None,
+        require_den_type: None,
+        block_offspring: None,
+        require_microfauna: false,
+        require_tree: false,
+        spawn_adjacent: false,
+    };
+    for tag in tags {
+        if let Some(v) = tag.strip_prefix("repro_pop_cap:") {
+            params.pop_cap = v.parse().ok();
+        } else if let Some(v) = tag.strip_prefix("repro_min_pop:") {
+            params.min_pop = v.parse().ok();
+        } else if let Some(v) = tag.strip_prefix("repro_litter:") {
+            params.litter = v.parse().unwrap_or(1).max(1);
+        } else if let Some(v) = tag.strip_prefix("repro_require_grass:") {
+            params.require_grass = v.parse().ok();
+        } else if let Some(v) = tag.strip_prefix("repro_predator_clear:") {
+            params.predator_clear_radius = v.parse().ok();
+        } else if let Some(v) = tag.strip_prefix("repro_require_den:") {
+            params.require_den_type = Some(v.to_string());
+        } else if let Some(v) = tag.strip_prefix("repro_block_offspring:") {
+            params.block_offspring = Some(v.to_string());
+        } else if tag == "repro_require_microfauna" {
+            params.require_microfauna = true;
+        } else if tag == "repro_require_tree" {
+            params.require_tree = true;
+        } else if tag == "repro_spawn:adjacent" {
+            params.spawn_adjacent = true;
+        }
+    }
+    Some(params)
+}
 
 pub fn tick_reproduction(world: &mut WorldState, delta: f32) {
     world.repro_timer += delta;
@@ -12,140 +70,117 @@ pub fn tick_reproduction(world: &mut WorldState, delta: f32) {
 
     if world.repro_timer >= POPULATION_REPRO_CYCLE_SECONDS {
         world.repro_timer = 0.0;
-        try_reproduce_sheep(world);
-        try_reproduce_deer(world);
-        try_reproduce_wolf(world);
-        try_reproduce_fox(world);
-        try_reproduce_pheasant(world);
-        try_reproduce_field_mouse(world);
-        try_reproduce_bamboo_rat(world);
-        try_reproduce_water_buffalo(world);
+        let parents: Vec<(String, ReproParams)> = world
+            .card_defs
+            .values()
+            .filter_map(|def| {
+                let params = parse_repro_params(&def.tags)?;
+                (!params.prolific).then_some((def.type_name.clone(), params))
+            })
+            .collect();
+        for (parent_type, params) in parents {
+            try_reproduce(world, &parent_type, &params);
+        }
     }
     if world.rabbit_repro_timer >= PROLIFIC_REPRO_CYCLE_SECONDS {
         world.rabbit_repro_timer = 0.0;
-        try_reproduce_rabbit(world);
+        let parents: Vec<(String, ReproParams)> = world
+            .card_defs
+            .values()
+            .filter_map(|def| {
+                let params = parse_repro_params(&def.tags)?;
+                params.prolific.then_some((def.type_name.clone(), params))
+            })
+            .collect();
+        for (parent_type, params) in parents {
+            try_reproduce(world, &parent_type, &params);
+        }
     }
 }
 
-fn try_reproduce_sheep(world: &mut WorldState) {
-    if world.count_type("sheep") < crate::world_rules::FLOCKING_REPRO_MIN as usize {
-        return;
-    }
-    if world.count_type("lamb") > 0 {
-        return;
-    }
-    if let Some(parent) = world.entities.values().find(|e| e.type_name == "sheep") {
-        let nx = (parent.x + 1).min(crate::world_rules::GRID_WIDTH - 1);
-        world.spawn("lamb", nx, parent.y);
-    }
-}
-
-fn try_reproduce_deer(world: &mut WorldState) {
-    if world.count_type("deer") >= DEER_POP_CAP as usize {
-        return;
-    }
-    if world.grass_count() < DEER_REPRODUCE_MIN_GRASS as usize {
-        return;
-    }
-    if let Some(deer) = world.entities.values().find(|e| e.type_name == "deer") {
-        if !wolves_near(world, deer.x, deer.y, DEER_REPRODUCE_WOLF_CLEAR_RADIUS).is_empty() {
+fn try_reproduce(world: &mut WorldState, parent_type: &str, params: &ReproParams) {
+    if let Some(min_pop) = params.min_pop {
+        if world.count_type(parent_type) < min_pop {
             return;
         }
-        world.spawn("deerFawn", deer.x, deer.y);
     }
-}
 
-fn try_reproduce_wolf(world: &mut WorldState) {
-    if world.count_type("wolfDen") == 0 {
-        return;
-    }
-    if world.count_type("wolfCub") > 0 {
-        return;
-    }
-    if world.wolf_count() >= WOLF_DEN_CAPACITY as usize {
-        return;
-    }
-    if let Some(wolf) = world.entities.values().find(|e| e.type_name == "wolf") {
-        world.spawn("wolfCub", wolf.x, wolf.y);
-    }
-}
-
-fn try_reproduce_fox(world: &mut WorldState) {
-    if world.count_type("foxDen") == 0 || world.count_type("foxCub") > 0 {
-        return;
-    }
-    if let Some(fox) = world.entities.values().find(|e| e.type_name == "fox") {
-        world.spawn("foxCub", fox.x, fox.y);
-    }
-}
-
-fn try_reproduce_rabbit(world: &mut WorldState) {
-    if world.count_type("rabbit") >= RABBIT_POP_CAP as usize {
-        return;
-    }
-    if let Some((rx, ry)) = world
-        .entities
-        .values()
-        .find(|e| e.type_name == "rabbit")
-        .map(|e| (e.x, e.y))
-    {
-        for _ in 0..PROLIFIC_LITTER_SIZE {
-            world.spawn("rabbit", rx, ry);
+    if let Some(cap) = params.pop_cap {
+        if world.count_type(parent_type) >= cap {
+            return;
         }
     }
-}
 
-fn try_reproduce_pheasant(world: &mut WorldState) {
-    if world.count_type("pheasant") < crate::world_rules::FLOCKING_REPRO_MIN as usize {
-        return;
+    if let Some(ref block) = params.block_offspring {
+        if world.count_type(block) > 0 {
+            return;
+        }
     }
-    if let Some(p) = world.entities.values().find(|e| e.type_name == "pheasant") {
-        world.spawn("pheasantChick", p.x, p.y);
-    }
-}
 
-fn try_reproduce_field_mouse(world: &mut WorldState) {
-    if world.count_type("fieldMouse") >= FIELD_MOUSE_POP_CAP as usize {
-        return;
+    if let Some(grass_needed) = params.require_grass {
+        if world.count_by_tag("grass") < grass_needed {
+            return;
+        }
     }
-    let micro_ok = world.bush_microfauna.values().any(|&m| m >= FIELD_MOUSE_REPRODUCE_MIN_MICRO);
-    if !micro_ok {
-        return;
-    }
-    if let Some(mouse) = world.entities.values().find(|e| e.type_name == "fieldMouse") {
-        world.spawn("fieldMousePup", mouse.x, mouse.y);
-    }
-}
 
-fn try_reproduce_bamboo_rat(world: &mut WorldState) {
-    if world.count_type("bambooRat") >= FIELD_MOUSE_POP_CAP as usize {
-        return;
-    }
-    if world.count_type("tree") == 0 && world.count_type("oak") == 0 && world.count_type("pine") == 0
+    if params.require_tree
+        && world.count_type("tree") == 0
+        && world.count_type("oak") == 0
+        && world.count_type("pine") == 0
     {
         return;
     }
-    if let Some(rat) = world.entities.values().find(|e| e.type_name == "bambooRat") {
-        world.spawn("bambooRat", rat.x, rat.y);
-    }
-}
 
-fn try_reproduce_water_buffalo(world: &mut WorldState) {
-    if world.grass_count() < 3 {
+    if params.require_microfauna
+        && !world
+            .bush_microfauna
+            .values()
+            .any(|&m| m >= FIELD_MOUSE_REPRODUCE_MIN_MICRO)
+    {
         return;
     }
-    if let Some(buf) = world
+
+    if let Some(ref den_type) = params.require_den_type {
+        if world.count_type(den_type) == 0 {
+            return;
+        }
+    }
+
+    let Some(parent) = world
         .entities
         .values()
-        .find(|e| e.type_name == "waterBuffalo")
-    {
-        world.spawn("waterBuffaloCalf", buf.x, buf.y);
+        .find(|e| e.type_name == parent_type && !e.is_corpse)
+    else {
+        return;
+    };
+
+    if let Some(radius) = params.predator_clear_radius {
+        if !world
+            .query_near_filtered(parent.x, parent.y, "predator", radius, parent.id)
+            .is_empty()
+        {
+            return;
+        }
+    }
+
+    let (px, py) = (parent.x, parent.y);
+    let (sx, sy) = if params.spawn_adjacent {
+        ((px + 1).min(crate::world_rules::GRID_WIDTH - 1), py)
+    } else {
+        (px, py)
+    };
+    for _ in 0..params.litter {
+        world.spawn(&params.offspring, sx, sy);
     }
 }
 
 /// Legacy entry used by old tests.
 pub fn tick_reproduction_legacy(world: &mut WorldState) {
     if crate::world_state::reproduction_allowed(world) {
-        try_reproduce_sheep(world);
+        if let Some(def) = world.card_defs.get("sheep").cloned() {
+            if let Some(params) = parse_repro_params(&def.tags) {
+                try_reproduce(world, "sheep", &params);
+            }
+        }
     }
 }

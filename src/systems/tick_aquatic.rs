@@ -3,7 +3,7 @@ use crate::game_constants::{
     ALGAE_REGEN_SECONDS, AQUATIC_MIGRATION_INTERVAL, FISH_CAP, WATER_BUG_CAP,
 };
 use crate::spatial_index::EntityId;
-use crate::world_rules::{is_sessile, mark_ecology_fed};
+use crate::world_rules::{card_has_tag, is_sessile, mark_ecology_fed};
 use crate::world_state::{EcologyState, WorldState};
 
 /// Environment-only aquatic tick — algae regen, migration, sessile filter feeders.
@@ -36,13 +36,12 @@ fn tick_sessile_aquatic(world: &mut WorldState, id: EntityId, def: &CardDef) {
     let Some(entity) = world.entities.get(&id) else {
         return;
     };
-    if !world.pool_cells.contains(&(entity.x, entity.y)) && def.type_name != "algae" {
+    if !world.pool_cells.contains(&(entity.x, entity.y)) && !card_has_tag(def, "primary_producer") {
         return;
     }
-    let type_name = def.type_name.clone();
     let (x, y) = (entity.x, entity.y);
 
-    if type_name == "algae" {
+    if card_has_tag(def, "primary_producer") {
         return;
     }
     if is_sessile(def) {

@@ -9,8 +9,8 @@ use crate::game_constants::{
 use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
-    card_has_tag, chebyshev_distance, corpse_type_for, hunt_target_score, is_hunt_target_for_pack,
-    mark_ecology_fed, HUNT_RANGE, HUNT_SCORE_INF,
+    card_has_capability, card_has_tag, chebyshev_distance, corpse_type_for, hunt_target_score,
+    is_hunt_target_for_pack, mark_ecology_fed, HUNT_RANGE, HUNT_SCORE_INF,
 };
 use crate::world_state::{EcologyState, WorldState};
 
@@ -71,16 +71,16 @@ fn drive_tie_rank(behavior: DriveBehavior) -> u8 {
 }
 
 /// OnMove prey notify — defer hunt to end-of-tick reactive flush.
-pub fn mark_predators_near_prey_needs_patrol(world: &mut WorldState, x: u8, y: u8) {
+pub fn mark_predators_near_prey_needs_patrol(
+    world: &mut WorldState,
+    prey_id: EntityId,
+    x: u8,
+    y: u8,
+) {
     let mut predators: Vec<EntityId> = world
-        .spatial_index
-        .query_near(x, y, "predator", HUNT_RANGE)
+        .query_near_filtered(x, y, "predator", HUNT_RANGE, prey_id)
         .into_iter()
-        .chain(
-            world
-                .spatial_index
-                .query_near(x, y, "mesopredator", HUNT_RANGE),
-        )
+        .chain(world.query_near_filtered(x, y, "mesopredator", HUNT_RANGE, prey_id))
         .collect();
     predators.sort_unstable_by_key(|id| id.0);
     predators.dedup();
@@ -116,9 +116,7 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
-    if !world.pool_cells.contains(&(x, y))
-        && (def.type_name == "fish" || def.type_name == "waterBug")
-    {
+    if profile.native_medium == "water" && !world.pool_cells.contains(&(x, y)) {
         return;
     }
 
@@ -126,10 +124,12 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         if flee_fire(world, id, x, y) {
             return;
         }
-        if def.type_name == "wolf" && den_work_wolf(world, id, x, y, delta) {
-            return;
+        if card_has_tag(&def, "pack_hunter") && card_has_capability(&def, "capability.return_home") {
+            if den_work_wolf(world, id, x, y, delta) {
+                return;
+            }
         }
-        if def.type_name == "fox" {
+        if card_has_tag(&def, "mesopredator") && card_has_tag(&def, "scavenger") {
             if den_work_fox(world, id, x, y) {
                 return;
             }
@@ -327,8 +327,8 @@ fn best_seek_target(
     let is_prey_seek = drive_def.target_tag == "herbivore" || drive_def.target_tag == "smallPrey";
 
     if can_hunt && is_prey_seek {
-        let pack_size = if hunter_def.type_name == "wolf" {
-            world.wolf_count()
+        let pack_size = if card_has_tag(hunter_def, "pack_hunter") {
+            world.count_by_tag("pack_hunter").max(1)
         } else {
             1
         };
@@ -458,6 +458,7 @@ fn execute_drive(
             }
         }
         DriveBehavior::Hide => {
+            // FIX: should derive from conceal axiom instead of manual state flags.
             if let Some(e) = world.entities.get_mut(&id) {
                 if drive.hide_tag == "grass" {
                     e.hidden_in_grass = true;
@@ -521,8 +522,6 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
         return;
     }
 
-    let actor_type = def.type_name.clone();
-
     if (card_has_tag(def, "predator") || card_has_tag(def, "mesopredator"))
         && world.entities.get(&target_id).is_some_and(|t| {
             !t.is_corpse
@@ -539,7 +538,7 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
         return;
     }
 
-    if actor_type == "fieldMouse" || actor_type == "fieldMousePup" {
+    if card_has_tag(def, "forages:bush") {
         let (x, y) = {
             let e = &world.entities[&actor_id];
             (e.x, e.y)
@@ -558,7 +557,7 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
         }
     }
 
-    if actor_type == "bambooRat" && world.has_tag_at(
+    if card_has_tag(def, "forages:underground") && world.has_tag_at(
         world.entities[&actor_id].x,
         world.entities[&actor_id].y,
         "underground",
@@ -648,7 +647,7 @@ fn hunt_kill(
     if chebyshev_distance(hx, hy, px, py) > 1 {
         return;
     }
-    let corpse_type = corpse_type_for(&prey_type);
+    let corpse_type = corpse_type_for(world, &prey_type);
     let _kill = AxiomEngine::transform(&prey_profile, &hunter_profile, TransformAction::Kill);
     world.remove_entity(prey_id);
     let old_corpses: Vec<EntityId> = world
@@ -670,7 +669,7 @@ fn hunt_kill(
         corpse.is_corpse = true;
         corpse.decay_timer = 0.0;
     }
-    if hunter_def.type_name == "wolf" {
+    if card_has_capability(hunter_def, "capability.carry") {
         if let Some(hunter) = world.entities.get_mut(&hunter_id) {
             hunter.carrying = Some(corpse_id);
             mark_ecology_fed(hunter, hunter_def);
@@ -711,13 +710,20 @@ fn den_work_wolf(world: &mut WorldState, id: EntityId, x: u8, y: u8, _delta: f32
         }
     }
     if world.entities.get(&id).and_then(|e| e.den_id).is_none() {
-        if world.count_type("wolfDen") == 0 {
+        if world.count_by_tag("den.wolf") == 0 {
             world.spawn("wolfDen", x, y);
             eco_log(world, "狼在远离草棚和火源的边缘形成狼穴");
             if let Some(den) = world
                 .entities
                 .values()
-                .find(|e| e.type_name == "wolfDen" && e.x == x && e.y == y)
+                .find(|e| {
+                    e.x == x
+                        && e.y == y
+                        && world
+                            .card_defs
+                            .get(&e.type_name)
+                            .is_some_and(|d| card_has_tag(d, "den.wolf"))
+                })
                 .map(|e| e.id)
             {
                 world.entities.get_mut(&id).unwrap().den_id = Some(den);
@@ -735,7 +741,13 @@ fn den_work_fox(world: &mut WorldState, id: EntityId, x: u8, y: u8) -> bool {
     let bush = world
         .entities
         .values()
-        .find(|e| e.type_name == "bush" && chebyshev_distance(x, y, e.x, e.y) <= 1)
+        .find(|e| {
+            chebyshev_distance(x, y, e.x, e.y) <= 1
+                && world
+                    .card_defs
+                    .get(&e.type_name)
+                    .is_some_and(|d| card_has_tag(d, "bush"))
+        })
         .map(|e| (e.id, e.x, e.y));
     if let Some((bush_id, bx, by)) = bush {
         world.remove_entity(bush_id);

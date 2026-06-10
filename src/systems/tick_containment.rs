@@ -1,4 +1,5 @@
 use crate::game_constants::{CONE_PRODUCE_INTERVAL, NUT_PRODUCE_INTERVAL, POOL_HARVEST_REGEN_SECONDS};
+use crate::world_rules::card_has_tag;
 use crate::world_state::WorldState;
 
 pub fn tick_contained_producers(world: &mut WorldState, delta: f32) {
@@ -10,25 +11,24 @@ fn tick_tree_producers(world: &mut WorldState, delta: f32) {
     let trees: Vec<_> = world
         .entities
         .values()
-        .filter(|e| matches!(e.type_name.as_str(), "oak" | "pine" | "tree"))
-        .map(|e| (e.id, e.type_name.clone(), e.x, e.y, e.produce_timer))
+        .filter_map(|e| {
+            let def = world.card_defs.get(&e.type_name)?;
+            let (product, interval) = if card_has_tag(def, "nut_producer") {
+                ("acorn", NUT_PRODUCE_INTERVAL)
+            } else if card_has_tag(def, "cone_producer") || card_has_tag(def, "forest") {
+                ("pineCone", CONE_PRODUCE_INTERVAL)
+            } else {
+                return None;
+            };
+            Some((e.id, product.to_string(), interval, e.x, e.y, e.produce_timer))
+        })
         .collect();
-    for (id, type_name, x, y, mut timer) in trees {
-        let interval = if type_name == "oak" {
-            NUT_PRODUCE_INTERVAL
-        } else {
-            CONE_PRODUCE_INTERVAL
-        };
+    for (id, product, interval, x, y, mut timer) in trees {
         timer += delta;
         if timer >= interval {
             timer = 0.0;
-            let product = if type_name == "oak" {
-                "acorn"
-            } else {
-                "pineCone"
-            };
-            if !world.has_tag_at(x, y, product) {
-                let drop = world.spawn(product, x, y);
+            if !world.has_tag_at(x, y, &product) {
+                let drop = world.spawn(&product, x, y);
                 if let Some(e) = world.entities.get_mut(&drop) {
                     e.in_tree = true;
                     e.host_tree_id = Some(id);
@@ -45,19 +45,21 @@ fn tick_pool_hosts(world: &mut WorldState, delta: f32) {
     let hosts: Vec<_> = world
         .entities
         .values()
-        .filter(|e| matches!(e.type_name.as_str(), "waterCaltrop" | "lotus"))
-        .map(|e| (e.id, e.type_name.clone(), e.x, e.y, e.harvest_cooldown))
+        .filter_map(|e| {
+            let def = world.card_defs.get(&e.type_name)?;
+            let product = def
+                .tags
+                .iter()
+                .find_map(|t| t.strip_prefix("harvest_product:"))
+                .map(str::to_string)?;
+            Some((e.id, product, e.x, e.y, e.harvest_cooldown))
+        })
         .collect();
-    for (id, type_name, x, y, mut cd) in hosts {
+    for (id, product, x, y, mut cd) in hosts {
         cd = (cd - delta).max(0.0);
         if cd <= 0.0 {
-            let product = if type_name == "waterCaltrop" {
-                "caltropFruit"
-            } else {
-                "lotusSeed"
-            };
-            if !world.has_tag_at(x, y, product) {
-                world.spawn(product, x, y);
+            if !world.has_tag_at(x, y, &product) {
+                world.spawn(&product, x, y);
             }
             cd = POOL_HARVEST_REGEN_SECONDS;
         }
@@ -67,7 +69,10 @@ fn tick_pool_hosts(world: &mut WorldState, delta: f32) {
     }
 }
 
-pub fn entities_in_tree(world: &WorldState, tree_id: crate::spatial_index::EntityId) -> Vec<crate::spatial_index::EntityId> {
+pub fn entities_in_tree(
+    world: &WorldState,
+    tree_id: crate::spatial_index::EntityId,
+) -> Vec<crate::spatial_index::EntityId> {
     world
         .entities
         .values()

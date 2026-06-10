@@ -235,13 +235,13 @@ fn append_dynamic_stats(
     entity: &Entity,
     def: &crate::card_def::CardDef,
 ) {
-    if entity.type_name == "wolf" && def.has_tag("predator") {
+    if def.has_tag("meat_diet") && def.has_tag("predator") {
         lines.push(format!(
             "今日肉：{}/{}",
             entity.meat_fed_today, WOLF_MEAT_PER_DAY
         ));
     }
-    if entity.type_name == "fox" {
+    if def.has_tag("scavenger") && def.has_tag("mesopredator") {
         lines.push(format!(
             "清腐：{}/{}",
             entity.scavenge_today, FOX_SCAVENGE_PER_DAY
@@ -336,32 +336,27 @@ fn den_core_lines(def: &crate::card_def::CardDef, _title: &str) -> Vec<String> {
 }
 
 fn den_wolf_counts(world: &WorldState, x: u8, y: u8) -> (usize, usize) {
-    let mut adults = 0usize;
-    let mut cubs = 0usize;
-    for e in world.entities.values() {
-        if e.x != x || e.y != y {
-            continue;
-        }
-        match e.type_name.as_str() {
-            "wolf" if !e.is_corpse => adults += 1,
-            "wolfCub" => cubs += 1,
-            _ => {}
-        }
-    }
-    (adults, cubs)
+    den_resident_counts(world, x, y)
 }
 
 fn den_fox_counts(world: &WorldState, x: u8, y: u8) -> (usize, usize) {
+    den_resident_counts(world, x, y)
+}
+
+fn den_resident_counts(world: &WorldState, x: u8, y: u8) -> (usize, usize) {
     let mut adults = 0usize;
     let mut cubs = 0usize;
     for e in world.entities.values() {
         if e.x != x || e.y != y {
             continue;
         }
-        match e.type_name.as_str() {
-            "fox" if !e.is_corpse => adults += 1,
-            "foxCub" => cubs += 1,
-            _ => {}
+        let Some(def) = world.card_defs.get(&e.type_name) else {
+            continue;
+        };
+        if def.has_tag("juvenile") {
+            cubs += 1;
+        } else if def.has_tag("den_resident") && !e.is_corpse {
+            adults += 1;
         }
     }
     (adults, cubs)
@@ -370,11 +365,12 @@ fn den_fox_counts(world: &WorldState, x: u8, y: u8) -> (usize, usize) {
 pub fn build_cell_panel(world: &WorldState, x: u8, y: u8, river_stress: f32) -> PanelContent {
     if let Some(overlay_id) = overlay_entity_at(world, x, y) {
         if let Some(entity) = world.entities.get(&overlay_id) {
-            match entity.type_name.as_str() {
-                "wolfDen" | "foxDen" | "humus" => {
-                    return build_card_panel(world, overlay_id, x, y);
-                }
-                _ => {}
+            if world
+                .card_defs
+                .get(&entity.type_name)
+                .is_some_and(|d| d.has_tag("cell.overlay"))
+            {
+                return build_card_panel(world, overlay_id, x, y);
             }
         }
     }
@@ -434,7 +430,13 @@ pub fn build_cell_panel(world: &WorldState, x: u8, y: u8, river_stress: f32) -> 
 
 fn overlay_entity_at(world: &WorldState, x: u8, y: u8) -> Option<EntityId> {
     world.entities.values().find_map(|e| {
-        if e.x == x && e.y == y && matches!(e.type_name.as_str(), "wolfDen" | "foxDen" | "humus") {
+        if e.x == x
+            && e.y == y
+            && world
+                .card_defs
+                .get(&e.type_name)
+                .is_some_and(|d| d.has_tag("cell.overlay"))
+        {
             Some(e.id)
         } else {
             None

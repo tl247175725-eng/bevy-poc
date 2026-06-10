@@ -40,6 +40,7 @@ static TAG_DIMENSIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock:
     }
     let action = [
         "forager", "scavenger", "migratory", "pack_hunter", "flocking", "cover_user",
+        "player", "meat_diet", "den_resident", "underground_crop",
     ];
     for t in action {
         m.insert(t, "action");
@@ -91,6 +92,12 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("sprint:")
         || tag.starts_with("social_structure:")
         || tag.starts_with("flock_")
+        || tag.starts_with("repro_")
+        || tag.starts_with("corpse_type:")
+        || tag.starts_with("forages:")
+        || tag.starts_with("harvest_product:")
+        || tag.starts_with("perception:")
+        || tag.starts_with("bridge:")
     {
         return Some("action");
     }

@@ -3,7 +3,8 @@
 use bevy::prelude::Resource;
 
 use crate::card_def::CardDef;
-use crate::game_constants::{SHEEP_FEAR_RANGE, WILDPREY_FEAR_RANGE};
+use crate::axioms::DriveBehavior;
+use crate::game_constants::WILDPREY_FEAR_RANGE;
 use crate::sim_events::SimEvent;
 use crate::spatial_index::EntityId;
 use crate::systems::movement::flee_from;
@@ -36,12 +37,15 @@ impl EventRegistry {
         let Some(entity) = world.entities.get(&id).cloned() else {
             return;
         };
-        if entity.type_name == "player" || entity.is_corpse {
+        if entity.is_corpse {
             return;
-        };
+        }
         let Some(def) = world.card_defs.get(&entity.type_name).cloned() else {
             return;
         };
+        if card_has_tag(&def, "player") {
+            return;
+        }
 
         if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
             notify_prey_near_predator(world, id, (entity.x, entity.y), (entity.x, entity.y));
@@ -67,7 +71,12 @@ impl EventRegistry {
             let Some(def) = world.card_defs.get(&type_name).cloned() else {
                 continue;
             };
-            if matches!(type_name.as_str(), "fish" | "waterBug") {
+            if def.tags.iter().any(|t| t == "aquatic")
+                && world
+                    .entities
+                    .get(&id)
+                    .is_some_and(|e| e.profile.native_medium == "water")
+            {
                 continue;
             }
             Self::tick_non_predator_ecology(world, id, &def, delta);
@@ -89,12 +98,15 @@ impl EventRegistry {
 
         if let Some(def) = mover_def.as_ref() {
             if is_hunt_prey(def) {
-                mark_predators_near_prey_needs_patrol(world, to.0, to.1);
+                mark_predators_near_prey_needs_patrol(world, id, to.0, to.1);
             }
             if card_has_tag(def, "predator") || card_has_tag(def, "mesopredator") {
                 notify_prey_near_predator(world, id, from, to);
-            } else if mover.as_ref().is_some_and(|m| m.type_name != "player")
-                && !matches!(def.type_name.as_str(), "fish" | "waterBug")
+            } else if !card_has_tag(def, "player")
+                && !(def.tags.iter().any(|t| t == "aquatic")
+                    && mover
+                        .as_ref()
+                        .is_some_and(|m| m.profile.native_medium == "water"))
             {
                 Self::tick_non_predator_ecology(world, id, def, delta);
                 if let Some(entity) = world.entities.get_mut(&id) {
@@ -133,16 +145,19 @@ impl EventRegistry {
 }
 
 fn spawn_ecology_priority(world: &WorldState, id: EntityId) -> u8 {
-    match world
-        .entities
-        .get(&id)
-        .map(|e| e.type_name.as_str())
-        .unwrap_or("")
-    {
-        "fish" | "wolf" | "fox" => 0,
-        "waterBug" => 2,
-        _ => 1,
+    let Some(entity) = world.entities.get(&id) else {
+        return 1;
+    };
+    let Some(def) = world.card_defs.get(&entity.type_name) else {
+        return 1;
+    };
+    if card_has_tag(def, "predator") || card_has_tag(def, "mesopredator") {
+        return 0;
     }
+    if card_has_tag(def, "aquatic") && entity.profile.native_medium == "water" {
+        return 2;
+    }
+    1
 }
 
 fn is_hunt_prey(def: &CardDef) -> bool {
@@ -156,8 +171,13 @@ fn notify_prey_near_predator(
     to: (u8, u8),
 ) {
     let prey_ids: Vec<EntityId> = world
-        .spatial_index
-        .query_near(to.0, to.1, "herbivore", WILDPREY_FEAR_RANGE.max(SHEEP_FEAR_RANGE))
+        .query_near_filtered(
+            to.0,
+            to.1,
+            "herbivore",
+            WILDPREY_FEAR_RANGE,
+            predator_id,
+        )
         .into_iter()
         .filter(|&id| id != predator_id)
         .collect();
@@ -169,14 +189,14 @@ fn notify_prey_near_predator(
         if prey.is_corpse || prey.in_den {
             continue;
         }
-        let Some(def) = world.card_defs.get(&prey.type_name).cloned() else {
-            continue;
-        };
-        let fear = if def.type_name == "sheep" {
-            SHEEP_FEAR_RANGE
-        } else {
-            WILDPREY_FEAR_RANGE
-        };
+        let fear = prey
+            .profile
+            .drives
+            .iter()
+            .filter(|d| d.behavior == DriveBehavior::Flee)
+            .map(|d| d.range)
+            .max()
+            .unwrap_or(WILDPREY_FEAR_RANGE);
         let before = chebyshev_distance(prey.x, prey.y, from.0, from.1);
         let after = chebyshev_distance(prey.x, prey.y, to.0, to.1);
         if before <= fear || after > fear {

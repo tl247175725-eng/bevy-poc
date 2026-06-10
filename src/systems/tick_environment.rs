@@ -49,7 +49,9 @@ fn tick_river_bounce(world: &mut WorldState) {
                 format!("{name}落入水域，弹到陆地({nx},{ny})"),
             );
         }
-        world.move_entity(id, nx, ny);
+        if world.move_entity(id, nx, ny) != crate::world_state::MoveResult::Moved {
+            continue;
+        }
     }
 }
 

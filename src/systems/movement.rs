@@ -1,7 +1,7 @@
 use crate::pathfinding::find_path;
 use crate::spatial_index::EntityId;
 use crate::world_rules::{chebyshev_distance, GRID_HEIGHT, GRID_WIDTH};
-use crate::world_state::WorldState;
+use crate::world_state::{MoveResult, WorldState};
 
 pub fn move_toward(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8, ty: u8) {
     if x == tx && y == ty {
@@ -50,7 +50,14 @@ pub fn flee_from(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8, ty:
     }
     let nx = (x as i16 + dx).clamp(0, GRID_WIDTH as i16 - 1) as u8;
     let ny = (y as i16 + dy).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
-    world.move_entity(id, nx, ny);
+    if world.move_entity(id, nx, ny) == MoveResult::Moved {
+        return;
+    }
+    let alt_nx = (x as i16 + dy).clamp(0, GRID_WIDTH as i16 - 1) as u8;
+    let alt_ny = (y as i16 + dx).clamp(0, GRID_HEIGHT as i16 - 1) as u8;
+    if (alt_nx != x || alt_ny != y) && (alt_nx != nx || alt_ny != ny) {
+        world.move_entity(id, alt_nx, alt_ny);
+    }
 }
 
 pub fn nearest_of(world: &WorldState, x: u8, y: u8, ids: &[EntityId]) -> Option<(EntityId, u8)> {
@@ -74,7 +81,7 @@ pub fn wander(world: &mut WorldState, id: EntityId, x: u8, y: u8, tick: u64) {
     } else {
         x
     };
-    world.move_entity(id, nx, y);
+    let _ = world.move_entity(id, nx, y);
 }
 
 /// Godot `_find_safe_land_near` — ring search for walkable empty cell.

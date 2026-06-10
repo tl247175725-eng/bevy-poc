@@ -548,16 +548,28 @@ impl WorldState {
             .count()
     }
 
+    pub fn count_by_tag(&self, tag: &str) -> usize {
+        self.entities
+            .values()
+            .filter(|e| !e.is_corpse)
+            .filter(|e| {
+                self.card_defs
+                    .get(&e.type_name)
+                    .is_some_and(|d| crate::world_rules::card_has_tag(d, tag))
+            })
+            .count()
+    }
+
     pub fn sheep_count(&self) -> usize {
         self.count_type("sheep")
     }
 
     pub fn wolf_count(&self) -> usize {
-        self.count_type("wolf")
+        self.count_by_tag("pack_hunter")
     }
 
     pub fn grass_count(&self) -> usize {
-        self.count_type("grass")
+        self.count_by_tag("grass")
     }
 
     pub fn entities_at(&self, x: u8, y: u8) -> Vec<EntityId> {

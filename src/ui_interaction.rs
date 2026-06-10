@@ -8,7 +8,7 @@ use crate::spatial_index::EntityId;
 use crate::terrain::is_blocked_terrain;
 use crate::terrain::terrain_at;
 use crate::viewport_layout::ViewportLayout;
-use crate::world_state::WorldState;
+use crate::world_state::{MoveResult, WorldState};
 use crate::world_view::WorldView;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
@@ -78,13 +78,13 @@ pub fn try_place_entity(world: &mut WorldState, id: EntityId, x: u8, y: u8) -> P
         return PlaceResult::Moved;
     }
 
-    world.move_entity(id, x, y);
+    if !world.cell_composition.can_occupy(x, y, &entity.profile) {
+        return PlaceResult::Reverted;
+    }
+    if world.move_entity(id, x, y) != MoveResult::Moved {
+        return PlaceResult::Reverted;
+    }
     if let Some(e) = world.entities.get_mut(&id) {
-        e.in_pool = terrain == "pool"
-            && matches!(
-                e.type_name.as_str(),
-                "algae" | "waterBug" | "fish" | "shellfish" | "waterCaltrop" | "lotus"
-            );
         e.hidden_in_grass = false;
     }
     world.reindex_entity(id);
@@ -92,7 +92,12 @@ pub fn try_place_entity(world: &mut WorldState, id: EntityId, x: u8, y: u8) -> P
 }
 
 pub fn revert_drag(world: &mut WorldState, id: EntityId, origin_x: u8, origin_y: u8) {
-    world.move_entity(id, origin_x, origin_y);
+    if world.move_entity(id, origin_x, origin_y) != MoveResult::Moved {
+        if let Some((nx, ny)) = crate::systems::movement::find_safe_land_near(world, origin_x, origin_y)
+        {
+            let _ = world.move_entity(id, nx, ny);
+        }
+    }
     world.reindex_entity(id);
 }
 

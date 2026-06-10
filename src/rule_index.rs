@@ -330,19 +330,23 @@ impl RuleIndex {
         let actor = &world.entities[&actor_id];
         match &node.condition {
             SharedCondition::InRange { radius } => {
-                prey_in_range(world, actor.x, actor.y, *radius, actor_def, pack_size).is_some()
-                    || grass_in_range(world, actor.x, actor.y, *radius)
+                prey_in_range(world, actor_id, actor.x, actor.y, *radius, actor_def, pack_size)
+                    .is_some()
+                    || grass_in_range(world, actor_id, actor.x, actor.y, *radius)
             }
             SharedCondition::HasTagOnSelf { tag } => card_has_tag(actor_def, tag),
             SharedCondition::CountNearby { tag, max_count } => {
-                let n = world.spatial_index.query_near(actor.x, actor.y, tag, HUNT_RANGE).len();
+                let n = world
+                    .query_near_filtered(actor.x, actor.y, tag, HUNT_RANGE, actor_id)
+                    .len();
                 n < *max_count
             }
             SharedCondition::TargetHasTag { tag } if tag == "herbivore" => {
-                prey_in_range(world, actor.x, actor.y, HUNT_RANGE, actor_def, pack_size).is_some()
+                prey_in_range(world, actor_id, actor.x, actor.y, HUNT_RANGE, actor_def, pack_size)
+                    .is_some()
             }
             SharedCondition::TargetHasTag { tag } if tag == "grass" => {
-                grass_in_range(world, actor.x, actor.y, 6)
+                grass_in_range(world, actor_id, actor.x, actor.y, 6)
             }
             SharedCondition::TargetHasTag { .. } => false,
             SharedCondition::NotFedToday => {
@@ -360,8 +364,8 @@ fn def_tags(def: &CardDef) -> Vec<String> {
 }
 
 fn pack_size_for(world: &WorldState, actor_def: &CardDef) -> usize {
-    if actor_def.type_name == "wolf" {
-        world.wolf_count().max(1)
+    if card_has_tag(actor_def, "pack_hunter") {
+        world.count_by_tag("pack_hunter").max(1)
     } else {
         1
     }
@@ -369,6 +373,7 @@ fn pack_size_for(world: &WorldState, actor_def: &CardDef) -> usize {
 
 fn prey_in_range(
     world: &WorldState,
+    hunter_id: EntityId,
     x: u8,
     y: u8,
     radius: u8,
@@ -376,10 +381,9 @@ fn prey_in_range(
     pack_size: usize,
 ) -> Option<EntityId> {
     let candidates: Vec<EntityId> = world
-        .spatial_index
-        .query_near(x, y, "herbivore", radius)
+        .query_near_filtered(x, y, "herbivore", radius, hunter_id)
         .into_iter()
-        .chain(world.spatial_index.query_near(x, y, "smallPrey", radius))
+        .chain(world.query_near_filtered(x, y, "smallPrey", radius, hunter_id))
         .collect();
     for prey_id in candidates {
         let prey = world.entities.get(&prey_id)?;
@@ -398,9 +402,13 @@ fn prey_in_range(
     None
 }
 
-fn grass_in_range(world: &WorldState, x: u8, y: u8, radius: u8) -> bool {
-    !world.spatial_index.query_near(x, y, "foodSource", radius).is_empty()
-        || !world.spatial_index.query_near(x, y, "grass", radius).is_empty()
+fn grass_in_range(world: &WorldState, observer_id: EntityId, x: u8, y: u8, radius: u8) -> bool {
+    !world
+        .query_near_filtered(x, y, "foodSource", radius, observer_id)
+        .is_empty()
+        || !world
+            .query_near_filtered(x, y, "grass", radius, observer_id)
+            .is_empty()
 }
 
 fn near_camp_anchor(world: &WorldState, x: u8, y: u8) -> bool {
@@ -451,7 +459,7 @@ pub fn legacy_should_hunt(world: &WorldState, actor_id: EntityId) -> bool {
         return false;
     }
     let pack = pack_size_for(world, def);
-    prey_in_range(world, actor.x, actor.y, HUNT_RANGE, def, pack).is_some()
+    prey_in_range(world, actor_id, actor.x, actor.y, HUNT_RANGE, def, pack).is_some()
 }
 
 pub fn legacy_should_stalk(world: &WorldState, actor_id: EntityId) -> bool {
@@ -488,7 +496,7 @@ pub fn legacy_should_graze(world: &WorldState, actor_id: EntityId) -> bool {
     let Some(actor) = world.entities.get(&actor_id) else {
         return false;
     };
-    grass_in_range(world, actor.x, actor.y, 6)
+    grass_in_range(world, actor_id, actor.x, actor.y, 6)
 }
 
 pub fn legacy_should_eat(world: &WorldState, actor_id: EntityId) -> bool {

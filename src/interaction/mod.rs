@@ -142,16 +142,27 @@ pub fn try_ghost_drop(
 
     if targets.is_empty() {
         if crate::terrain::is_blocked_terrain(crate::terrain::terrain_at(world, gx, gy)) {
-            world.move_entity(source, origin_x, origin_y);
+            let _ = world.move_entity(source, origin_x, origin_y);
             world.reindex_entity(source);
             return false;
         }
-        world.move_entity(source, gx, gy);
+        if let Some(profile) = world.entities.get(&source).map(|e| e.profile.clone()) {
+            if !world.cell_composition.can_occupy(gx, gy, &profile) {
+                let _ = world.move_entity(source, origin_x, origin_y);
+                world.reindex_entity(source);
+                return false;
+            }
+        }
+        if world.move_entity(source, gx, gy) != crate::world_state::MoveResult::Moved {
+            let _ = world.move_entity(source, origin_x, origin_y);
+            world.reindex_entity(source);
+            return false;
+        }
         world.reindex_entity(source);
         return true;
     }
 
-    world.move_entity(source, origin_x, origin_y);
+    let _ = world.move_entity(source, origin_x, origin_y);
     world.reindex_entity(source);
     false
 }

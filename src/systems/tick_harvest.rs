@@ -1,4 +1,5 @@
 use crate::spatial_index::EntityId;
+use crate::world_rules::card_has_tag;
 use crate::world_state::WorldState;
 
 /// Player-style harvest interactions (POC: API only, no UI).
@@ -23,12 +24,18 @@ pub fn harvest_at(world: &mut WorldState, x: u8, y: u8, tool: &str) -> Option<St
 fn harvest_pool_host(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
     for id in world.entities_at(x, y) {
         let type_name = world.entities[&id].type_name.clone();
-        let product = match type_name.as_str() {
-            "waterCaltrop" => "caltropFruit",
-            "lotus" => "lotusSeed",
-            _ => continue,
+        let Some(def) = world.card_defs.get(&type_name) else {
+            continue;
         };
-        world.spawn(product, x, y);
+        let Some(product) = def
+            .tags
+            .iter()
+            .find_map(|t| t.strip_prefix("harvest_product:"))
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        world.spawn(&product, x, y);
         if let Some(e) = world.entities.get_mut(&id) {
             e.harvest_cooldown = crate::game_constants::POOL_HARVEST_REGEN_SECONDS;
         }
@@ -40,10 +47,15 @@ fn harvest_pool_host(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
 fn harvest_tree(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
     for id in world.entities_at(x, y) {
         let type_name = world.entities[&id].type_name.clone();
-        let product = match type_name.as_str() {
-            "oak" => "acorn",
-            "pine" => "pineCone",
-            _ => continue,
+        let Some(def) = world.card_defs.get(&type_name) else {
+            continue;
+        };
+        let product = if card_has_tag(def, "nut_producer") {
+            "acorn"
+        } else if card_has_tag(def, "cone_producer") || card_has_tag(def, "forest") {
+            "pineCone"
+        } else {
+            continue;
         };
         world.spawn(product, x, y);
         return Some(product.to_string());
@@ -55,7 +67,14 @@ fn dig_yam(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
     let underground: Vec<EntityId> = world
         .entities
         .values()
-        .filter(|e| e.type_name == "wildYam" && e.x == x && e.y == y)
+        .filter(|e| {
+            e.x == x
+                && e.y == y
+                && world
+                    .card_defs
+                    .get(&e.type_name)
+                    .is_some_and(|d| card_has_tag(d, "underground_crop"))
+        })
         .map(|e| e.id)
         .collect();
     if underground.is_empty() {
@@ -70,7 +89,14 @@ fn gather_shellfish(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
     let shell: Vec<EntityId> = world
         .entities
         .values()
-        .filter(|e| e.type_name == "shellfish" && e.x == x && e.y == y)
+        .filter(|e| {
+            e.x == x
+                && e.y == y
+                && world
+                    .card_defs
+                    .get(&e.type_name)
+                    .is_some_and(|d| card_has_tag(d, "harvest_product:fishMeat") || card_has_tag(d, "filter_feeder"))
+        })
         .map(|e| e.id)
         .collect();
     if shell.is_empty() {

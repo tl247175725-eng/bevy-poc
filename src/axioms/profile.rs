@@ -284,9 +284,6 @@ pub fn parse_size(tags: &[String], type_name: &str) -> u8 {
     if tags.iter().any(|t| t == "body.small" || t == "body.tiny") {
         return 1;
     }
-    if matches!(type_name, "waterBuffalo") {
-        return 3;
-    }
     1
 }
 
@@ -296,7 +293,7 @@ pub fn parse_native_medium(tags: &[String], type_name: &str) -> Medium {
             return name.to_string();
         }
     }
-    if tags.iter().any(|t| t == "aquatic") || type_name == "algae" {
+    if tags.iter().any(|t| t == "aquatic") {
         return "water".into();
     }
     "land".into()
@@ -312,11 +309,6 @@ pub fn parse_bridges(tags: &[String], type_name: &str) -> SmallVec<[(Medium, Med
             if let Some((from, to)) = rest.split_once("->") {
                 bridges.push((from.to_string(), to.to_string()));
             }
-        }
-    }
-    if matches!(type_name, "waterBuffalo" | "waterBuffaloCalf") {
-        if !bridges.iter().any(|(f, t)| f == "land" && t == "water") {
-            bridges.push(("land".into(), "water".into()));
         }
     }
     bridges
@@ -354,7 +346,7 @@ pub fn parse_channels(tags: &[String], type_name: &str) -> SmallVec<[ChannelDef;
             range: 6,
         });
     }
-    if channels.is_empty() && matches!(type_name, "fish" | "waterBug") {
+    if channels.is_empty() && tags.iter().any(|t| t == "aquatic") {
         channels.push(ChannelDef {
             kind: "visual".into(),
             range: 4,
