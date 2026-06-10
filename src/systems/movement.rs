@@ -1,6 +1,6 @@
 use crate::pathfinding::{find_path, is_blocked_for};
 use crate::spatial_index::EntityId;
-use crate::world_rules::{chebyshev_distance, GRID_HEIGHT, GRID_WIDTH};
+use crate::world_rules::{card_has_tag, chebyshev_distance, GRID_HEIGHT, GRID_WIDTH};
 use crate::world_state::{EcologyState, MoveResult, WorldState};
 
 fn manhattan_step(dx: i16, dy: i16, pick_x: bool) -> (i16, i16) {
@@ -56,6 +56,62 @@ fn with_collision_resolve<R>(world: &mut WorldState, f: impl FnOnce(&mut WorldSt
     result
 }
 
+fn blocker_is_immovable(world: &WorldState, blocker_id: EntityId) -> bool {
+    let Some(blocker) = world.entities.get(&blocker_id) else {
+        return true;
+    };
+    let Some(blocker_def) = world.card_defs.get(&blocker.type_name) else {
+        return true;
+    };
+    card_has_tag(blocker_def, "rooted")
+        || blocker_def.is_rooted
+        || blocker.in_tree
+        || blocker.in_pool
+}
+
+fn can_trigger_yield(world: &WorldState, mover_id: EntityId, blocker_id: EntityId) -> bool {
+    let (mover_state, mover_type) = {
+        let Some(m) = world.entities.get(&mover_id) else {
+            return false;
+        };
+        (m.ecology_state, m.type_name.clone())
+    };
+    let (blocker_state, blocker_type) = {
+        let Some(b) = world.entities.get(&blocker_id) else {
+            return false;
+        };
+        (b.ecology_state, b.type_name.clone())
+    };
+    match mover_state {
+        EcologyState::Fleeing => {
+            matches!(blocker_state, EcologyState::Idle | EcologyState::Wandering)
+        }
+        EcologyState::Hunting => {
+            if blocker_state != EcologyState::Idle {
+                return false;
+            }
+            let Some(mover_def) = world.card_defs.get(&mover_type) else {
+                return false;
+            };
+            if !card_has_tag(mover_def, "predator") && !card_has_tag(mover_def, "mesopredator") {
+                return false;
+            }
+            world
+                .card_defs
+                .get(&blocker_type)
+                .is_some_and(|d| card_has_tag(d, "herbivore") || card_has_tag(d, "smallPrey"))
+        }
+        _ => false,
+    }
+}
+
+fn mark_blocker_displaced(world: &mut WorldState, blocker_id: EntityId) {
+    if let Some(blocker) = world.entities.get_mut(&blocker_id) {
+        blocker.ecology_state = EcologyState::Idle;
+        blocker.needs_grazing_tick = false;
+    }
+}
+
 fn try_shove(
     world: &mut WorldState,
     mover_id: EntityId,
@@ -65,7 +121,7 @@ fn try_shove(
     step_dx: i16,
     step_dy: i16,
 ) -> bool {
-    if step_dx == 0 && step_dy == 0 {
+    if step_dx == 0 && step_dy == 0 || blocker_is_immovable(world, blocker_id) {
         return false;
     }
     let mut push_x = gx as i16 + step_dx;
@@ -88,10 +144,14 @@ fn try_shove(
         push_y += step_dy;
     }
     if let Some((bx, by)) = dest {
-        return with_collision_resolve(world, |world| {
+        let ok = with_collision_resolve(world, |world| {
             world.move_entity(blocker_id, bx, by) == MoveResult::Moved
                 && world.move_entity(mover_id, gx, gy) == MoveResult::Moved
         });
+        if ok {
+            mark_blocker_displaced(world, blocker_id);
+        }
+        return ok;
     }
     false
 }
@@ -103,6 +163,9 @@ fn try_yield_and_enter(
     gx: u8,
     gy: u8,
 ) -> bool {
+    if blocker_is_immovable(world, blocker_id) {
+        return false;
+    }
     for (bx, by) in adjacent_cells(gx, gy) {
         if world.cell_composition.slot(bx, by).living_count > 0 {
             continue;
@@ -115,6 +178,7 @@ fn try_yield_and_enter(
                 && world.move_entity(mover_id, gx, gy) == MoveResult::Moved
         });
         if ok {
+            mark_blocker_displaced(world, blocker_id);
             return true;
         }
     }
@@ -152,8 +216,10 @@ fn attempt_move_with_resolution(
         let mover_priority = get_entity_priority(world, id);
         let blocker_priority = get_entity_priority(world, blocker_id);
 
-        // Layer 2: Yield — lower-priority blocker steps aside (before dodge).
-        if blocker_priority < mover_priority && try_yield_and_enter(world, id, blocker_id, gx, gy) {
+        // Layer 2: Yield — flee/hunt only, never vs rooted (before dodge).
+        if can_trigger_yield(world, id, blocker_id)
+            && try_yield_and_enter(world, id, blocker_id, gx, gy)
+        {
             return MoveResult::Moved;
         }
 
@@ -358,6 +424,30 @@ mod tests {
         assert_eq!(w.entities[&mover].x, 6);
         assert_eq!(w.entities[&mover].y, 5);
         assert_ne!(w.entities[&blocker].x, 6);
+    }
+
+    #[test]
+    fn rooted_mountain_not_displaced_by_yield() {
+        let mut w = empty_world();
+        w.spawn("mountain", 6, 5);
+        let mover = w.spawn("sheep", 5, 5);
+        w.entities.get_mut(&mover).unwrap().ecology_state = EcologyState::Fleeing;
+        move_toward(&mut w, mover, 5, 5, 6, 5);
+        assert_ne!(w.entities[&mover].x, 6);
+    }
+
+    #[test]
+    fn seeking_food_does_not_yield_into_blocker() {
+        let mut w = empty_world();
+        let mover = w.spawn("sheep", 5, 5);
+        let blocker = w.spawn("sheep", 6, 5);
+        w.entities.get_mut(&mover).unwrap().ecology_state = EcologyState::SeekingFood;
+        // Wandering blocker: shove won't trigger (priority gap < 2), isolates yield.
+        w.entities.get_mut(&blocker).unwrap().ecology_state = EcologyState::Wandering;
+        move_toward(&mut w, mover, 5, 5, 6, 5);
+        assert_ne!(w.entities[&mover].x, 6);
+        assert_eq!(w.entities[&blocker].x, 6);
+        assert_eq!(w.entities[&blocker].y, 5);
     }
 
     #[test]
