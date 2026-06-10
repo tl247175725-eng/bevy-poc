@@ -1,15 +1,13 @@
 # Current Handoff
-- file: AIMemory/handoff_manhattan-move.md
+- file: AIMemory/handoff_fix-pathfinding-diagonal.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-move_toward 改曼哈顿 + 三层碰撞（dodge/yield/shove），走现有 compose/traverse。
+find_path 结果加曼哈顿过滤，一行修。
 
 ## 架构反馈
-EntityProfile 可考虑加 entity_priority 字段。目前用 ecology_state 映射。
+无。
 
 ## 智能验收
-- dx/dy 不同时非零（无斜走）
-- smoke herbivore > 100（不卡死）
-- 面对面能互换位置
+- 游戏中无斜线移动

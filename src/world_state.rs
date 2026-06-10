@@ -613,6 +613,15 @@ impl WorldState {
         }
     }
 
+    /// Deterministic coin flip for movement tie-breaks (Manhattan axis pick).
+    pub fn rng_coin_for(&self, salt: u64) -> bool {
+        let n = self
+            .tick_count
+            .wrapping_mul(0x517c_c1b7_2722_0a95)
+            .wrapping_add(salt);
+        n & 1 == 0
+    }
+
     pub fn tick_once(&mut self) -> Vec<crate::sim_events::MoveAnimEvent> {
         crate::systems::main_tick::main_tick(self, TICK_SECONDS);
         // Headless sim loops (bench) do not drain UI events; drop silent backlog.

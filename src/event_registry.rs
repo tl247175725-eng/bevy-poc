@@ -79,6 +79,9 @@ impl EventRegistry {
             {
                 continue;
             }
+            if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
+                continue;
+            }
             Self::tick_non_predator_ecology(world, id, &def, delta);
         }
     }
