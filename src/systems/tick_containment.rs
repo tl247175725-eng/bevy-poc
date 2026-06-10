@@ -86,7 +86,7 @@ pub fn entities_in_tree(
     world
         .entities
         .values()
-        .filter(|e| e.host_tree_id == Some(tree_id) || e.in_tree)
+        .filter(|e| e.host_tree_id == Some(tree_id))
         .map(|e| e.id)
         .collect()
 }

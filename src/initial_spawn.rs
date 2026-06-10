@@ -28,7 +28,7 @@ pub fn spawn_initial_world() -> WorldState {
     let tree2 = w.spawn("tree", px - 12, py - 8);
     spawn_tree_flora(&mut w, tree1, "oak");
     spawn_tree_flora(&mut w, tree2, "pine");
-    w.spawn("birdNest", px - 10, py);
+    spawn_tree_guest(&mut w, tree1, "birdNest");
     w.spawn("bucket", px, py + 2);
     w.spawn("mountain", px - 14, py - 4);
     w.spawn("mountain", px + 10, py - 6);
@@ -84,14 +84,25 @@ fn spawn_sheep_pack(w: &mut WorldState, x: u8, y: u8) {
 }
 
 fn spawn_tree_flora(w: &mut WorldState, tree_id: crate::spatial_index::EntityId, kind: &str) {
+    spawn_tree_guest(w, tree_id, kind);
+}
+
+/// Spawn flora/nest inside a tree — does not occupy the grid cell (one-card-per-cell).
+fn spawn_tree_guest(w: &mut WorldState, tree_id: crate::spatial_index::EntityId, type_name: &str) {
     let Some(tree) = w.entities.get(&tree_id).cloned() else {
         return;
     };
-    let id = w.spawn(kind, tree.x, tree.y);
-    if let Some(e) = w.entities.get_mut(&id) {
-        e.in_tree = true;
-        e.host_tree_id = Some(tree_id);
-    }
+    let id = w.spawn(type_name, tree.x, tree.y);
+    let Some(e) = w.entities.get_mut(&id) else {
+        return;
+    };
+    let guest = e.clone();
+    w.cell_composition.vacate_entity(e.x, e.y, &guest);
+    e.x = tree.x;
+    e.y = tree.y;
+    e.in_tree = true;
+    e.host_tree_id = Some(tree_id);
+    w.spatial_index.move_entity(id, tree.x, tree.y);
 }
 
 fn spawn_taoyuan(w: &mut WorldState) {

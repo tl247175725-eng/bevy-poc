@@ -2,7 +2,7 @@
 
 use bevy_poc::{
     card_world_pos, cell_center, empty_world, flush_herbivore_tick, mark_baseline_herbivore_tick,
-    stack_indices, world_to_grid, world_width,
+    spawn_initial_world, stack_indices, ui_containment_entries, world_to_grid, world_width,
 };
 
 #[test]
@@ -59,4 +59,26 @@ fn cross_layer_in_tree_entity_excluded_from_stack_indices() {
     assert_eq!(stacks.get(&(6, 6)), Some(&vec![stone.0]));
     assert_eq!(stacks.get(&(7, 7)), Some(&vec![tree.0]));
     assert!(!stacks.values().any(|ids| ids.contains(&oak.0)));
+}
+
+#[test]
+fn cross_layer_initial_bird_nest_contained_in_tree() {
+    let w = spawn_initial_world();
+    let nest = w
+        .entities
+        .values()
+        .find(|e| e.type_name == "birdNest")
+        .expect("birdNest spawned");
+    assert!(nest.in_tree);
+    let tree_id = nest.host_tree_id.expect("birdNest host_tree_id");
+    let tree = &w.entities[&tree_id];
+    assert_eq!((nest.x, nest.y), (tree.x, tree.y));
+
+    let stacks = stack_indices(&w);
+    let tree_stack = stacks.get(&(tree.x, tree.y)).expect("tree on grid");
+    assert!(tree_stack.contains(&tree_id.0));
+    assert!(!tree_stack.contains(&nest.id.0));
+
+    let entries = ui_containment_entries(&w, tree.x, tree.y, Some(tree_id));
+    assert!(entries.iter().any(|e| e.entity_id == nest.id));
 }
