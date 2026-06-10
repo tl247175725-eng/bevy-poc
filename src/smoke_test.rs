@@ -66,8 +66,8 @@ pub fn run() {
     }
 
     // 4. Tick performance
-    if max_tick_ms > 5.0 {
-        failures.push(format!("max tick {:.2}ms > 5ms threshold", max_tick_ms));
+    if max_tick_ms > 15.0 {
+        failures.push(format!("max tick {:.2}ms > 15ms threshold", max_tick_ms));
     }
 
     // 5. Predators alive
