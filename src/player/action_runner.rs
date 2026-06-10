@@ -8,7 +8,7 @@ use crate::world_state::WorldState;
 use super::brain_tags::has_tag;
 use super::intention::priority_rank;
 use super::state::{tick_cooldowns, PlayerMind};
-use super::survival_tasks;
+use super::survival_tasks::{flee_from_threat, satisfy_hunger};
 use super::tool_tasks::{advance_knife_task, plan_craft_knife};
 use super::shelter_tasks::plan_build_hut;
 
@@ -33,7 +33,7 @@ impl ActionRunner {
         }
 
         if has_tag(mind, "predator_nearby_unsafe") {
-            mind.state_label = "躲避威胁".into();
+            flee_from_threat(world, player_id, mind);
             return;
         }
 
@@ -42,7 +42,7 @@ impl ActionRunner {
                 let _ = plan_craft_knife(world, player_id, mind);
             }
             "forage" => {
-                let _ = survival_tasks::satisfy_hunger(world, player_id, mind);
+                let _ = satisfy_hunger(world, player_id, mind);
             }
             "build_hut" => {
                 let _ = plan_build_hut(world, player_id, mind);

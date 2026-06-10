@@ -113,6 +113,23 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
+    if world.entities.get(&id).is_some_and(|e| e.in_cover) {
+        let threat_near = !world
+            .query_near_filtered(x, y, "predator", 5, id)
+            .is_empty()
+            || !world
+                .query_near_filtered(x, y, "mesopredator", 5, id)
+                .is_empty();
+        if let Some(e) = world.entities.get_mut(&id) {
+            e.ecology_state = if threat_near {
+                EcologyState::Fleeing
+            } else {
+                EcologyState::Idle
+            };
+        }
+        return;
+    }
+
     if profile.native_medium == "water" && !world.pool_cells.contains(&(x, y)) {
         return;
     }
@@ -235,20 +252,33 @@ fn active_drives(
                 }
             }
             DriveBehavior::Hide => {
+                if entity.in_cover {
+                    drives.push(ActiveDrive {
+                        behavior: DriveBehavior::Idle,
+                        target: None,
+                        priority: drive_def.priority.saturating_add(1),
+                        range: 0,
+                        hide_tag: String::new(),
+                    });
+                    continue;
+                }
+                if !world.has_tag_at(x, y, &drive_def.target_tag) {
+                    continue;
+                }
                 let range = if drive_def.range > 0 {
                     drive_def.range
                 } else {
                     4
                 };
-                let threats =
-                    world.query_near_filtered(x, y, "predator", range, id);
-                if !threats.is_empty()
-                    && world.has_tag_at(x, y, &drive_def.target_tag)
-                {
+                let predator_near = !world
+                    .query_near_filtered(x, y, "predator", range, id)
+                    .is_empty();
+                let fleeing = entity.ecology_state == EcologyState::Fleeing;
+                if fleeing || predator_near {
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Hide,
                         target: None,
-                        priority: drive_def.priority,
+                        priority: drive_def.priority.saturating_add(1),
                         range,
                         hide_tag: drive_def.target_tag.clone(),
                     });
@@ -458,24 +488,11 @@ fn execute_drive(
                 if let Some(e) = world.entities.get_mut(&id) {
                     e.ecology_state = EcologyState::Fleeing;
                 }
+                try_auto_hide_after_flee(world, id, _profile);
             }
         }
         DriveBehavior::Hide => {
-            if let Some(cover_id) =
-                crate::systems::grass_regen::cover_at_cell(world, x, y, &drive.hide_tag)
-            {
-                if let Some(e) = world.entities.get_mut(&id) {
-                    e.in_cover = true;
-                    e.hidden_in_grass = drive.hide_tag == "grass";
-                    e.host_cover_id = Some(cover_id);
-                    e.ecology_state = EcologyState::Fleeing;
-                }
-            } else if drive.hide_tag == "bush" {
-                if let Some(e) = world.entities.get_mut(&id) {
-                    e.in_burrow = true;
-                    e.ecology_state = EcologyState::Burrowed;
-                }
-            }
+            try_hide_in_cover_at(world, id, &drive.hide_tag);
         }
         DriveBehavior::Scavenge => {
             if let Some((corpse_id, tx, ty)) = drive.target {
@@ -769,4 +786,35 @@ fn try_scavenge(world: &mut WorldState, id: EntityId, x: u8, y: u8, def: &CardDe
     }
     move_toward(world, id, x, y, cx, cy);
     true
+}
+
+fn try_hide_in_cover_at(world: &mut WorldState, id: EntityId, hide_tag: &str) {
+    if hide_tag.is_empty() {
+        return;
+    }
+    let Some((x, y)) = world.entities.get(&id).map(|e| (e.x, e.y)) else {
+        return;
+    };
+    let Some(cover_id) =
+        crate::systems::grass_regen::cover_at_cell(world, x, y, hide_tag)
+    else {
+        return;
+    };
+    if let Some(e) = world.entities.get_mut(&id) {
+        e.in_cover = true;
+        e.hidden_in_grass = hide_tag == "grass";
+        e.host_cover_id = Some(cover_id);
+        e.ecology_state = EcologyState::Fleeing;
+    }
+}
+
+fn try_auto_hide_after_flee(world: &mut WorldState, id: EntityId, profile: &EntityProfile) {
+    for drive in &profile.drives {
+        if drive.behavior == DriveBehavior::Hide && !drive.target_tag.is_empty() {
+            try_hide_in_cover_at(world, id, &drive.target_tag);
+            if world.entities.get(&id).is_some_and(|e| e.in_cover) {
+                return;
+            }
+        }
+    }
 }

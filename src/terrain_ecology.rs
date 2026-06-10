@@ -13,7 +13,7 @@ pub const ELEV_RIVER: i32 = -4;
 pub const ELEV_DARK_RIVER: i32 = -300;
 
 const POOL_DEPTH_RING_MAX: i32 = 5;
-const WETLAND_OUTER_RINGS: i32 = 2;
+const WETLAND_OUTER_RINGS: i32 = 3;
 
 #[derive(Debug, Clone, Default)]
 pub struct MapEcology {

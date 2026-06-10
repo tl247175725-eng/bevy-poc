@@ -6,7 +6,7 @@ use bevy_poc::player::{
     build_hut_affordable, compute_affordances, craft_axe_relation, craft_hut_relation,
     craft_spear_relation, ensure_player_mind, fsm_phase_sequence, generate_desires, has_tag,
     knap_stones_to_shard, materials_near_player, plan_craft_knife, priority_rank, select_intention,
-    should_forage, should_not_forage_when_full,
+    should_forage, should_not_forage_when_full, tick_player_world,
     threat_beats_survival_beats_forage, tick_brain, PlayerMind, TaskPhase,
 };
 use bevy_poc::sim_events::SimEventQueue;
@@ -245,6 +245,18 @@ fn p5_15_player_bypasses_event_registry() {
     w2.spawn("grass", 5, 6);
     tick_entity(&mut w2, sheep, 1.0);
     assert!(w2.entities.contains_key(&sheep), "生态卡仍走 EventRegistry");
+}
+
+#[test]
+fn p5_16_headless_player_moves_toward_food() {
+    let mut w = empty_world();
+    let p = setup_camp_player(&mut w, 10, 7);
+    w.player_minds.get_mut(&p).unwrap().hunger = PLAYER_HUNGER_NEED + 5.0;
+    w.spawn("berry", 18, 7);
+    let start_x = w.entities[&p].x;
+    tick_brain(&mut w, p);
+    tick_player_world(&mut w, p, 1.0);
+    assert_ne!(w.entities[&p].x, start_x, "headless 玩家应向浆果移动");
 }
 
 #[test]
