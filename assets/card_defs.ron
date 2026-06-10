@@ -252,6 +252,15 @@
         is_rooted: false,
     ),
     CardDef(
+        type_name: "landBugCorpse",
+        display_name: "陆虫尸",
+        icon: "尸",
+        tags: ["corpse", "tiny", "insect", "capability.incorporeal", "perishable"],
+        color: (108, 108, 52, 255),
+        hp: 0,
+        is_rooted: false,
+    ),
+    CardDef(
         type_name: "wildYam",
         display_name: "野山药",
         icon: "药",
