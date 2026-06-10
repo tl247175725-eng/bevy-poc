@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 
-use crate::card_visual::CARD_SPRINT_SLIDE_SPEED;
+use crate::card_visual::{CardVisual, CARD_SPRINT_SLIDE_SPEED};
 use crate::render::move_animation::MoveAnimating;
 use crate::visual_config::CARD_SIZE;
 
@@ -30,7 +30,7 @@ pub fn sync_sprint_fx(
     mut commands: Commands,
     mut trails: Query<(Entity, &mut SprintTrail, &mut Sprite, &mut Transform)>,
     mut dust: Query<(Entity, &mut SprintDust, &mut Sprite, &mut Transform), Without<SprintTrail>>,
-    mut cards: Query<(Entity, &Transform, Option<&MoveAnimating>, &mut SprintFxState)>,
+    mut cards: Query<(Entity, Option<&MoveAnimating>, &mut SprintFxState), With<CardVisual>>,
 ) {
     let dt = time.delta_secs();
 
@@ -56,12 +56,11 @@ pub fn sync_sprint_fx(
         }
     }
 
-    for (card, transform, animating, mut state) in &mut cards {
+    for (card, animating, mut state) in &mut cards {
         let sprinting = animating
             .map(|a| a.lerp_speed >= CARD_SPRINT_SLIDE_SPEED - 1.0)
             .unwrap_or(false);
         if sprinting {
-            let _pos = transform.translation;
             let size = CARD_SIZE * 0.85;
             for offset in [0.0_f32, -3.0] {
                 commands.entity(card).with_children(|parent| {

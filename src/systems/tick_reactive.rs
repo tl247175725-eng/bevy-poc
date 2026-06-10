@@ -95,11 +95,10 @@ pub fn mark_predators_near_prey_needs_patrol(
 
 /// Unified reactive layer — all finite-intelligence entities tick through here.
 pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
-    let Some(def) = world
-        .entities
-        .get(&id)
-        .and_then(|e| world.card_defs.get(&e.type_name).cloned())
-    else {
+    let Some(e) = world.entities.get(&id) else {
+        return;
+    };
+    let Some(def) = world.card_defs.get(&e.type_name).cloned() else {
         return;
     };
 
@@ -107,10 +106,8 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
-    let (x, y, profile, in_den, in_burrow) = {
-        let e = &world.entities[&id];
-        (e.x, e.y, e.profile.clone(), e.in_den, e.in_burrow)
-    };
+    let (x, y, profile, in_den, in_burrow) =
+        (e.x, e.y, e.profile.clone(), e.in_den, e.in_burrow);
 
     if in_den || in_burrow {
         return;
