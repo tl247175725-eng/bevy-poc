@@ -1,14 +1,14 @@
 # Current Handoff
-- file: AIMemory/handoff_player-headless.md
+- file: AIMemory/handoff_design-alignment.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-扩展玩家觅食/逃跑条件，不重写 AI 逻辑。
+藏走容纳体系（in_tree 同路径），玩家 AI 激活全部五层且 headless 兼容。
 
 ## 架构反馈
-PlayerMind 依赖交互上下文，headless 需补齐食物和威胁来源。
+in_cover 过滤不完整，PlayerMind 依赖交互输入。
 
 ## 智能验收
-- 玩家主动移动
-- BRP 中玩家有状态
+- 兔入草消失
+- 玩家自主觅食→建棚→做刀
