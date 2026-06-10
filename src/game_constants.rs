@@ -40,6 +40,8 @@ pub const NUT_PRODUCE_INTERVAL: f32 = 25.0;
 pub const CONE_PRODUCE_INTERVAL: f32 = 30.0;
 pub const WATER_BUG_CAP: i32 = 4;
 pub const FISH_CAP: i32 = 3;
+/// At most one rooted algae per pool cell (see `tick_algae_regen`).
+pub const ALGAE_CAP: i32 = 48;
 pub const WOLF_DEN_CAPACITY: i32 = 3;
 pub const FOX_DEN_CAP: i32 = 3;
 pub const FOX_SCAVENGE_PER_DAY: i32 = 2;

@@ -114,6 +114,16 @@ pub fn run() {
         for f in &failures {
             println!("  - {}", f);
         }
+        let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+        for e in world.entities.values() {
+            *counts.entry(e.type_name.clone()).or_default() += 1;
+        }
+        println!("  top entity types:");
+        let mut sorted: Vec<_> = counts.into_iter().collect();
+        sorted.sort_by(|a, b| b.1.cmp(&a.1));
+        for (t, n) in sorted.iter().take(15) {
+            println!("    {}: {}", t, n);
+        }
     }
     println!("  entities: {}→{} | predators: {} | herbivores: {} | max_tick: {:.2}ms | elapsed: {:.1}s",
         initial_count, final_count, predators, herbivores, max_tick_ms, elapsed.as_secs_f64());

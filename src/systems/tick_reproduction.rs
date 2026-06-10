@@ -1,12 +1,11 @@
-use crate::game_constants::{
-    FIELD_MOUSE_REPRODUCE_MIN_MICRO, POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_REPRO_CYCLE_SECONDS,
-};
+use crate::game_constants::{POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_REPRO_CYCLE_SECONDS};
 use crate::world_state::WorldState;
 
 #[derive(Clone, Debug)]
 struct ReproParams {
     offspring: String,
     prolific: bool,
+    cycle_secs: f32,
     pop_cap: Option<usize>,
     min_pop: Option<usize>,
     litter: usize,
@@ -24,9 +23,16 @@ fn parse_repro_params(tags: &[String]) -> Option<ReproParams> {
         .iter()
         .find_map(|t| t.strip_prefix("repro_offspring:"))
         .map(str::to_string)?;
+    let prolific = tags.iter().any(|t| t == "repro_prolific");
+    let default_cycle = if prolific {
+        PROLIFIC_REPRO_CYCLE_SECONDS
+    } else {
+        POPULATION_REPRO_CYCLE_SECONDS
+    };
     let mut params = ReproParams {
         offspring,
-        prolific: tags.iter().any(|t| t == "repro_prolific"),
+        prolific,
+        cycle_secs: default_cycle,
         pop_cap: None,
         min_pop: None,
         litter: 1,
@@ -45,6 +51,10 @@ fn parse_repro_params(tags: &[String]) -> Option<ReproParams> {
             params.min_pop = v.parse().ok();
         } else if let Some(v) = tag.strip_prefix("repro_litter:") {
             params.litter = v.parse().unwrap_or(1).max(1);
+        } else if let Some(v) = tag.strip_prefix("repro_cycle:") {
+            if let Ok(n) = v.parse::<f32>() {
+                params.cycle_secs = n.max(1.0);
+            }
         } else if let Some(v) = tag.strip_prefix("repro_require_grass:") {
             params.require_grass = v.parse().ok();
         } else if let Some(v) = tag.strip_prefix("repro_predator_clear:") {
@@ -65,36 +75,34 @@ fn parse_repro_params(tags: &[String]) -> Option<ReproParams> {
 }
 
 pub fn tick_reproduction(world: &mut WorldState, delta: f32) {
-    world.repro_timer += delta;
-    world.rabbit_repro_timer += delta;
+    let specs: Vec<(String, ReproParams)> = world
+        .card_defs
+        .values()
+        .filter_map(|def| {
+            parse_repro_params(&def.tags).map(|params| (def.type_name.clone(), params))
+        })
+        .collect();
 
-    if world.repro_timer >= POPULATION_REPRO_CYCLE_SECONDS {
-        world.repro_timer = 0.0;
-        let parents: Vec<(String, ReproParams)> = world
-            .card_defs
-            .values()
-            .filter_map(|def| {
-                let params = parse_repro_params(&def.tags)?;
-                (!params.prolific).then_some((def.type_name.clone(), params))
-            })
-            .collect();
-        for (parent_type, params) in parents {
-            try_reproduce(world, &parent_type, &params);
+    for (parent_type, params) in specs {
+        let timer = world
+            .repro_spec_timers
+            .entry(parent_type.clone())
+            .or_insert(0.0);
+        *timer += delta;
+        if *timer < params.cycle_secs {
+            continue;
         }
+        *timer = 0.0;
+        try_reproduce(world, &parent_type, &params);
     }
-    if world.rabbit_repro_timer >= PROLIFIC_REPRO_CYCLE_SECONDS {
-        world.rabbit_repro_timer = 0.0;
-        let parents: Vec<(String, ReproParams)> = world
-            .card_defs
-            .values()
-            .filter_map(|def| {
-                let params = parse_repro_params(&def.tags)?;
-                params.prolific.then_some((def.type_name.clone(), params))
-            })
-            .collect();
-        for (parent_type, params) in parents {
-            try_reproduce(world, &parent_type, &params);
-        }
+}
+
+fn lineage_count(world: &WorldState, parent_type: &str, offspring: &str) -> usize {
+    let adults = world.count_type(parent_type);
+    if offspring == parent_type {
+        adults
+    } else {
+        adults + world.count_type(offspring)
     }
 }
 
@@ -106,7 +114,7 @@ fn try_reproduce(world: &mut WorldState, parent_type: &str, params: &ReproParams
     }
 
     if let Some(cap) = params.pop_cap {
-        if world.count_type(parent_type) >= cap {
+        if lineage_count(world, parent_type, &params.offspring) >= cap {
             return;
         }
     }
@@ -135,7 +143,7 @@ fn try_reproduce(world: &mut WorldState, parent_type: &str, params: &ReproParams
         && !world
             .bush_microfauna
             .values()
-            .any(|&m| m >= FIELD_MOUSE_REPRODUCE_MIN_MICRO)
+            .any(|&m| m >= crate::game_constants::FIELD_MOUSE_REPRODUCE_MIN_MICRO)
     {
         return;
     }
@@ -170,17 +178,11 @@ fn try_reproduce(world: &mut WorldState, parent_type: &str, params: &ReproParams
         (px, py)
     };
     for _ in 0..params.litter {
-        world.spawn(&params.offspring, sx, sy);
-    }
-}
-
-/// Legacy entry used by old tests.
-pub fn tick_reproduction_legacy(world: &mut WorldState) {
-    if crate::world_state::reproduction_allowed(world) {
-        if let Some(def) = world.card_defs.get("sheep").cloned() {
-            if let Some(params) = parse_repro_params(&def.tags) {
-                try_reproduce(world, "sheep", &params);
+        if let Some(cap) = params.pop_cap {
+            if lineage_count(world, parent_type, &params.offspring) >= cap {
+                break;
             }
         }
+        world.spawn(&params.offspring, sx, sy);
     }
 }

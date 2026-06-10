@@ -1,6 +1,6 @@
 use crate::card_def::CardDef;
 use crate::game_constants::{
-    ALGAE_REGEN_SECONDS, AQUATIC_MIGRATION_INTERVAL, FISH_CAP, WATER_BUG_CAP,
+    ALGAE_CAP, ALGAE_REGEN_SECONDS, AQUATIC_MIGRATION_INTERVAL, FISH_CAP, WATER_BUG_CAP,
 };
 use crate::spatial_index::EntityId;
 use crate::world_rules::{card_has_tag, is_sessile, mark_ecology_fed};
@@ -60,11 +60,22 @@ fn tick_algae_regen(world: &mut WorldState, delta: f32) {
         return;
     }
     world.grass_regen_timer = 0.0;
+    if (world.count_type("algae") as i32) >= ALGAE_CAP {
+        return;
+    }
     let pools: Vec<(u8, u8)> = world.pool_cells.iter().copied().collect();
+    let per_pool_cap = pools.len().max(1);
     for (x, y) in pools {
-        if !world.has_tag_at(x, y, "primary_producer") && !world.has_tag_at(x, y, "aquatic") {
-            world.spawn("algae", x, y);
+        if (world.count_type("algae") as i32) >= ALGAE_CAP {
+            break;
         }
+        if world.count_type("algae") >= per_pool_cap {
+            break;
+        }
+        if world.has_tag_at(x, y, "algae") || !world.entities_at(x, y).is_empty() {
+            continue;
+        }
+        world.spawn("algae", x, y);
     }
 }
 

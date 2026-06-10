@@ -27,7 +27,13 @@ fn tick_tree_producers(world: &mut WorldState, delta: f32) {
         timer += delta;
         if timer >= interval {
             timer = 0.0;
-            if !world.has_tag_at(x, y, &product) {
+            let product_exists = world.entities.values().any(|e| {
+                e.host_tree_id == Some(id) && e.type_name == product
+            });
+            if !product_exists
+                && !world.has_tag_at(x, y, &product)
+                && world.entities_at(x, y).is_empty()
+            {
                 let drop = world.spawn(&product, x, y);
                 if let Some(e) = world.entities.get_mut(&drop) {
                     e.in_tree = true;
