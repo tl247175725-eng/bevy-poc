@@ -1,15 +1,16 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_fix-nest-containment.md
+# Current Handoff
+- file: AIMemory/handoff_interaction-smash-stack.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-复用容纳系统（host_tree_id + in_tree），鸟巢依附于树不占格。
+基于现有交互系统扩展砸/叠。AI 攻击改为逐次砸击。
 
 ## 架构反馈
-容纳系统已就位，只需在初始生成时正确设置。
+`transform(Kill)` 秒杀需改为 `transform(Smash)` 逐次 1HP。
 
 ## 智能验收
-- birdNest.host_tree_id 不为 None
-- birdNest in_tree=true 不占格
-- 点击 tree 可查看鸟巢容纳详情
+- 断言：左键碰目标 → 红圈"砸"，HP-1
+- 断言：连续碰不松 → 不触发第二砸
+- 断言：右键幽灵 → 半透明无碰撞
+- 断言：smoke test predation > 0
