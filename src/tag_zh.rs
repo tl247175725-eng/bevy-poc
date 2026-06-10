@@ -39,6 +39,7 @@ static TAG_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("currency", "货币"),
         ("customer", "顾客"),
         ("den", "窝"),
+        ("den_resident", "穴居"),
         ("den.candidate.fox", "狐窝候选"),
         ("dry", "干枯"),
         ("elder", "长者"),
@@ -69,6 +70,7 @@ static TAG_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("material.shard", "碎石"),
         ("material.stone", "石料"),
         ("material.tool_head", "工具头"),
+        ("meat_diet", "肉食"),
         ("mesopredator", "中型捕食者"),
         ("migratory", "迁徙"),
         ("mushroomFarm", "菇场"),
@@ -285,6 +287,9 @@ pub fn tag_zh(token: &str) -> String {
         || token.starts_with("bridge:")
     {
         return "规则参数".to_string();
+    }
+    if token.starts_with("capability.") {
+        return cap_zh(token);
     }
     token_to_fallback_zh(token)
 }

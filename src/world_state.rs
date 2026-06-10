@@ -244,8 +244,15 @@ impl WorldState {
         let mut profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
         // Spawn: if cell blocked (water, occupied, terrain), find nearby valid cell
         let terrain = crate::terrain::terrain_at(self, x, y);
-        let blocked = matches!(terrain, "pool" | "river" | "ford" | "dark_river_pool")
-            || self.cell_composition.slot(x, y).living_count > 0;
+        let water_terrain =
+            matches!(terrain, "pool" | "river" | "ford" | "dark_river_pool");
+        let can_use_water = profile.native_medium == "water"
+            || crate::world_rules::card_has_tag(&def, "aquatic")
+            || crate::world_rules::card_has_tag(&def, "floating");
+        let camp_on_shallow = matches!(terrain, "river" | "ford")
+            && crate::world_rules::is_camp_fire_anchor(&def);
+        let terrain_blocked = water_terrain && !can_use_water && !camp_on_shallow;
+        let blocked = terrain_blocked || self.cell_composition.slot(x, y).living_count > 0;
         if blocked {
             // Use native medium for search, not water medium from blocked cell
             let mut search_profile = profile.clone();
@@ -254,7 +261,8 @@ impl WorldState {
                 x = nx; y = ny;
             }
         }
-        profile.current_medium = self.cell_composition.slot(x, y).medium.clone();
+        profile.current_medium =
+            crate::axioms::profile::medium_for_cell(crate::terrain::terrain_at(self, x, y));
 
         let entity = Entity {
             id,
@@ -525,6 +533,8 @@ impl WorldState {
 
     pub fn mark_river(&mut self, x: u8, y: u8) {
         self.river_cells.insert((x, y));
+        self.cell_composition.slot_mut(x, y).medium =
+            crate::axioms::profile::medium_for_cell("river");
     }
 
     /// Ad-hoc pool for unit tests; also updates ecology when built.
@@ -533,6 +543,8 @@ impl WorldState {
         if self.ecology.ready {
             self.ecology.pool_cells.insert((x, y));
         }
+        self.cell_composition.slot_mut(x, y).medium =
+            crate::axioms::profile::medium_for_cell("pool");
     }
 
     pub fn mark_fire(&mut self, x: u8, y: u8) {

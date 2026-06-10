@@ -30,9 +30,13 @@ fn tick_tree_producers(world: &mut WorldState, delta: f32) {
             let product_exists = world.entities.values().any(|e| {
                 e.host_tree_id == Some(id) && e.type_name == product
             });
+            let host_only = world
+                .entities_at(x, y)
+                .iter()
+                .all(|occupant| *occupant == id);
             if !product_exists
                 && !world.has_tag_at(x, y, &product)
-                && world.entities_at(x, y).is_empty()
+                && (world.entities_at(x, y).is_empty() || host_only)
             {
                 let drop = world.spawn(&product, x, y);
                 if let Some(e) = world.entities.get_mut(&drop) {

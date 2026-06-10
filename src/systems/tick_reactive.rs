@@ -522,17 +522,22 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
         return;
     }
 
-    if (card_has_tag(def, "predator") || card_has_tag(def, "mesopredator"))
-        && world.entities.get(&target_id).is_some_and(|t| {
-            !t.is_corpse
-                && world
-                    .card_defs
-                    .get(&t.type_name)
-                    .map(|d| {
-                        card_has_tag(d, "herbivore") || card_has_tag(d, "smallPrey")
-                    })
-                    .unwrap_or(false)
-        })
+    let prey_def = world
+        .entities
+        .get(&target_id)
+        .and_then(|t| world.card_defs.get(&t.type_name));
+    let is_prey = prey_def.is_some_and(|d| {
+        card_has_tag(d, "herbivore") || card_has_tag(d, "smallPrey")
+    });
+    let can_hunt_prey = card_has_tag(def, "predator") || card_has_tag(def, "mesopredator");
+    let can_forage_prey = card_has_tag(def, "aquatic")
+        && card_has_capability(def, "capability.forage")
+        && prey_def.is_some_and(|d| card_has_tag(d, "smallPrey"));
+    if (can_hunt_prey || can_forage_prey)
+        && world
+            .entities
+            .get(&target_id)
+            .is_some_and(|t| !t.is_corpse && is_prey)
     {
         hunt_kill(world, actor_id, target_id, def);
         return;

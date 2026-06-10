@@ -230,8 +230,7 @@ fn m2_21_algae_spawns_in_pool() {
 fn m2_22_fish_eats_water_bug() {
     let mut w = tw();
     w.mark_pool(11, 11);
-    w.mark_pool(12, 11);
-    let bug = w.spawn("waterBug", 12, 11);
+    let bug = w.spawn("waterBug", 11, 11);
     w.spawn("fish", 11, 11);
     w.tick_once();
     assert!(!w.entities.contains_key(&bug));

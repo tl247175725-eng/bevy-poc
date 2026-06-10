@@ -32,29 +32,31 @@ fn cross_layer_card_world_pos_x_within_world_width() {
 }
 
 #[test]
-fn cross_layer_stack_indices_orders_three_surface_cards() {
+fn cross_layer_stack_indices_one_living_card_per_cell() {
     let mut w = empty_world();
-    let a = w.spawn("stone", 4, 4);
-    let b = w.spawn("twig", 4, 4);
-    let c = w.spawn("wood", 4, 4);
+    let stone = w.spawn("stone", 4, 4);
+    let twig = w.spawn("twig", 4, 4);
+    let wood = w.spawn("wood", 4, 4);
     let stacks = stack_indices(&w);
-    assert_eq!(
-        stacks.get(&(4, 4)).map(Vec::as_slice),
-        Some(&[a.0, b.0, c.0][..])
-    );
+    assert_eq!(stacks.get(&(4, 4)), Some(&vec![stone.0]));
+    assert_ne!((w.entities[&twig].x, w.entities[&twig].y), (4, 4));
+    assert_ne!((w.entities[&wood].x, w.entities[&wood].y), (4, 4));
 }
 
 #[test]
 fn cross_layer_in_tree_entity_excluded_from_stack_indices() {
     let mut w = empty_world();
     let stone = w.spawn("stone", 6, 6);
-    let twig = w.spawn("twig", 6, 6);
-    let oak = w.spawn("oak", 6, 6);
+    let tree = w.spawn("tree", 7, 7);
+    let oak = w.spawn("oak", 7, 7);
     if let Some(e) = w.entities.get_mut(&oak) {
         e.in_tree = true;
+        e.host_tree_id = Some(tree);
+        e.x = 7;
+        e.y = 7;
     }
     let stacks = stack_indices(&w);
-    let cell = stacks.get(&(6, 6)).expect("surface stack");
-    assert_eq!(cell, &[stone.0, twig.0]);
-    assert!(!cell.contains(&oak.0));
+    assert_eq!(stacks.get(&(6, 6)), Some(&vec![stone.0]));
+    assert_eq!(stacks.get(&(7, 7)), Some(&vec![tree.0]));
+    assert!(!stacks.values().any(|ids| ids.contains(&oak.0)));
 }

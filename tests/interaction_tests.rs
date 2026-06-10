@@ -52,7 +52,7 @@ fn harvest_lotus_on_click_path() {
 #[test]
 fn ghost_drop_relation_spear() {
     let mut w = empty_world();
-    let twig = w.spawn("twig", 5, 5);
+    let twig = w.spawn("twig", 3, 3);
     w.spawn("shard", 5, 5);
     let mut events = SimEventQueue::default();
     let state = InteractionState::default();
