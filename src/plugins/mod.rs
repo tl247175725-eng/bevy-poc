@@ -4,8 +4,6 @@ use bevy::prelude::*;
 use bevy::render::texture::ImagePlugin;
 use bevy::window::WindowResizeConstraints;
 use bevy_egui::{EguiPlugin, EguiSet};
-use bevy_tweening::TweeningPlugin;
-
 use crate::assets_util::assets_dir;
 use crate::game_ui_panel::{game_ui_panel_system, setup_egui_fonts, setup_ui_font};
 use crate::grid_render::{setup_grid, setup_sim_world, setup_world_root, sync_selection_border};
@@ -56,7 +54,6 @@ impl Plugin for AppPlugin {
                 }),
         )
         .add_plugins(EguiPlugin)
-        .add_plugins(TweeningPlugin)
         .add_plugins((
             SimPlugin,
             PlayerPlugin,
@@ -114,6 +111,7 @@ impl Plugin for RenderPlugin {
                 crate::render::move_animation::process_move_queue,
                 sync_world_root_transform,
                 crate::card_visual::sync_card_visuals,
+                crate::card_visual::slide_cards,
                 crate::ui_interaction::update_drag_follow,
                 crate::ui_interaction::update_ghost_follow,
                 crate::render::terrain_view::sync_terrain_visuals,
@@ -123,7 +121,7 @@ impl Plugin for RenderPlugin {
                 sync_ghost_preview,
                 sync_rain_overlay,
                 sync_world_fx,
-                crate::render::move_animation::on_move_anim_completed,
+                crate::render::move_animation::check_move_anim_completion,
             )
                 .chain(),
         );

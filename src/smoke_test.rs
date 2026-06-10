@@ -14,6 +14,7 @@ pub fn run() {
 
     let mut failures: Vec<String> = Vec::new();
     let mut moved_herbivores = 0u32;
+    let mut predation_ticks = 0u32;
     let mut max_tick_ms = 0f64;
 
     for _ in 0..1000 {
@@ -33,6 +34,18 @@ pub fn run() {
                 {
                     moved_herbivores += 1;
                     break; // count once per tick
+                }
+            }
+        }
+        // Count predation this tick: any predator that just ate
+        for e in world.entities.values() {
+            if !e.is_corpse && e.fed_today {
+                let Some(def) = world.card_defs.get(&e.type_name) else { continue; };
+                if crate::world_rules::card_has_tag(def, "predator")
+                    || crate::world_rules::card_has_tag(def, "mesopredator")
+                {
+                    predation_ticks += 1;
+                    break;
                 }
             }
         }
@@ -103,6 +116,14 @@ pub fn run() {
     let pending = world.pending_events.len();
     if pending > 256 {
         failures.push(format!("event queue pending={}", pending));
+    }
+
+    // 9. Activity check — game must not be frozen
+    if moved_herbivores == 0 {
+        failures.push("all herbivores frozen — no movement detected".into());
+    }
+    if predation_ticks == 0 {
+        failures.push("zero predation events — ecosystem dead".into());
     }
 
     // === report ===

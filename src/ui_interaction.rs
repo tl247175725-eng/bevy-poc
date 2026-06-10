@@ -280,7 +280,7 @@ pub fn update_ghost_follow(
     layout: Res<ViewportLayout>,
     view: Res<WorldView>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    mut cards: Query<(&CardVisual, &mut Transform)>,
+    mut cards: Query<(&mut CardVisual, &mut Transform)>,
 ) {
     if !ghost.dragging {
         return;
@@ -298,10 +298,12 @@ pub fn update_ghost_follow(
         return;
     };
     let pos = world - ghost.cursor_offset;
-    for (card, mut transform) in &mut cards {
+    for (mut card, mut transform) in &mut cards {
         if card.entity_id == id.0 {
             transform.translation.x = pos.x;
             transform.translation.y = pos.y;
+            card.visual_pos = transform.translation;
+            card.target_pos = transform.translation;
         }
     }
 }
@@ -311,7 +313,7 @@ pub fn update_drag_follow(
     layout: Res<ViewportLayout>,
     view: Res<WorldView>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    mut cards: Query<(&CardVisual, &mut Transform)>,
+    mut cards: Query<(&mut CardVisual, &mut Transform)>,
 ) {
     if !drag.dragging {
         return;
@@ -329,11 +331,13 @@ pub fn update_drag_follow(
         return;
     };
     let pos = world - drag.cursor_offset;
-    for (card, mut transform) in &mut cards {
+    for (mut card, mut transform) in &mut cards {
         if card.entity_id == id.0 {
             transform.translation.x = pos.x;
             transform.translation.y = pos.y;
             transform.translation.z = 10.0 + id.0 as f32 * 0.001;
+            card.visual_pos = transform.translation;
+            card.target_pos = transform.translation;
         }
     }
 }

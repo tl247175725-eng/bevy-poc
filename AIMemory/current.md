@@ -1,10 +1,10 @@
-# Current Handoff
+﻿# Current Handoff
 - file: AIMemory/handoff_fix-animation.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
-手写 lerp 替代失效的 bevy_tweening，视觉层改动不碰模拟层。
+重写 lerp 替代失效的 bevy_tweening，视觉层动画与公理层无关。
 
 ## 架构反馈
-外部 crate 依赖不可靠，手写更可控。
+外部 crate 不可靠，自写 lerp 更可控。

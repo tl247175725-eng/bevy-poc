@@ -59,7 +59,7 @@ pub use game_constants::{
 pub use game_ui_panel::{
     game_ui_panel_system, panel_content_for_test, setup_egui_fonts, setup_ui_font, UiFont,
 };
-pub use card_visual::{stack_indices, sync_card_visuals};
+pub use card_visual::{slide_cards, stack_indices, sync_card_visuals};
 pub use systems::main_tick::{
     flush_herbivore_tick, flush_reactive_entity_tick, mark_baseline_herbivore_tick,
 };

@@ -8,15 +8,21 @@ use crate::coords::card_world_pos;
 use crate::grid_render::SimWorld;
 use crate::panel_ui::UiFont;
 use crate::visual_config::{CARD_BORDER_PAD, CARD_SIZE, STACK_OFFSET_Y};
-use crate::render::move_animation::MoveAnimating;
 use crate::ui_interaction::{DragState, GhostPlaceMode};
 use crate::world_state::Entity as SimEntity;
 use crate::world_view::{WorldRootEntity, WorldView};
 use bevy::prelude::Entity;
 
+pub const CARD_SLIDE_SPEED: f32 = 8.0;
+pub const CARD_SPRINT_SLIDE_SPEED: f32 = 15.0;
+
 #[derive(Component)]
 pub struct CardVisual {
     pub entity_id: u64,
+    /// Current rendered position (lerped each frame).
+    pub visual_pos: Vec3,
+    /// Destination from simulation grid (updated by `sync_card_visuals`).
+    pub target_pos: Vec3,
 }
 
 #[derive(Component)]
@@ -72,15 +78,7 @@ pub fn sync_card_visuals(
     drag: Res<DragState>,
     ghost: Res<GhostPlaceMode>,
     world_root: Res<WorldRootEntity>,
-    mut roots: Query<
-        (
-            Entity,
-            &CardVisual,
-            &mut Transform,
-            &Children,
-            Option<&MoveAnimating>,
-        ),
-    >,
+    mut roots: Query<(Entity, &mut CardVisual, &mut Transform, &Children)>,
     mut card_texts: ParamSet<(
         Query<&mut Text, With<CardIconText>>,
         Query<&mut Text, With<CardNameText>>,
@@ -92,7 +90,7 @@ pub fn sync_card_visuals(
     let name_font = 12.0 / view.zoom;
     let mut existing: HashMap<u64, Entity> = roots
         .iter()
-        .map(|(e, c, _, _, _)| (c.entity_id, e))
+        .map(|(e, c, _, _)| (c.entity_id, e))
         .collect();
 
     for entity in sim.0.entities.values() {
@@ -126,10 +124,11 @@ pub fn sync_card_visuals(
         let skip_position = entity_dragged(entity.id.0, &drag, &ghost);
 
         if let Some(entity_id) = existing.remove(&entity.id.0) {
-            if let Ok((_, _, mut transform, children, animating)) = roots.get_mut(entity_id) {
-                if animating.is_none() && !skip_position {
-                    transform.translation = pos;
+            if let Ok((_, mut cv, mut transform, children)) = roots.get_mut(entity_id) {
+                if !skip_position {
+                    cv.target_pos = pos;
                 }
+                transform.translation = cv.visual_pos;
                 for child in children.iter() {
                     if let Ok(mut text) = card_texts.p0().get_mut(*child) {
                         if let Some(section) = text.sections.get_mut(0) {
@@ -179,9 +178,30 @@ pub fn sync_card_visuals(
     // #endregion
 }
 
-fn entity_dragged(entity_id: u64, drag: &DragState, ghost: &GhostPlaceMode) -> bool {
+pub fn entity_dragged(entity_id: u64, drag: &DragState, ghost: &GhostPlaceMode) -> bool {
     (drag.dragging && drag.entity_id.is_some_and(|id| id.0 == entity_id))
         || (ghost.dragging && ghost.entity_id.is_some_and(|id| id.0 == entity_id))
+}
+
+/// Lerp `visual_pos` toward `target_pos` each frame (replaces bevy_tweening).
+pub fn slide_cards(
+    time: Res<Time>,
+    drag: Res<DragState>,
+    ghost: Res<GhostPlaceMode>,
+    mut cards: Query<(&mut Transform, &mut CardVisual, Option<&crate::render::move_animation::MoveAnimating>)>,
+) {
+    let dt = time.delta_seconds();
+    for (mut transform, mut cv, animating) in &mut cards {
+        if entity_dragged(cv.entity_id, &drag, &ghost) {
+            continue;
+        }
+        let speed = animating
+            .map(|a| a.lerp_speed)
+            .unwrap_or(CARD_SLIDE_SPEED);
+        let t = (dt * speed).clamp(0.0, 1.0);
+        cv.visual_pos = cv.visual_pos.lerp(cv.target_pos, t);
+        transform.translation = cv.visual_pos;
+    }
 }
 
 fn fallback_def() -> CardDef {
@@ -222,6 +242,8 @@ fn spawn_card_visual(
                 },
                 CardVisual {
                     entity_id: entity.id.0,
+                    visual_pos: pos,
+                    target_pos: pos,
                 },
             ))
             .with_children(|parent| {

@@ -17,7 +17,6 @@ opt-level = 2
 [dependencies]
 bevy = "0.14"
 bevy_egui = "0.30"
-bevy_tweening = "0.11" # 0.15 requires Bevy 0.18; project uses Bevy 0.14
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 smallvec = "1.13"
