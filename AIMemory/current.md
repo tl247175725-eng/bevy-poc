@@ -1,13 +1,15 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-animation.md
+- file: AIMemory/handoff_fix-nest-containment.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-重写 lerp 替代失效的 bevy_tweening，视觉层动画与公理层无关。
+复用容纳系统（host_tree_id + in_tree），鸟巢依附于树不占格。
 
 ## 架构反馈
-外部 crate 不可靠，自写 lerp 更可控。
+容纳系统已就位，只需在生成时正确设置。
 
 ## 智能验收
-- 断言：smoke test herbivore 移动数 > 0 且 predation > 0
+- 断言：birdNest.host_tree_id 不为 None
+- 断言：birdNest 不占格（in_tree=true）
+- 断言：点击 tree 可查看鸟巢容纳详情
