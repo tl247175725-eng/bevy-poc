@@ -1,7 +1,7 @@
 # Current Handoff
 - file: AIMemory/handoff_player-headless.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
 扩展玩家觅食/逃跑条件，不重写 AI 逻辑。

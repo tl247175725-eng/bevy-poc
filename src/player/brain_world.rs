@@ -107,10 +107,20 @@ fn berry_available_near(world: &WorldState, player: &Entity) -> bool {
         return true;
     }
     for e in world.entities.values() {
-        if e.type_name == "bush" && in_range(player.x, player.y, e.x, e.y, PERCEPTION_SCAN_BERRY) {
+        if e.is_corpse {
+            continue;
+        }
+        if !in_range(player.x, player.y, e.x, e.y, PERCEPTION_SCAN_BERRY) {
+            continue;
+        }
+        if matches!(e.type_name.as_str(), "bush" | "berry" | "grass") {
             return true;
         }
-        if e.type_name == "berry" && in_range(player.x, player.y, e.x, e.y, PERCEPTION_SCAN_BERRY) {
+        if world
+            .card_defs
+            .get(&e.type_name)
+            .is_some_and(|d| card_has_tag(d, "foodSource"))
+        {
             return true;
         }
     }

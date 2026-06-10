@@ -9,7 +9,8 @@ use bevy_poc::player::{
     should_forage, should_not_forage_when_full, tick_player_world,
     threat_beats_survival_beats_forage, tick_brain, PlayerMind, TaskPhase,
 };
-use bevy_poc::sim_events::SimEventQueue;
+use bevy_poc::sim_events::{sync_sim_stats, SimEventQueue, SimStats};
+use bevy_poc::world_state::EcologyState;
 use bevy_poc::spatial_index::EntityId;
 use bevy_poc::systems::tick_entity::tick_entity;
 use bevy_poc::world_state::empty_world;
@@ -250,13 +251,54 @@ fn p5_15_player_bypasses_event_registry() {
 #[test]
 fn p5_16_headless_player_moves_toward_food() {
     let mut w = empty_world();
-    let p = setup_camp_player(&mut w, 10, 7);
+    let p = w.spawn("player", 10, 7);
+    w.player_minds.insert(p, PlayerMind::new_spawn());
     w.player_minds.get_mut(&p).unwrap().hunger = PLAYER_HUNGER_NEED + 5.0;
-    w.spawn("berry", 18, 7);
+    w.spawn("berry", 14, 7);
     let start_x = w.entities[&p].x;
     tick_brain(&mut w, p);
     tick_player_world(&mut w, p, 1.0);
     assert_ne!(w.entities[&p].x, start_x, "headless 玩家应向浆果移动");
+    assert_eq!(
+        w.entities[&p].ecology_state,
+        EcologyState::SeekingFood,
+        "觅食时 ecology_state 应为 SeekingFood"
+    );
+}
+
+#[test]
+fn p5_17_starving_player_forages_grass_without_berry() {
+    let mut w = empty_world();
+    let p = w.spawn("player", 10, 7);
+    w.player_minds.insert(p, PlayerMind::new_spawn());
+    w.entities.get_mut(&p).unwrap().starve_days = 1;
+    w.player_minds.get_mut(&p).unwrap().hunger = PLAYER_HUNGER_NEED + 5.0;
+    w.spawn("grass", 14, 7);
+    let start_x = w.entities[&p].x;
+    tick_brain(&mut w, p);
+    tick_player_world(&mut w, p, 1.0);
+    assert_ne!(w.entities[&p].x, start_x, "饥饿时应强制向草皮移动");
+    assert_eq!(w.entities[&p].ecology_state, EcologyState::SeekingFood);
+}
+
+#[test]
+fn p5_18_wolf_nearby_player_flees_and_breakdown() {
+    let mut w = empty_world();
+    let p = w.spawn("player", 10, 7);
+    w.player_minds.insert(p, PlayerMind::new_spawn());
+    w.spawn("wolf", 12, 7);
+    let start_x = w.entities[&p].x;
+    tick_brain(&mut w, p);
+    tick_player_world(&mut w, p, 1.0);
+    assert_ne!(w.entities[&p].x, start_x, "狼在感知范围内时应逃离");
+    assert_eq!(w.entities[&p].ecology_state, EcologyState::Fleeing);
+
+    let mut stats = SimStats::default();
+    sync_sim_stats(&w, &mut stats);
+    assert!(
+        stats.state_breakdown.iter().any(|s| s == "player:Fleeing×1"),
+        "BRP state_breakdown 应包含 player:Fleeing"
+    );
 }
 
 #[test]
