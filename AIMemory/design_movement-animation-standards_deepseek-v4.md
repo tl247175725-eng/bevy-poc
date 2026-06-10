@@ -1,5 +1,7 @@
 # 移动动画设计标准
 
+> **代码状态**: `bevy_tweening` 已集成，但动画阻塞 tick 逻辑已被禁用（`sim_clock.rs` 中注释掉），TweenCompleted 事件不触发是已知问题。当前动画回退为瞬移，待修复。
+
 ## 基准
 
 以人类卡为基准：**0.25 秒/格**，参考 D20 RPG、Fire Emblem、Advance Wars 级别战术游戏的手感。
