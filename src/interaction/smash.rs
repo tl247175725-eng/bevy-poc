@@ -3,7 +3,10 @@
 use crate::axioms::{AxiomEngine, TransformAction};
 use crate::sim_events::{SimEvent, SimEventQueue};
 use crate::spatial_index::EntityId;
-use crate::world_rules::{card_has_capability, corpse_type_for, mark_ecology_fed};
+use crate::world_rules::{
+    card_has_capability, card_has_tag, corpse_type_for, mark_ecology_fed, parse_meat_product,
+    parse_meat_yield,
+};
 use crate::world_state::WorldState;
 
 use super::{display_name, InteractionState};
@@ -14,6 +17,36 @@ pub enum SmashOutcome {
     Killed,
     RecipeComplete,
     NoEffect,
+}
+
+const CORPSE_BUTCHER_HITS: u32 = 2;
+
+pub fn is_corpse_entity(world: &WorldState, type_name: &str, is_corpse: bool) -> bool {
+    is_corpse
+        || type_name.ends_with("Corpse")
+        || world
+            .card_defs
+            .get(type_name)
+            .is_some_and(|d| card_has_tag(d, "corpse"))
+}
+
+pub fn butcher_corpse(world: &mut WorldState, corpse_id: EntityId) {
+    let Some(corpse) = world.entities.get(&corpse_id).cloned() else {
+        return;
+    };
+    let Some(def) = world.card_defs.get(&corpse.type_name) else {
+        return;
+    };
+    let meat_count = parse_meat_yield(def);
+    let Some(meat_type) = parse_meat_product(def) else {
+        world.remove_entity(corpse_id);
+        return;
+    };
+    let (x, y) = (corpse.x, corpse.y);
+    world.remove_entity(corpse_id);
+    for _ in 0..meat_count {
+        world.spawn(&meat_type, x, y);
+    }
 }
 
 pub fn damage_entity_hp(world: &mut WorldState, target: EntityId, amount: i32) -> bool {
@@ -52,6 +85,21 @@ pub fn apply_smash_hit(
     let hit_n = *hits;
 
     let _ = AxiomEngine::transform(&tgt.profile, &src.profile, TransformAction::Smash);
+
+    if is_corpse_entity(world, &tgt.type_name, tgt.is_corpse) {
+        events.push(SimEvent::Impact {
+            source: src_name.clone(),
+            target: tgt_name.clone(),
+            x: tgt.x,
+            y: tgt.y,
+        });
+        if hit_n < CORPSE_BUTCHER_HITS {
+            return SmashOutcome::Hit;
+        }
+        *hits = 0;
+        butcher_corpse(world, target);
+        return SmashOutcome::RecipeComplete;
+    }
 
     if let Some(recipe) = state.book.resolve_impact(&src.type_name, &tgt.type_name) {
         events.push(SimEvent::Impact {
@@ -192,18 +240,6 @@ pub fn finalize_prey_kill(
         world.remove_entity(old);
     }
     let corpse_id = world.spawn(&corpse_type, px, py);
-    if let Some(prey_def) = world.card_defs.get(&prey_type) {
-        if crate::world_rules::card_has_tag(prey_def, "being")
-            && !crate::world_rules::card_has_tag(prey_def, "tiny")
-        {
-            let meat_count = crate::world_rules::parse_meat_yield(prey_def);
-            if let Some(meat_type) = crate::world_rules::parse_meat_product(prey_def) {
-                for _ in 0..meat_count {
-                    world.spawn(&meat_type, px, py);
-                }
-            }
-        }
-    }
     if let Some(kid) = killer_id {
         crate::sim_observer::on_kill(world, killer_type, &prey_type, px, py);
         if let Some(kdef) = world.card_defs.get(killer_type) {

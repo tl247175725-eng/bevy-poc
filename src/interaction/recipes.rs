@@ -66,10 +66,7 @@ impl RecipeBook {
     }
 
     pub fn resolve_impact(&self, source: &str, target: &str) -> Option<&ImpactRecipe> {
-        if matches!(
-            (source, target),
-            ("knife" | "axe" | "spear" | "shard", "wolfCorpse" | "playerCorpse" | "sheepCorpse" | "deerCorpse")
-        ) {
+        if matches!(source, "knife" | "axe" | "spear" | "shard") && target.ends_with("Corpse") {
             return self.impacts.iter().find(|r| r.handler_id == "butcher_corpse");
         }
         if matches!(

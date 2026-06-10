@@ -476,7 +476,7 @@ pub fn corpse_type_for(world: &crate::world_state::WorldState, living_type: &str
                 .find_map(|t| t.strip_prefix("corpse_type:"))
         })
         .map(str::to_string)
-        .unwrap_or_else(|| "sheepCorpse".to_string())
+        .unwrap_or_else(|| format!("{living_type}Corpse"))
 }
 
 pub fn is_sessile(def: &CardDef) -> bool {

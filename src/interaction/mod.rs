@@ -14,7 +14,9 @@ use crate::sim_events::{SimEvent, SimEventQueue};
 use crate::spatial_index::EntityId;
 
 pub use recipes::{ImpactRecipe, RelationRecipe, RecipeBook};
-pub use smash::{apply_hunt_smash, apply_smash_hit, finalize_prey_kill, SmashOutcome};
+pub use smash::{
+    apply_hunt_smash, apply_smash_hit, butcher_corpse, finalize_prey_kill, SmashOutcome,
+};
 
 #[derive(Resource)]
 pub struct InteractionState {
@@ -151,6 +153,10 @@ pub(crate) fn apply_impact_recipe(
     _source: &crate::world_state::Entity,
     target: &crate::world_state::Entity,
 ) {
+    if recipe.handler_id == "butcher_corpse" {
+        crate::interaction::smash::butcher_corpse(world, target.id);
+        return;
+    }
     if !recipe.handler_id.is_empty() {
         return;
     }

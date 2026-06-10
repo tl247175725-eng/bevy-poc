@@ -56,6 +56,16 @@ fn with_collision_resolve<R>(world: &mut WorldState, f: impl FnOnce(&mut WorldSt
     result
 }
 
+fn blocker_is_being(world: &WorldState, blocker_id: EntityId) -> bool {
+    let Some(blocker) = world.entities.get(&blocker_id) else {
+        return false;
+    };
+    world
+        .card_defs
+        .get(&blocker.type_name)
+        .is_some_and(|d| card_has_tag(d, "being"))
+}
+
 fn blocker_is_immovable(world: &WorldState, blocker_id: EntityId) -> bool {
     let Some(blocker) = world.entities.get(&blocker_id) else {
         return true;
@@ -121,7 +131,10 @@ fn try_shove(
     step_dx: i16,
     step_dy: i16,
 ) -> bool {
-    if step_dx == 0 && step_dy == 0 || blocker_is_immovable(world, blocker_id) {
+    if step_dx == 0 && step_dy == 0
+        || !blocker_is_being(world, blocker_id)
+        || blocker_is_immovable(world, blocker_id)
+    {
         return false;
     }
     let push_x = gx as i16 + step_dx;
@@ -157,7 +170,7 @@ fn try_yield_and_enter(
     gx: u8,
     gy: u8,
 ) -> bool {
-    if blocker_is_immovable(world, blocker_id) {
+    if !blocker_is_being(world, blocker_id) || blocker_is_immovable(world, blocker_id) {
         return false;
     }
     for (bx, by) in adjacent_cells(gx, gy) {
@@ -569,15 +582,14 @@ mod tests {
     }
 
     #[test]
-    fn stone_shoved_at_most_one_cell() {
+    fn stone_not_shoved_without_being_tag() {
         let mut w = empty_world();
         let stone = w.spawn("stone", 6, 5);
         let mover = w.spawn("sheep", 5, 5);
         w.entities.get_mut(&mover).unwrap().ecology_state = EcologyState::SeekingFood;
         move_toward(&mut w, mover, 5, 5, 6, 5);
-        assert_eq!(w.entities[&mover].x, 6);
-        assert_eq!(w.entities[&stone].x, 7);
-        assert!(w.entities[&stone].x < GRID_WIDTH - 2);
+        assert_eq!(w.entities[&stone].x, 6);
+        assert_eq!(w.entities[&stone].y, 5);
     }
 
     #[test]

@@ -1,14 +1,14 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-shove-corpse.md
+- file: AIMemory/handoff_fix-grass.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-标签驱动：挤开加 being 门禁、corpse_type/meat_product 补全、砸尸体变肉。
+草再生范围扩大 + 上限提高 + 腐殖土加速。
 
 ## 架构反馈
-无。
+原草再生只在河岸是 Godot 遗产。
 
 ## 智能验收
-- 狼窝不被挤
-- 每种动物尸体和肉名称匹配
+- 30 秒后草 > 10
+- 动物不震荡

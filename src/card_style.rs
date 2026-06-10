@@ -95,6 +95,12 @@ pub fn card_style(type_name: &str, def: &CardDef) -> CardStyle {
         "sheepCorpse" => hex_light("8f6c67", "563938"),
         "deerCorpse" => hex_light("7a6358", "4a3828"),
         "wolfCorpse" => hex_light("5c3830", "3a1e18"),
+        "rabbitCorpse" | "pheasantCorpse" | "fieldMouseCorpse" | "bambooRatCorpse" => {
+            hex_light("8a7060", "504030")
+        },
+        "foxCorpse" => hex_light("a07050", "603820"),
+        "waterBuffaloCorpse" => hex_light("6a5a50", "3a2a20"),
+        "fishCorpse" => hex_light("6a90a8", "3a6078"),
         "bucket" => hex("d8b76a", "7b5b2d"),
         "waterbucket" => hex("8fd0f5", "2879a9"),
         "spear" => hex("c8a870", "7a5225"),
