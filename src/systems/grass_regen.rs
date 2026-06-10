@@ -1,7 +1,7 @@
 use crate::game_constants::LIVING_GRASS_CAP;
-use crate::world_rules::count_living_grasses;
-use crate::world_state::regen_due;
-use crate::world_state::WorldState;
+use crate::terrain::terrain_at;
+use crate::world_rules::{count_living_grasses, GRID_HEIGHT, GRID_WIDTH};
+use crate::world_state::{regen_due, WorldState};
 
 pub fn tick_grass_regen(world: &mut WorldState) {
     if !regen_due(world) {
@@ -10,12 +10,17 @@ pub fn tick_grass_regen(world: &mut WorldState) {
     if count_living_grasses(world) >= LIVING_GRASS_CAP as usize {
         return;
     }
-    let river_cells: Vec<(u8, u8)> = world.river_cells.iter().copied().collect();
-    for (x, y) in river_cells {
-        if count_living_grasses(world) >= LIVING_GRASS_CAP as usize {
-            break;
-        }
-        if !world.spatial_index.has_grass_at(x, y) {
+    'scan: for y in 1..GRID_HEIGHT.saturating_sub(1) {
+        for x in 1..GRID_WIDTH.saturating_sub(1) {
+            if count_living_grasses(world) >= LIVING_GRASS_CAP as usize {
+                break 'scan;
+            }
+            if terrain_at(world, x, y) != "land" {
+                continue;
+            }
+            if !world.entities_at(x, y).is_empty() {
+                continue;
+            }
             world.spawn("grass", x, y);
         }
     }

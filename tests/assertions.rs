@@ -21,14 +21,22 @@ fn def<'a>(world: &'a WorldState, name: &str) -> &'a CardDef {
 // --- POC 20 ---
 
 #[test]
-fn assert_01_grass_no_regen_off_riverbank() {
+fn assert_01_grass_regen_on_empty_land() {
     let mut world = empty_world();
-    world.spawn("grass", 10, 10);
-    let before = world.grass_count();
-    world.remove_entity(world.spatial_index.query_tag("grass")[0]);
-    assert_eq!(world.grass_count(), before - 1);
+    assert_eq!(world.grass_count(), 0);
     world.run_ticks(GRASS_REGEN_INTERVAL);
-    assert_eq!(world.grass_count(), before - 1);
+    assert!(world.grass_count() > 0);
+}
+
+#[test]
+fn assert_01b_grass_recovers_above_ten_within_thirty_ticks() {
+    let mut world = empty_world();
+    world.run_ticks(30);
+    assert!(
+        world.grass_count() > 10,
+        "expected >10 grass after 30 ticks, got {}",
+        world.grass_count()
+    );
 }
 
 #[test]
@@ -150,15 +158,14 @@ fn assert_08_sheep_flees_from_wolf() {
 }
 
 #[test]
-fn assert_09_riverbank_grass_regen_interval() {
+fn assert_09_land_grass_regen_interval() {
     let mut world = empty_world();
-    world.mark_river(2, 0);
-    world.spawn("grass", 2, 0);
+    world.spawn("grass", 10, 10);
     let grass_id = world.spatial_index.query_tag("grass")[0];
     world.remove_entity(grass_id);
     assert_eq!(world.grass_count(), 0);
     world.run_ticks(GRASS_REGEN_INTERVAL);
-    assert_eq!(world.grass_count(), 1);
+    assert!(world.grass_count() >= 1);
 }
 
 #[test]
