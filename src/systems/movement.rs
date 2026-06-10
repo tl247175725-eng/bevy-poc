@@ -204,8 +204,9 @@ pub fn move_toward(world: &mut WorldState, id: EntityId, x: u8, y: u8, tx: u8, t
     }
 
     if let Some((nx, ny)) = find_path(world, x, y, tx, ty, Some(id.0)).first().copied() {
-        let pdx = nx as i16 - x as i16;
-        let pdy = ny as i16 - y as i16;
+        let raw_pdx = nx as i16 - x as i16;
+        let raw_pdy = ny as i16 - y as i16;
+        let (pdx, pdy) = manhattan_step(raw_pdx, raw_pdy, world.rng_coin_for(id.0 ^ 0x5A5A));
         if attempt_move_with_resolution(world, id, x, y, pdx, pdy) == MoveResult::Moved {
             return;
         }
@@ -328,6 +329,9 @@ mod tests {
         let id = w.spawn("sheep", 5, 5);
         move_toward(&mut w, id, 5, 5, 7, 5);
         let e = &w.entities[&id];
+        let dx = e.x.abs_diff(5);
+        let dy = e.y.abs_diff(5);
+        assert!(dx == 0 || dy == 0, "path fallback must not diagonal: dx={dx} dy={dy}");
         assert!(e.x == 5 || e.x == 6 || e.x == 7);
     }
 

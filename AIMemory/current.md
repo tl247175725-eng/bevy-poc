@@ -1,13 +1,15 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-pathfinding-diagonal.md
+- file: AIMemory/handoff_fix-swap-oscillation.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-find_path 结果加曼哈顿过滤，一行修。
+yield/shove 加移动性门禁 + 收紧触发条件 + 防回弹。
 
 ## 架构反馈
-无。
+碰撞解决需要了解"rooted"等不可移动标签。
 
 ## 智能验收
-- 游戏中无斜线移动
+- 树不被挤开
+- 无连锁互换
+- 无斜走
