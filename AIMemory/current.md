@@ -1,4 +1,4 @@
-﻿# Current Handoff
+# Current Handoff
 - file: AIMemory/handoff_fix-animation.md
 - mode: Standard
 - status: completed
@@ -8,3 +8,6 @@
 
 ## 架构反馈
 外部 crate 不可靠，自写 lerp 更可控。
+
+## 智能验收
+- 断言：smoke test herbivore 移动数 > 0 且 predation > 0
