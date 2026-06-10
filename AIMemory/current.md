@@ -1,13 +1,13 @@
 # Current Handoff
-- file: AIMemory/handoff_register-brp.md
+- file: AIMemory/handoff_brp-states.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-注册 CardVisual 等组件 + SimStats 统计资源到 BRP。
+扩展 SimStats 加行为状态统计。
 
 ## 架构反馈
-WorldState 是 HashMap 无法 Reflect，用 SimStats 替代。
+WorldState 不支持 Reflect，用摘要替代。
 
 ## 智能验收
-- curl 可读 CardVisual 和 SimStats
+- curl 读 SimStats 可看到 "wolf:Hunting" "sheep:Fleeing" 等状态

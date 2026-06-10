@@ -14,8 +14,8 @@ use crate::event_registry::EventRegistry;
 use crate::player::{PlayerBrainResource, PlayerPlugin};
 use crate::sim_clock::{advance_sim_ticks, SimClock};
 use crate::sim_events::{
-    drain_sim_events, MoveAnimEvent, MoveAnimPlayback, MoveAnimationsComplete, SimEventQueue,
-    WorldFxQueue,
+    drain_sim_events, mirror_sim_stats_brp, setup_sim_stats_brp, MoveAnimEvent, MoveAnimPlayback,
+    MoveAnimationsComplete, SimEventQueue, SimStats, WorldFxQueue,
 };
 use crate::interaction::InteractionState;
 use crate::ui::minimap::minimap_panel_system;
@@ -55,8 +55,9 @@ impl Plugin for AppPlugin {
                 }),
         )
         .add_plugins(EguiPlugin)
-        .add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()))
-        .add_plugins((
+        .add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()));
+        register_brp_types(app);
+        app.add_plugins((
             SimPlugin,
             PlayerPlugin,
             RenderPlugin,
@@ -66,11 +67,21 @@ impl Plugin for AppPlugin {
     }
 }
 
+fn register_brp_types(app: &mut App) {
+    app.register_type::<crate::card_visual::CardVisual>()
+        .register_type::<crate::card_visual::CardIconText>()
+        .register_type::<crate::card_visual::CardNameText>()
+        .register_type::<crate::render::move_animation::MoveAnimating>()
+        .register_type::<SimStats>()
+        .register_type::<crate::sim_events::SimStatsBrpMarker>();
+}
+
 pub struct SimPlugin;
 
 impl Plugin for SimPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<SimClock>()
+            .init_resource::<SimStats>()
             .init_resource::<SimEventQueue>()
             .init_resource::<WorldFxQueue>()
             .init_resource::<MoveAnimPlayback>()
@@ -82,8 +93,14 @@ impl Plugin for SimPlugin {
             .init_resource::<PlayerBrainResource>()
             .init_resource::<crate::session_report::TickStats>()
             .init_resource::<crate::session_report::SessionWallClock>()
-            .add_systems(Startup, setup_sim_world)
-            .add_systems(Update, (advance_sim_ticks, drain_sim_events))
+            .add_systems(
+                Startup,
+                (setup_sim_world, setup_sim_stats_brp).chain(),
+            )
+            .add_systems(
+                Update,
+                (advance_sim_ticks, mirror_sim_stats_brp, drain_sim_events),
+            )
             .add_systems(
                 Update,
                 crate::session_report::write_session_report_on_exit,

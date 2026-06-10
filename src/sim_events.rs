@@ -4,6 +4,8 @@ use bevy::prelude::*;
 
 use crate::sim_clock::SimClock;
 use crate::spatial_index::EntityId;
+use crate::world_rules::card_has_tag;
+use crate::world_state::WorldState;
 
 /// Move animation request — queued by `move_entity`, consumed by render layer.
 #[derive(Debug, Clone, Event)]
@@ -83,6 +85,61 @@ pub enum SimEvent {
     Generic(String),
 }
 
+/// Marker entity carrying [`SimStats`] for BRP `bevy/query` (resources are not queryable in 0.15).
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub struct SimStatsBrpMarker;
+
+/// Core sim metrics exposed to BRP (WorldState itself is not Reflect-safe).
+#[derive(Resource, Component, Reflect, Default, Clone)]
+#[reflect(Resource, Component)]
+pub struct SimStats {
+    pub entity_count: usize,
+    pub tick_count: u64,
+    pub herbivore_count: usize,
+    pub predator_count: usize,
+    pub deaths: u64,
+}
+
+pub fn setup_sim_stats_brp(
+    mut commands: Commands,
+    sim: Res<crate::grid_render::SimWorld>,
+    mut stats: ResMut<SimStats>,
+) {
+    sync_sim_stats(&sim.0, &mut stats);
+    commands.spawn((SimStatsBrpMarker, stats.clone()));
+}
+
+pub fn mirror_sim_stats_brp(stats: Res<SimStats>, mut q: Query<&mut SimStats, With<SimStatsBrpMarker>>) {
+    if let Ok(mut mirror) = q.get_single_mut() {
+        *mirror = stats.clone();
+    }
+}
+
+pub fn sync_sim_stats(world: &WorldState, stats: &mut SimStats) {
+    stats.entity_count = world.entities.len();
+    stats.tick_count = world.tick_count;
+    stats.herbivore_count = world
+        .entities
+        .values()
+        .filter(|e| {
+            world
+                .card_defs
+                .get(&e.type_name)
+                .is_some_and(|d| card_has_tag(d, "herbivore") || card_has_tag(d, "omnivore.small"))
+        })
+        .count();
+    stats.predator_count = world
+        .entities
+        .values()
+        .filter(|e| {
+            world.card_defs.get(&e.type_name).is_some_and(|d| {
+                card_has_tag(d, "predator") || card_has_tag(d, "mesopredator")
+            })
+        })
+        .count();
+}
+
 #[derive(Resource, Default)]
 pub struct SimEventQueue {
     pending: Vec<SimEvent>,
@@ -129,8 +186,12 @@ pub fn drain_sim_events(
     mut fx: ResMut<WorldFxQueue>,
     mut clock: ResMut<SimClock>,
     mut stats: ResMut<crate::session_report::TickStats>,
+    mut sim_stats: ResMut<SimStats>,
 ) {
     for event in queue.drain() {
+        if matches!(event, SimEvent::Death { .. }) {
+            sim_stats.deaths += 1;
+        }
         stats.record_sim_event(&event);
         let (line, fx_msg) = format_event(&event);
         if !line.is_empty() {

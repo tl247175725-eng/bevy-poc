@@ -137,6 +137,7 @@ pub fn advance_sim_ticks(
     mut sim: ResMut<crate::grid_render::SimWorld>,
     mut events: ResMut<crate::sim_events::SimEventQueue>,
     mut stats: ResMut<crate::session_report::TickStats>,
+    mut sim_stats: ResMut<crate::sim_events::SimStats>,
     playback: Res<crate::sim_events::MoveAnimPlayback>,
     mut move_anim_events: EventWriter<crate::sim_events::MoveAnimEvent>,
 ) {
@@ -154,6 +155,7 @@ pub fn advance_sim_ticks(
         clock.tick_accum -= crate::game_constants::TICK_SECONDS;
         let t0 = std::time::Instant::now();
         let move_anims = sim.0.tick_once();
+        crate::sim_events::sync_sim_stats(&sim.0, &mut sim_stats);
         stats.record_tick_duration(t0.elapsed().as_secs_f32());
         stats.record_entity_count(sim.0.entities.len());
         for event in sim.0.drain_pending_events() {

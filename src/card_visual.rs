@@ -16,7 +16,8 @@ use bevy::prelude::Entity;
 pub const CARD_SLIDE_SPEED: f32 = 8.0;
 pub const CARD_SPRINT_SLIDE_SPEED: f32 = 15.0;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct CardVisual {
     pub entity_id: u64,
     /// Current rendered position (lerped each frame).
@@ -25,10 +26,12 @@ pub struct CardVisual {
     pub target_pos: Vec3,
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 pub struct CardIconText;
 
-#[derive(Component)]
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
 pub struct CardNameText;
 
 // #region agent log

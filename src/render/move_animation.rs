@@ -8,7 +8,8 @@ use crate::spatial_index::EntityId;
 
 const ARRIVED_THRESHOLD: f32 = 0.1;
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
+#[reflect(Component)]
 pub struct MoveAnimating {
     pub lerp_speed: f32,
 }
