@@ -4,7 +4,7 @@ use bevy::prelude::*;
 
 use crate::coords::card_world_pos;
 use crate::grid_render::SimWorld;
-use crate::panel_ui::UiFont;
+use crate::game_ui_panel::{spawn_text2d, UiFont};
 use crate::sim_clock::SimClock;
 use crate::sim_events::WorldFxQueue;
 use crate::ui_interaction::{DragState, GhostPlaceMode, SelectionState};
@@ -84,7 +84,7 @@ pub fn sync_world_fx(
     mut commands: Commands,
     mut fx: Query<(Entity, &mut FloatTextFx, &mut Transform)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (entity, mut ttl, mut transform) in &mut fx {
         ttl.ttl -= dt;
         transform.translation.y -= 20.0 * dt;
@@ -98,19 +98,14 @@ pub fn sync_world_fx(
         commands.entity(root.0).with_children(|world| {
             world.spawn((
                 FloatTextFx { ttl: 1.2 },
-                Text2dBundle {
-                    text: Text::from_section(
-                        msg.text,
-                        TextStyle {
-                            font: font.0.clone(),
-                            font_size: 14.0,
-                            color: Color::srgba(0.9, 0.2, 0.15, 0.95),
-                        },
-                    ),
-                    transform: Transform::from_translation(pos + Vec3::new(0.0, 10.0, 30.0))
+                spawn_text2d(
+                    msg.text,
+                    &font,
+                    14.0,
+                    Color::srgba(0.9, 0.2, 0.15, 0.95),
+                    Transform::from_translation(pos + Vec3::new(0.0, 10.0, 30.0))
                         .with_scale(Vec3::new(1.0, -1.0, 1.0)),
-                    ..default()
-                },
+                ),
             ));
         });
     }

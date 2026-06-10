@@ -1,6 +1,7 @@
 //! Application plugins — sim/render/input/ui separation.
 
 use bevy::prelude::*;
+use bevy::remote::{http::RemoteHttpPlugin, RemotePlugin};
 use bevy::render::texture::ImagePlugin;
 use bevy::window::WindowResizeConstraints;
 use bevy_egui::{EguiPlugin, EguiSet};
@@ -54,6 +55,7 @@ impl Plugin for AppPlugin {
                 }),
         )
         .add_plugins(EguiPlugin)
+        .add_plugins((RemotePlugin::default(), RemoteHttpPlugin::default()))
         .add_plugins((
             SimPlugin,
             PlayerPlugin,

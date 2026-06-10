@@ -6,7 +6,7 @@ use crate::card_def::CardDef;
 use crate::card_style::card_style;
 use crate::coords::card_world_pos;
 use crate::grid_render::SimWorld;
-use crate::panel_ui::UiFont;
+use crate::game_ui_panel::{spawn_text2d, UiFont};
 use crate::visual_config::{CARD_BORDER_PAD, CARD_SIZE, STACK_OFFSET_Y};
 use crate::ui_interaction::{DragState, GhostPlaceMode};
 use crate::world_state::Entity as SimEntity;
@@ -79,9 +79,9 @@ pub fn sync_card_visuals(
     ghost: Res<GhostPlaceMode>,
     world_root: Res<WorldRootEntity>,
     mut roots: Query<(Entity, &mut CardVisual, &mut Transform, &Children)>,
-    mut card_texts: ParamSet<(
-        Query<&mut Text, With<CardIconText>>,
-        Query<&mut Text, With<CardNameText>>,
+    mut card_fonts: ParamSet<(
+        Query<&mut TextFont, With<CardIconText>>,
+        Query<&mut TextFont, With<CardNameText>>,
     )>,
 ) {
     let stacks = stack_indices(&sim.0);
@@ -130,15 +130,11 @@ pub fn sync_card_visuals(
                 }
                 transform.translation = cv.visual_pos;
                 for child in children.iter() {
-                    if let Ok(mut text) = card_texts.p0().get_mut(*child) {
-                        if let Some(section) = text.sections.get_mut(0) {
-                            section.style.font_size = icon_font;
-                        }
+                    if let Ok(mut tf) = card_fonts.p0().get_mut(*child) {
+                        tf.font_size = icon_font;
                     }
-                    if let Ok(mut text) = card_texts.p1().get_mut(*child) {
-                        if let Some(section) = text.sections.get_mut(0) {
-                            section.style.font_size = name_font;
-                        }
+                    if let Ok(mut tf) = card_fonts.p1().get_mut(*child) {
+                        tf.font_size = name_font;
                     }
                 }
             }
@@ -190,7 +186,7 @@ pub fn slide_cards(
     ghost: Res<GhostPlaceMode>,
     mut cards: Query<(&mut Transform, &mut CardVisual, Option<&crate::render::move_animation::MoveAnimating>)>,
 ) {
-    let dt = time.delta_seconds();
+    let dt = time.delta_secs();
     for (mut transform, mut cv, animating) in &mut cards {
         if entity_dragged(cv.entity_id, &drag, &ghost) {
             continue;
@@ -266,35 +262,25 @@ fn spawn_card_visual(
                     ..default()
                 });
                 parent.spawn((
-                    Text2dBundle {
-                        text: Text::from_section(
-                            icon,
-                            TextStyle {
-                                font: font.0.clone(),
-                                font_size: icon_font,
-                                color: style.text,
-                            },
-                        ),
-                        transform: Transform::from_xyz(0.0, icon_y, 0.2)
+                    spawn_text2d(
+                        icon,
+                        font,
+                        icon_font,
+                        style.text,
+                        Transform::from_xyz(0.0, icon_y, 0.2)
                             .with_scale(Vec3::new(1.0, -1.0, 1.0)),
-                        ..default()
-                    },
+                    ),
                     CardIconText,
                 ));
                 parent.spawn((
-                    Text2dBundle {
-                        text: Text::from_section(
-                            name,
-                            TextStyle {
-                                font: font.0.clone(),
-                                font_size: name_font,
-                                color: style.text,
-                            },
-                        ),
-                        transform: Transform::from_xyz(0.0, name_y, 0.2)
+                    spawn_text2d(
+                        name,
+                        font,
+                        name_font,
+                        style.text,
+                        Transform::from_xyz(0.0, name_y, 0.2)
                             .with_scale(Vec3::new(1.0, -1.0, 1.0)),
-                        ..default()
-                    },
+                    ),
                     CardNameText,
                 ));
             });

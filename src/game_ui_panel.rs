@@ -31,6 +31,26 @@ const SPEED_ACTIVE: egui::Color32 = egui::Color32::from_rgb(107, 199, 92);
 #[derive(Resource, Clone)]
 pub struct UiFont(pub Handle<Font>);
 
+/// Spawn a world-space label (`Text2d` + font/color + transform).
+pub fn spawn_text2d(
+    content: impl Into<String>,
+    font: &UiFont,
+    font_size: f32,
+    color: Color,
+    transform: Transform,
+) -> (Text2d, TextFont, TextColor, Transform) {
+    (
+        Text2d::new(content),
+        TextFont {
+            font: font.0.clone(),
+            font_size,
+            ..default()
+        },
+        TextColor(color),
+        transform,
+    )
+}
+
 pub fn setup_ui_font(mut commands: Commands, asset_server: Res<AssetServer>) {
     crate::assets_util::ensure_ui_font();
     let font = if font_available() {

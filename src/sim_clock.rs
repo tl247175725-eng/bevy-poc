@@ -140,7 +140,7 @@ pub fn advance_sim_ticks(
     playback: Res<crate::sim_events::MoveAnimPlayback>,
     mut move_anim_events: EventWriter<crate::sim_events::MoveAnimEvent>,
 ) {
-    let real_delta = time.delta_seconds();
+    let real_delta = time.delta_secs();
     clock.tick_time_weather(real_delta);
 
     if clock.paused || clock.speed <= 0.0 {

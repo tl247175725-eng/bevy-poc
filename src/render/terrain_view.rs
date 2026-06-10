@@ -22,7 +22,7 @@ pub fn sync_terrain_visuals(
     font: Res<UiFont>,
     mut revision: ResMut<TerrainVisualRevision>,
     mut cells: Query<(&TerrainCell, &mut Sprite, &Children, &Transform)>,
-    mut labels: Query<&mut Text, With<TerrainLabel>>,
+    mut labels: Query<(&mut Text2d, &mut TextFont, &mut TextColor), With<TerrainLabel>>,
 ) {
     let stress_key = clock.river_stress.round() as i32;
     let tick_key = sim.0.tick_count;
@@ -46,12 +46,10 @@ pub fn sync_terrain_visuals(
         let label_text =
             surface_label_with_stress(&sim.0, gx, gy, clock.river_stress).unwrap_or_default();
         for child in children.iter() {
-            if let Ok(mut text) = labels.get_mut(*child) {
-                if let Some(section) = text.sections.first_mut() {
-                    section.value = label_text.clone();
-                    section.style.font = font.0.clone();
-                    section.style.color = LABEL_MUTED;
-                }
+            if let Ok((mut text, mut text_font, mut text_color)) = labels.get_mut(*child) {
+                **text = label_text.clone();
+                text_font.font = font.0.clone();
+                text_color.0 = LABEL_MUTED;
             }
         }
     }

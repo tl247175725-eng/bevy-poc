@@ -6,7 +6,7 @@ use bevy::prelude::*;
 
 use crate::card_visual::CardVisual;
 use crate::grid_render::SimWorld;
-use crate::panel_ui::UiFont;
+use crate::game_ui_panel::{spawn_text2d, UiFont};
 use crate::spatial_index::EntityId;
 use crate::ui_interaction::DragState;
 use crate::visual_config::CARD_SIZE;
@@ -96,19 +96,14 @@ fn spawn_smash_badge(commands: &mut Commands, card: Entity, font: &UiFont, count
             .with_children(|badge| {
                 badge.spawn((
                     SmashBadgeText,
-                    Text2dBundle {
-                        text: Text::from_section(
-                            label,
-                            TextStyle {
-                                font: font.0.clone(),
-                                font_size: 11.0,
-                                color: Color::srgba(1.0, 1.0, 1.0, 0.95),
-                            },
-                        ),
-                        transform: Transform::from_xyz(0.0, 0.0, 0.1)
+                    spawn_text2d(
+                        label,
+                        font,
+                        11.0,
+                        Color::srgba(1.0, 1.0, 1.0, 0.95),
+                        Transform::from_xyz(0.0, 0.0, 0.1)
                             .with_scale(Vec3::new(1.0, -1.0, 1.0)),
-                        ..default()
-                    },
+                    ),
                 ));
             });
     });

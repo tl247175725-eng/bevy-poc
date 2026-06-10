@@ -122,7 +122,7 @@ pub fn setup_cameras(mut commands: Commands) {
             projection: OrthographicProjection {
                 near: -1000.0,
                 far: 1000.0,
-                ..OrthographicProjection::default()
+                ..OrthographicProjection::default_2d()
             },
             ..default()
         },

@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::coords::{card_world_pos, cell_center};
 use crate::initial_spawn::spawn_initial_world;
-use crate::panel_ui::UiFont;
+use crate::game_ui_panel::{spawn_text2d, UiFont};
 use crate::terrain::surface_label;
 use crate::terrain_colors::{cell_color, rgba_to_f32};
 use crate::visual_config::{CELL_SIZE, SELECTION_RING, SELECTION_RING_SIZE, SELECTION_RING_WIDTH};
@@ -109,19 +109,14 @@ fn spawn_terrain_cell(
             if let Some(text) = surface_label(world, x, y) {
                 cell.spawn((
                     TerrainLabel,
-                    Text2dBundle {
-                        text: Text::from_section(
-                            text,
-                            TextStyle {
-                                font: font.0.clone(),
-                                font_size: 11.0,
-                                color: LABEL_MUTED,
-                            },
-                        ),
-                        transform: Transform::from_xyz(0.0, hw - 12.0, 0.1)
+                    spawn_text2d(
+                        text,
+                        font,
+                        11.0,
+                        LABEL_MUTED,
+                        Transform::from_xyz(0.0, hw - 12.0, 0.1)
                             .with_scale(Vec3::new(1.0, -1.0, 1.0)),
-                        ..default()
-                    },
+                    ),
                 ));
             }
         });
