@@ -246,7 +246,7 @@
         type_name: "landBug",
         display_name: "陆虫",
         icon: "陆",
-        tags: ["tiny", "volant", "smallPrey", "scavenger", "sprint:fast"],
+        tags: ["tiny", "volant", "smallPrey", "scavenger", "sprint:fast", "corpse_type:none"],
         color: (138, 138, 72, 255),
         hp: 1,
         is_rooted: false,

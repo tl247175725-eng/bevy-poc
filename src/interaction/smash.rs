@@ -226,6 +226,18 @@ pub fn finalize_prey_kill(
     world.remove_entity(prey_id);
 
     let corpse_type = corpse_type_for(world, &prey_type);
+    if corpse_type == "none" || !world.card_defs.contains_key(&corpse_type) {
+        if let Some(kid) = killer_id {
+            crate::sim_observer::on_kill(world, killer_type, &prey_type, px, py);
+            if let Some(kdef) = world.card_defs.get(killer_type) {
+                if let Some(hunter) = world.entities.get_mut(&kid) {
+                    mark_ecology_fed(hunter, kdef);
+                }
+            }
+        }
+        return;
+    }
+
     let old_corpses: Vec<EntityId> = world
         .entities_at(px, py)
         .into_iter()

@@ -257,6 +257,18 @@ fn m2_22_fish_eats_water_bug() {
 }
 
 #[test]
+fn m2_22b_landbug_kill_no_corpse_panic() {
+    let mut w = tw();
+    let bug = w.spawn("landBug", 8, 8);
+    let wolf = w.spawn("wolf", 8, 8);
+    let wolf_def = w.card_defs.get("wolf").unwrap().clone();
+    let outcome = bevy_poc::apply_hunt_smash(&mut w, wolf, bug, &wolf_def);
+    assert_eq!(outcome, bevy_poc::SmashOutcome::Killed);
+    assert!(!w.entities.contains_key(&bug));
+    assert_eq!(w.count_type("landBugCorpse"), 0);
+}
+
+#[test]
 fn m2_23_shellfish_fed_on_algae() {
     let mut w = tw();
     w.mark_pool(12, 12);
