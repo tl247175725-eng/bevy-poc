@@ -1,21 +1,29 @@
 //! Per-tick uniform entity field updates — single scan instead of scattered passes.
 
+use std::collections::HashSet;
+
 use crate::ecology_log::eco_log;
 use crate::game_constants::{
     CORPSE_DECAY_SECONDS, PLAYER_CORPSE_DECAY, WOLF_CORPSE_DECAY,
 };
-use crate::world_rules::is_being;
 use crate::world_state::WorldState;
 
 /// Cooldowns, age, and corpse decay advance — one `entities` scan per tick.
 pub fn batch_uniform_entity_updates(world: &mut WorldState, delta: f32) {
-    let land_bugs_active = world.count_type("landBug") > 0;
-    let corpses: Vec<_> = world
+    let has_corpses = world
         .entities
         .values()
-        .filter(|e| e.is_corpse || e.type_name.ends_with("Corpse"))
-        .map(|e| (e.id, e.x, e.y))
-        .collect();
+        .any(|e| e.is_corpse || e.type_name.ends_with("Corpse"));
+    let land_bug_cells: HashSet<(u8, u8)> = if has_corpses && world.count_type("landBug") > 0 {
+        world
+            .entities
+            .values()
+            .filter(|e| e.type_name == "landBug")
+            .map(|e| (e.x, e.y))
+            .collect()
+    } else {
+        HashSet::new()
+    };
 
     for entity in world.entities.values_mut() {
         entity.consumed = false;
@@ -27,28 +35,21 @@ pub fn batch_uniform_entity_updates(world: &mut WorldState, delta: f32) {
             entity.harvest_cooldown = (entity.harvest_cooldown - delta).max(0.0);
         }
 
-        if !entity.is_corpse {
-            if let Some(def) = world.card_defs.get(&entity.type_name) {
-                if is_being(def) {
-                    entity.age += delta;
-                }
-            }
-        }
-    }
-
-    for (id, x, y) in corpses {
-        let bonus = corpse_decay_bonus(land_bugs_active, world, x, y);
-        if let Some(entity) = world.entities.get_mut(&id) {
+        if has_corpses && (entity.is_corpse || entity.type_name.ends_with("Corpse")) {
+            let bonus = if land_bug_cells.contains(&(entity.x, entity.y)) {
+                2.0
+            } else {
+                1.0
+            };
             entity.decay_timer += delta * bonus;
         }
-    }
-}
 
-fn corpse_decay_bonus(land_bugs_active: bool, world: &WorldState, x: u8, y: u8) -> f32 {
-    if land_bugs_active && world.has_tag_at(x, y, "landBug") {
-        2.0
-    } else {
-        1.0
+        if !entity.is_corpse
+            && !entity.profile.incorporeal
+            && !entity.profile.drives.is_empty()
+        {
+            entity.age += delta;
+        }
     }
 }
 
@@ -60,6 +61,9 @@ pub fn flush_corpse_decay(world: &mut WorldState) {
         .filter(|e| e.is_corpse || e.type_name.ends_with("Corpse"))
         .map(|e| (e.id, e.type_name.clone(), e.x, e.y, e.decay_timer))
         .collect();
+    if corpses.is_empty() {
+        return;
+    }
 
     for (id, type_name, x, y, decay) in corpses {
         let max_decay = match type_name.as_str() {
