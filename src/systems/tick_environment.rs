@@ -1,8 +1,8 @@
 use crate::ecology_log::{card_display_name, eco_log};
 use crate::game_constants::{
-    BUG_CARCASS_ATTRACT_RANGE, CORPSE_DECAY_SECONDS, HUMUS_DURATION_SECONDS,
-    HUMUS_MAX_LAYERS, LAND_BUG_POP_CAP, LIVING_GRASS_CAP, PERISHABLE_TICKS, PLAYER_CORPSE_DECAY,
-    RIPARIAN_GRASS_INTERVAL, WILDYAM_POP_CAP, WOLF_CORPSE_DECAY, YAM_SPREAD_INTERVAL,
+    BUG_CARCASS_ATTRACT_RANGE, HUMUS_DURATION_SECONDS, LAND_BUG_POP_CAP,
+    LIVING_GRASS_CAP, PERISHABLE_TICKS, RIPARIAN_GRASS_INTERVAL, WILDYAM_POP_CAP,
+    YAM_SPREAD_INTERVAL,
 };
 use crate::systems::movement::find_safe_land_near;
 use crate::terrain::{base_terrain_at, terrain_at};
@@ -17,7 +17,6 @@ pub fn tick_environment(world: &mut WorldState, delta: f32) {
     tick_fire_on_water(world);
     tick_riparian_grass(world, delta);
     tick_perishable(world, delta);
-    tick_corpses(world, delta);
     tick_land_bugs(world, delta);
     tick_underground_spread(world, delta);
     crate::systems::tick_containment::tick_contained_producers(world, delta);
@@ -138,52 +137,6 @@ fn tick_perishable(world: &mut WorldState, delta: f32) {
             }
         }
     }
-}
-
-fn tick_corpses(world: &mut WorldState, delta: f32) {
-    let corpses: Vec<_> = world
-        .entities
-        .values()
-        .filter(|e| e.is_corpse || e.type_name.ends_with("Corpse"))
-        .map(|e| (e.id, e.type_name.clone(), e.x, e.y, e.decay_timer))
-        .collect();
-    for (id, type_name, x, y, mut decay) in corpses {
-        let land_bug_bonus = if world.count_type("landBug") > 0
-            && world.has_tag_at(x, y, "landBug")
-        {
-            2.0
-        } else {
-            1.0
-        };
-        let max_decay = match type_name.as_str() {
-            "wolfCorpse" => WOLF_CORPSE_DECAY,
-            "playerCorpse" => PLAYER_CORPSE_DECAY,
-            _ => CORPSE_DECAY_SECONDS,
-        };
-        decay += delta * land_bug_bonus;
-        if decay >= max_decay {
-            world.remove_entity(id);
-            let had_layers = world.humus_layers.get(&(x, y)).copied().unwrap_or(0);
-            try_spawn_humus(world, x, y);
-            if world.humus_layers.get(&(x, y)).copied().unwrap_or(0) > had_layers {
-                eco_log(world, "尸体腐解 → 腐殖土（humus）回到土壤循环");
-            } else {
-                eco_log(world, "尸体腐解 → 该格腐殖层已满");
-            }
-        } else if let Some(e) = world.entities.get_mut(&id) {
-            e.decay_timer = decay;
-        }
-    }
-}
-
-fn try_spawn_humus(world: &mut WorldState, x: u8, y: u8) {
-    let layers = world.humus_layers.get(&(x, y)).copied().unwrap_or(0);
-    if layers >= HUMUS_MAX_LAYERS {
-        return;
-    }
-    world.humus_layers.insert((x, y), layers + 1);
-    world.humus_age.insert((x, y), 0.0);
-    world.spawn("humus", x, y);
 }
 
 fn tick_land_bugs(world: &mut WorldState, delta: f32) {

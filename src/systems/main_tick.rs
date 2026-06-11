@@ -1,5 +1,6 @@
 use crate::event_registry::EventRegistry;
 use crate::spatial_index::EntityId;
+use crate::systems::batch_uniform::{batch_uniform_entity_updates, flush_corpse_decay};
 use crate::systems::tick_reactive::{flush_reactive_tick, mark_baseline_reactive_tick, tick_reactive};
 use crate::world_state::WorldState;
 
@@ -10,15 +11,8 @@ pub fn main_tick(world: &mut WorldState, delta: f32) {
 
     crate::bulletin::maybe_update(world);
 
-    for entity in world.entities.values_mut() {
-        entity.consumed = false;
-        if entity.hunt_cooldown > 0.0 {
-            entity.hunt_cooldown = (entity.hunt_cooldown - delta).max(0.0);
-        }
-        if entity.harvest_cooldown > 0.0 {
-            entity.harvest_cooldown = (entity.harvest_cooldown - delta).max(0.0);
-        }
-    }
+    batch_uniform_entity_updates(world, delta);
+    flush_corpse_decay(world);
 
     mark_baseline_reactive_tick(world);
 
