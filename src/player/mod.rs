@@ -25,7 +25,10 @@ pub use needs_manager::{
     ensure_player_mind, player_mind, player_mind_mut, tick_player, tick_player_world,
 };
 pub use plugin::{display_player_mind, find_player_id, tick_player_in_sim, PlayerBrainResource, PlayerPlugin};
-pub use shelter_tasks::{build_hut_affordable, craft_hut_relation, materials_near_player};
+pub use shelter_tasks::{
+    build_hut_affordable, craft_hut_relation, execute_build_hut, has_hut_materials,
+    materials_near_player,
+};
 pub use state::{
     desire_label, task_on_cooldown, AffordanceEntry, PlayerMind, PlayerTask, SdtNeeds, TaskPhase,
 };

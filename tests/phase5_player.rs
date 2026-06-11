@@ -4,10 +4,11 @@ use bevy_poc::game_constants::{PLAYER_HUNGER_NEED, PLAYER_HUNGER_SEEK, PLAYER_WO
 use bevy_poc::interaction::InteractionState;
 use bevy_poc::player::{
     build_hut_affordable, compute_affordances, craft_axe_relation, craft_hut_relation,
-    craft_spear_relation, ensure_player_mind, fsm_phase_sequence, generate_desires, has_tag,
-    knap_stones_to_shard, materials_near_player, plan_craft_knife, priority_rank, select_intention,
-    should_forage, should_not_forage_when_full, tick_player_world,
-    threat_beats_survival_beats_forage, tick_brain, PlayerMind, TaskPhase,
+    craft_spear_relation, ensure_player_mind, execute_build_hut, fsm_phase_sequence,
+    generate_desires, has_tag, knap_stones_to_shard, materials_near_player, plan_craft_knife,
+    priority_rank, select_intention, should_forage, should_not_forage_when_full,
+    tick_player_world, threat_beats_survival_beats_forage, tick_brain, AffordanceEntry,
+    PlayerMind, TaskPhase,
 };
 use bevy_poc::sim_events::{sync_sim_stats, SimEventQueue, SimStats};
 use bevy_poc::world_state::EcologyState;
@@ -299,6 +300,29 @@ fn p5_18_wolf_nearby_player_flees_and_breakdown() {
         stats.state_breakdown.iter().any(|s| s == "player:Fleeing×1"),
         "BRP state_breakdown 应包含 player:Fleeing"
     );
+}
+
+#[test]
+fn p5_19_headless_player_moves_toward_hut_materials() {
+    let mut w = empty_world();
+    let p = w.spawn("player", 10, 7);
+    w.player_minds.insert(p, PlayerMind::new_spawn());
+    w.spawn("twig", 14, 7);
+    w.spawn("grass", 14, 8);
+    let start_x = 10u8;
+    ensure_player_mind(&mut w.player_minds, p);
+    let mut mind = w.player_minds.remove(&p).unwrap();
+    mind.affordances.insert(
+        "build_hut".into(),
+        AffordanceEntry {
+            key: "build_hut".into(),
+            need: "relatedness".into(),
+            score: 9,
+        },
+    );
+    assert!(execute_build_hut(&mut w, p, &mut mind), "headless 搭建应启动");
+    w.player_minds.insert(p, mind);
+    assert_ne!(w.entities[&p].x, start_x, "headless 玩家应向搭建材料移动");
 }
 
 #[test]

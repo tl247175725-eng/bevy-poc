@@ -512,13 +512,14 @@ impl WorldState {
     }
 
     pub fn release_cover_host(&mut self, cover_id: EntityId) {
-        for entity in self.entities.values_mut() {
-            if entity.host_cover_id == Some(cover_id) {
-                entity.in_cover = false;
-                entity.hidden_in_grass = false;
-                entity.host_cover_id = None;
-                entity.wake();
-            }
+        let hidden: Vec<EntityId> = self
+            .entities
+            .values()
+            .filter(|e| e.host_cover_id == Some(cover_id))
+            .map(|e| e.id)
+            .collect();
+        for id in hidden {
+            crate::systems::tick_reactive::eject_from_cover(self, id);
         }
     }
 

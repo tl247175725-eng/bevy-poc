@@ -74,7 +74,7 @@ const AFFORDANCE_TABLE: &[AffordanceRule] = &[
         require_caps: &[],
         require_tags: &["tool_dependent"],
         require_not_tags: &[],
-        require_world: &["no_shelter_exists"],
+        require_world: &["no_shelter_exists", "hut_materials_nearby"],
         need: "relatedness",
         score: 9,
     },

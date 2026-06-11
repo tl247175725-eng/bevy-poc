@@ -37,6 +37,7 @@ pub fn check(world: &WorldState, player_id: EntityId, mind: &PlayerMind, conditi
         "no_spear_owned" => !owns_tool_type(mind, "spear"),
         "berry_bush_nearby" => berry_available_near(world, player),
         "no_shelter_exists" => !super::brain_tags::has_tag(mind, "has_shelter"),
+        "hut_materials_nearby" => hut_materials_near(world, player),
         _ => false,
     }
 }
@@ -100,6 +101,14 @@ fn count_cards_with_tag(
     }
     let _ = mind;
     n
+}
+
+fn hut_materials_near(world: &WorldState, player: &Entity) -> bool {
+    let has_twig = !sorted_by_distance(world, player.x, player.y, "twig").is_empty()
+        || !sorted_by_distance(world, player.x, player.y, "wood").is_empty();
+    let has_grass = !sorted_by_distance(world, player.x, player.y, "grass").is_empty()
+        || !sorted_by_distance(world, player.x, player.y, "dryGrass").is_empty();
+    has_twig && has_grass
 }
 
 fn berry_available_near(world: &WorldState, player: &Entity) -> bool {

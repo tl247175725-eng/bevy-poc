@@ -10,9 +10,9 @@ use crate::game_constants::{
 use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
-    card_has_capability, card_has_tag, chebyshev_distance, hunt_target_score,
-    is_hunt_target_for_pack, mark_ecology_fed, parse_max_starve, HUNT_RANGE, HUNT_SCORE_INF,
-    GRID_HEIGHT, GRID_WIDTH,
+    card_has_capability, card_has_tag, chebyshev_distance, ecology_was_fed_today,
+    hunt_target_score, is_hunt_target_for_pack, mark_ecology_fed, parse_max_starve, HUNT_RANGE,
+    HUNT_SCORE_INF, GRID_HEIGHT, GRID_WIDTH,
 };
 use crate::world_state::{EcologyState, WorldState};
 
@@ -159,14 +159,24 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
             || !world
                 .query_near_filtered(x, y, "mesopredator", 5, id)
                 .is_empty();
-        if let Some(e) = world.entities.get_mut(&id) {
-            e.ecology_state = if threat_near {
-                EcologyState::Fleeing
-            } else {
-                EcologyState::Idle
-            };
+        let hungry = world.entities.get(&id).is_some_and(|e| {
+            world
+                .card_defs
+                .get(&e.type_name)
+                .is_some_and(|d| !ecology_was_fed_today(e, d) || e.starve_days > 0)
+        });
+        if !threat_near && hungry {
+            exit_cover(world, id);
+        } else {
+            if let Some(e) = world.entities.get_mut(&id) {
+                e.ecology_state = if threat_near {
+                    EcologyState::Fleeing
+                } else {
+                    EcologyState::Idle
+                };
+            }
+            return;
         }
-        return;
     }
 
     if profile.native_medium == "water" && !world.pool_cells.contains(&(x, y)) {
@@ -904,18 +914,75 @@ fn try_scavenge(world: &mut WorldState, id: EntityId, x: u8, y: u8, def: &CardDe
     true
 }
 
+/// Leave cover and reclaim the grid cell (same as in_tree vacate/occupy pattern).
+pub fn exit_cover(world: &mut WorldState, id: EntityId) {
+    let Some(entity) = world.entities.get(&id).cloned() else {
+        return;
+    };
+    if !entity.in_cover {
+        return;
+    }
+    let (x, y) = (entity.x, entity.y);
+    if let Some(e) = world.entities.get_mut(&id) {
+        e.in_cover = false;
+        e.hidden_in_grass = false;
+        e.host_cover_id = None;
+        e.wake();
+    }
+    if let Some(e) = world.entities.get(&id) {
+        world.cell_composition.occupy_entity(x, y, e);
+    }
+}
+
+/// Cover destroyed or forced out — exit and step to a nearby open cell if needed.
+pub fn eject_from_cover(world: &mut WorldState, id: EntityId) {
+    let Some(entity) = world.entities.get(&id).cloned() else {
+        return;
+    };
+    if !entity.in_cover {
+        return;
+    }
+    let (x, y) = (entity.x, entity.y);
+    if let Some(e) = world.entities.get_mut(&id) {
+        e.in_cover = false;
+        e.hidden_in_grass = false;
+        e.host_cover_id = None;
+        e.wake();
+    }
+    let profile = world.entities.get(&id).map(|e| e.profile.clone());
+    let Some(profile) = profile else {
+        return;
+    };
+    if world.cell_composition.can_occupy(x, y, &profile) {
+        if let Some(e) = world.entities.get(&id) {
+            world.cell_composition.occupy_entity(x, y, e);
+        }
+        return;
+    }
+    if let Some((nx, ny)) = crate::systems::movement::find_safe_land_near(world, x, y) {
+        let _ = world.move_entity(id, nx, ny);
+    } else if let Some(e) = world.entities.get(&id) {
+        world.cell_composition.occupy_entity(x, y, e);
+    }
+}
+
 fn try_hide_in_cover_at(world: &mut WorldState, id: EntityId, hide_tag: &str) {
     if hide_tag.is_empty() {
         return;
     }
-    let Some((x, y)) = world.entities.get(&id).map(|e| (e.x, e.y)) else {
+    let Some(entity) = world.entities.get(&id).cloned() else {
         return;
     };
+    if entity.in_cover {
+        return;
+    }
+    let (x, y) = (entity.x, entity.y);
     let Some(cover_id) =
         crate::systems::grass_regen::cover_at_cell(world, x, y, hide_tag)
     else {
         return;
     };
+    world.cell_composition.vacate_entity(x, y, &entity);
     if let Some(e) = world.entities.get_mut(&id) {
         e.in_cover = true;
         e.hidden_in_grass = hide_tag == "grass";
@@ -932,6 +999,39 @@ fn try_auto_hide_after_flee(world: &mut WorldState, id: EntityId, profile: &Enti
                 return;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod hide_tests {
+    use super::*;
+    use crate::world_state::empty_world;
+
+    #[test]
+    fn hide_in_cover_vacates_cell_slot() {
+        let mut world = empty_world();
+        world.spawn("grass", 8, 8);
+        let rabbit = world.spawn("rabbit", 8, 8);
+        let before = world.cell_composition.slot(8, 8).living_count;
+        world.spawn("wolf", 9, 8);
+        tick_reactive(&mut world, rabbit, 1.0);
+        assert!(world.entities[&rabbit].in_cover);
+        assert_eq!(world.cell_composition.slot(8, 8).living_count, before - 1);
+    }
+
+    #[test]
+    fn exit_cover_reoccupies_cell() {
+        let mut world = empty_world();
+        world.spawn("grass", 8, 8);
+        let rabbit = world.spawn("rabbit", 8, 8);
+        try_hide_in_cover_at(&mut world, rabbit, "grass");
+        let hidden = world.cell_composition.slot(8, 8).living_count;
+        exit_cover(&mut world, rabbit);
+        assert!(!world.entities[&rabbit].in_cover);
+        assert_eq!(
+            world.cell_composition.slot(8, 8).living_count,
+            hidden + 1
+        );
     }
 }
 
