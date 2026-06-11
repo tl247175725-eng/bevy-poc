@@ -44,6 +44,8 @@ pub struct Entity {
     pub consumed: bool,
     pub sex: Option<String>,
     pub age: f32,
+    /// Max lifespan in game-days (`max_age:N` tag); 0 = no natural aging.
+    pub max_age: f32,
     pub fed_today: bool,
     pub starve_days: i32,
     pub in_den: bool,
@@ -298,6 +300,7 @@ impl WorldState {
             consumed: false,
             sex,
             age: 0.0,
+            max_age: crate::world_rules::parse_max_age(&def),
             fed_today: false,
             starve_days: 0,
             in_den: false,
@@ -562,8 +565,9 @@ impl WorldState {
         let mut idx = 0;
         for y in 0..GRID_HEIGHT {
             for x in 0..GRID_WIDTH {
-                self.cell_composition.grid[y as usize][x as usize].medium =
-                    mediums[idx].clone();
+                let slot = &mut self.cell_composition.grid[y as usize][x as usize];
+                slot.medium = mediums[idx].clone();
+                slot.tags = crate::terrain_ecology::soil_tags_for_cell(&self.ecology, x, y);
                 idx += 1;
             }
         }

@@ -4,12 +4,20 @@ use crate::game_constants::{
     LIVING_GRASS_CAP, PERISHABLE_TICKS, RIPARIAN_GRASS_INTERVAL, WILDYAM_POP_CAP,
     YAM_SPREAD_INTERVAL,
 };
+use crate::interaction::finalize_prey_kill;
+use crate::sim_clock::{season_from_tick, Season};
+use crate::spatial_index::EntityId;
 use crate::systems::movement::find_safe_land_near;
 use crate::terrain::{base_terrain_at, terrain_at};
-use crate::world_rules::{count_living_grasses, count_living_grasses_near_xy, is_being, is_camp_fire_anchor, GRID_HEIGHT, GRID_WIDTH};
+use crate::world_rules::{
+    card_has_tag, count_living_grasses, count_living_grasses_near_xy, is_being,
+    is_camp_fire_anchor, GRID_HEIGHT, GRID_WIDTH,
+};
 use crate::world_state::WorldState;
 
 pub fn tick_environment(world: &mut WorldState, delta: f32) {
+    tick_season_effects(world);
+    tick_entity_aging(world);
     crate::systems::grass_regen::tick_grass_regen(world);
     crate::systems::grass_regen::tick_bush_regen(world);
     crate::systems::tick_starvation::tick_starvation(world);
@@ -81,13 +89,88 @@ fn tick_fire_on_water(world: &mut WorldState) {
     }
 }
 
+fn tick_season_effects(world: &mut WorldState) {
+    let season = season_from_tick(world.tick_count);
+    if season.current == Season::Winter {
+        let frozen: Vec<EntityId> = world
+            .entities
+            .values()
+            .filter(|e| !e.is_corpse)
+            .filter(|e| world.ecology.is_pool_cell(e.x, e.y) || e.in_pool)
+            .filter(|e| {
+                world
+                    .card_defs
+                    .get(&e.type_name)
+                    .is_some_and(|d| card_has_tag(d, "aquatic") || e.in_pool)
+            })
+            .map(|e| e.id)
+            .collect();
+        for id in frozen {
+            if let Some(name) = world
+                .entities
+                .get(&id)
+                .map(|e| card_display_name(world, &e.type_name))
+            {
+                eco_log(world, format!("{name} 困于冰封水池 → 自然死亡"));
+            }
+            finalize_prey_kill(world, id, None, "natural");
+        }
+    }
+}
+
+fn tick_entity_aging(world: &mut WorldState) {
+    let ids: Vec<EntityId> = world
+        .entities
+        .values()
+        .filter(|e| !e.is_corpse && e.max_age > 0.0)
+        .map(|e| e.id)
+        .collect();
+    for id in ids {
+        let Some((age, max_age, type_name)) = world.entities.get(&id).map(|e| {
+            (e.age, e.max_age, e.type_name.clone())
+        }) else {
+            continue;
+        };
+        let Some(def) = world.card_defs.get(&type_name).cloned() else {
+            continue;
+        };
+        if age > max_age * 0.7 {
+            if card_has_tag(&def, "trait:frail") {
+                if let Some(e) = world.entities.get_mut(&id) {
+                    e.profile.move_speed =
+                        crate::axioms::profile::parse_move_speed(&def.tags) * 0.7;
+                    e.profile.sprint_speed =
+                        crate::axioms::profile::parse_sprint_speed(&def.tags) * 0.7;
+                }
+            }
+        }
+        if age > max_age {
+            eco_log(
+                world,
+                format!(
+                    "{} 寿终正寝（{} 游戏日）",
+                    card_display_name(world, &type_name),
+                    age.round() as i32
+                ),
+            );
+            finalize_prey_kill(world, id, None, "natural");
+        }
+    }
+}
+
 /// Godot `_update_riparian_grass` — bank/wetland cells sprout grass periodically.
 fn tick_riparian_grass(world: &mut WorldState, delta: f32) {
     if !world.ecology.ready {
         return;
     }
+    let season = season_from_tick(world.tick_count);
+    let interval = if season.current == Season::Summer {
+        RIPARIAN_GRASS_INTERVAL * 0.5
+    } else {
+        RIPARIAN_GRASS_INTERVAL
+    };
     world.riparian_timer += delta;
-    if world.riparian_timer < RIPARIAN_GRASS_INTERVAL {
+    if world.riparian_timer < interval {
         return;
     }
     world.riparian_timer = 0.0;
@@ -218,5 +301,53 @@ fn tick_underground_spread(world: &mut WorldState, delta: f32) {
                 world.remove_entity(id);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod environment_tests {
+    use super::*;
+    use crate::game_constants::TICKS_PER_DAY;
+    use crate::world_state::empty_world;
+
+    #[test]
+    fn winter_freezes_pool_aquatic() {
+        let mut world = empty_world();
+        world.ensure_map_ecology();
+        world.tick_count = 280 * TICKS_PER_DAY;
+        let (px, py) = world.ecology.pool_source;
+        let fish = world.spawn("fish", px, py);
+        tick_season_effects(&mut world);
+        assert!(!world.entities.contains_key(&fish));
+    }
+
+    #[test]
+    fn natural_death_when_age_exceeds_max() {
+        let mut world = empty_world();
+        let sheep = world.spawn("sheep", 5, 5);
+        world.entities.get_mut(&sheep).unwrap().age = 4000.0;
+        tick_entity_aging(&mut world);
+        assert!(!world.entities.contains_key(&sheep));
+    }
+
+    #[test]
+    fn map_ecology_assigns_distinct_soil_tags() {
+        let mut world = empty_world();
+        world.ensure_map_ecology();
+        let rich_cell = world
+            .ecology
+            .wetland_cells
+            .iter()
+            .copied()
+            .find(|&(x, y)| world.ecology.pool_manhattan_dist(x, y) == 6)
+            .expect("inner wetland rich soil");
+        let near = world
+            .cell_composition
+            .slot(rich_cell.0, rich_cell.1)
+            .tags
+            .clone();
+        let far = world.cell_composition.slot(5, 10).tags.clone();
+        assert!(near.iter().any(|t| t.starts_with("soil:")));
+        assert_ne!(near, far);
     }
 }

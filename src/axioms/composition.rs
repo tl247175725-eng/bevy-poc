@@ -1,6 +1,7 @@
 use crate::terrain::terrain_at;
 use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
 use crate::world_state::{Entity, WorldState};
+use smallvec::SmallVec;
 
 use super::laws::compose;
 use super::profile::{medium_for_cell, EntityProfile, Medium};
@@ -10,6 +11,7 @@ pub type MediumAlias = Medium;
 #[derive(Clone, Debug)]
 pub struct CellSlot {
     pub medium: Medium,
+    pub tags: SmallVec<[String; 6]>,
     pub living_count: u8,
     pub corpse_count: u8,
 }
@@ -27,6 +29,7 @@ pub struct CellComposition {
 fn empty_slot(medium: Medium) -> CellSlot {
     CellSlot {
         medium,
+        tags: SmallVec::new(),
         living_count: 0,
         corpse_count: 0,
     }

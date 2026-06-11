@@ -1,7 +1,7 @@
-# Current Handoff
+﻿# Current Handoff
 - file: AIMemory/handoff_environment-systems.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
 温度/季节扩展 SimClock。地块标签在 ensure_map_ecology 分配。衰老在 Entity 上。

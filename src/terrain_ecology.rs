@@ -4,6 +4,8 @@
 
 use std::collections::{HashMap, HashSet};
 
+use smallvec::SmallVec;
+
 use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
 
 pub const ELEV_SURFACE_TOP: i32 = 4;
@@ -150,6 +152,97 @@ impl MapEcology {
     }
 }
 
+fn dist_to_nearest_pool_cell(ecology: &MapEcology, x: u8, y: u8) -> i32 {
+    if ecology.is_pool_cell(x, y) {
+        return 0;
+    }
+    ecology
+        .pool_cells
+        .iter()
+        .map(|&(px, py)| (x as i32 - px as i32).abs() + (y as i32 - py as i32).abs())
+        .min()
+        .unwrap_or(999)
+}
+
+/// Soil / fertility tags from fixed map ecology — assigned in `ensure_map_ecology`.
+pub fn soil_tags_for_cell(ecology: &MapEcology, x: u8, y: u8) -> SmallVec<[String; 6]> {
+    let mut tags = SmallVec::new();
+    if x == 0 || y == 0 || x >= GRID_WIDTH - 1 || y >= GRID_HEIGHT - 1 {
+        tags.push("soil:rocky".into());
+        tags.push("fertility:none".into());
+        return tags;
+    }
+    if ecology.is_wetland_cell(x, y) {
+        let source_dist = ecology.pool_manhattan_dist(x, y);
+        if (6..=7).contains(&source_dist) {
+            tags.push("soil:rich".into());
+        } else {
+            tags.push("soil:deep".into());
+        }
+        tags.push("fertility:high".into());
+        return tags;
+    }
+    if ecology.is_pool_cell(x, y) {
+        return tags;
+    }
+    let pool_edge_dist = dist_to_nearest_pool_cell(ecology, x, y);
+    if (1..=2).contains(&pool_edge_dist) {
+        tags.push("soil:rich".into());
+        tags.push("fertility:high".into());
+        return tags;
+    }
+    if (3..=6).contains(&pool_edge_dist) {
+        tags.push("soil:wet".into());
+        tags.push("fertility:high".into());
+        return tags;
+    }
+    if is_forest_cell(ecology, x, y) {
+        tags.push("soil:loose".into());
+        tags.push("shaded".into());
+        return tags;
+    }
+    if is_mountain_edge(ecology, x, y) {
+        tags.push("soil:rocky".into());
+        tags.push("fertility:none".into());
+        return tags;
+    }
+    if pool_edge_dist >= 7 {
+        tags.push("soil:dry".into());
+        tags.push("fertility:low".into());
+    }
+    tags
+}
+
+fn is_forest_cell(ecology: &MapEcology, x: u8, y: u8) -> bool {
+    y < 8 && ecology.elevation_at(x, y) >= 2
+}
+
+fn is_mountain_edge(ecology: &MapEcology, x: u8, y: u8) -> bool {
+    if ecology.elevation_at(x, y) >= 3 {
+        return true;
+    }
+    for dy in -2i32..=2 {
+        for dx in -2i32..=2 {
+            if dx.abs() + dy.abs() > 2 {
+                continue;
+            }
+            let nx = x as i32 + dx;
+            let ny = y as i32 + dy;
+            if nx <= 0
+                || ny <= 0
+                || nx >= GRID_WIDTH as i32 - 1
+                || ny >= GRID_HEIGHT as i32 - 1
+            {
+                continue;
+            }
+            if ecology.elevation_at(nx as u8, ny as u8) >= 4 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn pool_elevation_for_dist(dist: i32) -> i32 {
     if dist <= 0 {
         ELEV_DARK_RIVER
@@ -207,6 +300,40 @@ mod tests {
         for (x, y) in outer {
             assert_eq!(eco.elevation_at(x, y), -1);
         }
+    }
+
+    #[test]
+    fn soil_tags_differ_near_pool_vs_far() {
+        let mut eco = MapEcology::default();
+        eco.ensure();
+        let (sx, sy) = eco.pool_source;
+        let inner_wetland = eco
+            .wetland_cells
+            .iter()
+            .copied()
+            .find(|&(x, y)| eco.pool_manhattan_dist(x, y) == 6)
+            .expect("inner wetland");
+        let near = soil_tags_for_cell(&eco, inner_wetland.0, inner_wetland.1);
+        assert!(near.iter().any(|t| t == "soil:rich"));
+        let far = soil_tags_for_cell(&eco, 5, 10);
+        assert!(
+            far.iter().any(|t| t == "soil:dry" || t == "soil:loose" || t == "soil:rocky"),
+            "far cell tags: {far:?}"
+        );
+    }
+
+    #[test]
+    fn wetland_cells_have_deep_soil() {
+        let mut eco = MapEcology::default();
+        eco.ensure();
+        let cell = eco
+            .wetland_cells
+            .iter()
+            .copied()
+            .next()
+            .expect("wetland");
+        let tags = soil_tags_for_cell(&eco, cell.0, cell.1);
+        assert!(tags.iter().any(|t| t == "soil:deep"));
     }
 
     #[test]

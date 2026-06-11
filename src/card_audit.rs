@@ -104,6 +104,11 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("bridge:")
         || tag.starts_with("bulletin:")
         || tag.starts_with("need:")
+        || tag.starts_with("max_age:")
+        || tag.starts_with("trait:")
+        || tag.starts_with("soil:")
+        || tag.starts_with("fertility:")
+        || tag == "shaded"
     {
         return Some("action");
     }

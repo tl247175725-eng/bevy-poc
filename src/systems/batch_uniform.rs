@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::ecology_log::eco_log;
 use crate::game_constants::{
-    CORPSE_DECAY_SECONDS, PLAYER_CORPSE_DECAY, WOLF_CORPSE_DECAY,
+    CORPSE_DECAY_SECONDS, PLAYER_CORPSE_DECAY, TICKS_PER_DAY, WOLF_CORPSE_DECAY,
 };
 use crate::world_state::WorldState;
 
@@ -44,11 +44,8 @@ pub fn batch_uniform_entity_updates(world: &mut WorldState, delta: f32) {
             entity.decay_timer += delta * bonus;
         }
 
-        if !entity.is_corpse
-            && !entity.profile.incorporeal
-            && !entity.profile.drives.is_empty()
-        {
-            entity.age += delta;
+        if !entity.is_corpse && entity.max_age > 0.0 {
+            entity.age += delta / TICKS_PER_DAY as f32;
         }
     }
 }

@@ -456,6 +456,14 @@ pub fn parse_max_starve(def: &CardDef) -> i32 {
         .unwrap_or(3)
 }
 
+pub fn parse_max_age(def: &CardDef) -> f32 {
+    def.tags
+        .iter()
+        .find_map(|t| t.strip_prefix("max_age:"))
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(0.0)
+}
+
 pub fn mark_ecology_fed(entity: &mut crate::world_state::Entity, def: &CardDef) {
     if ecology_uses_meat_quota(def) {
         entity.meat_fed_today += 1;
