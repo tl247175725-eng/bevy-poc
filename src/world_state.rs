@@ -1,6 +1,7 @@
 use crate::axioms::{
     AxiomEngine, CausalEvent, CausalStorage, CellComposition, Composition, Medium, Traversal,
 };
+use crate::bulletin::BulletinBoard;
 use crate::card_def::{card_defs_map, load_card_defs, CardDef};
 use crate::game_constants::TICK_SECONDS;
 use crate::player::PlayerMind;
@@ -124,6 +125,8 @@ pub struct WorldState {
     pub next_move_speed: Option<f32>,
     /// Last completed game-day index (`tick_count / TICKS_PER_DAY`).
     pub last_processed_day: u64,
+    /// Coarse global zone hints — refreshed every 50 ticks.
+    pub bulletin_board: BulletinBoard,
     next_id: u64,
 }
 
@@ -159,6 +162,7 @@ impl WorldState {
             medium_conductions: AxiomEngine::default_medium_conductions(),
             next_move_speed: None,
             last_processed_day: 0,
+            bulletin_board: BulletinBoard::default(),
             next_id: 1,
         }
     }

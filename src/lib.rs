@@ -37,6 +37,7 @@ pub mod visual_config;
 pub mod world_rules;
 pub mod world_state;
 pub mod bench;
+pub mod bulletin;
 pub mod smoke_test;
 pub mod world_view;
 

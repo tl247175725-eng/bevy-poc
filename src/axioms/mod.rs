@@ -67,6 +67,7 @@ impl AxiomEngine {
             flock_range: flock.range,
             flock_max: flock.max,
             flock_alert_range: flock.alert_range,
+            bulletin_channels: profile::parse_bulletin_channels(tags),
         }
     }
 

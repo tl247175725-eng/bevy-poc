@@ -1,6 +1,7 @@
 use crate::axioms::{
     AxiomEngine, DriveBehavior, DriveDef, EntityProfile, TransformAction,
 };
+use crate::bulletin::seek_target_channel;
 use crate::card_def::CardDef;
 use crate::ecology_log::eco_log;
 use crate::game_constants::{
@@ -219,6 +220,20 @@ fn active_drives(
                         range: drive_def.range,
                         hide_tag: String::new(),
                     });
+                } else if let Some((zx, zy)) = bulletin_seek_fallback(
+                    world,
+                    profile,
+                    x,
+                    y,
+                    &drive_def.target_tag,
+                ) {
+                    drives.push(ActiveDrive {
+                        behavior: DriveBehavior::Seek,
+                        target: Some((EntityId(0), zx, zy)),
+                        priority: drive_def.priority.saturating_sub(1).max(1),
+                        range: drive_def.range,
+                        hide_tag: String::new(),
+                    });
                 }
             }
             DriveBehavior::Flee => {
@@ -338,6 +353,21 @@ fn active_drives(
         }
     }
     drives
+}
+
+fn bulletin_seek_fallback(
+    world: &WorldState,
+    profile: &EntityProfile,
+    x: u8,
+    y: u8,
+    target_tag: &str,
+) -> Option<(u8, u8)> {
+    let channel = seek_target_channel(target_tag);
+    let (zx, zy) = world.bulletin_board.nearest_zone_center(profile, channel, x, y)?;
+    if chebyshev_distance(x, y, zx, zy) <= 1 {
+        return None;
+    }
+    Some((zx, zy))
 }
 
 fn best_seek_target(

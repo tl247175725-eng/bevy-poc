@@ -8,6 +8,8 @@ pub fn main_tick(world: &mut WorldState, delta: f32) {
     world.tick_count += 1;
     world.elapsed += delta;
 
+    crate::bulletin::maybe_update(world);
+
     for entity in world.entities.values_mut() {
         entity.consumed = false;
         if entity.hunt_cooldown > 0.0 {

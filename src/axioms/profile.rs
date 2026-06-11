@@ -67,6 +67,9 @@ pub struct EntityProfile {
     pub flock_range: u8,
     pub flock_max: u8,
     pub flock_alert_range: u8,
+
+    /// Parsed from `bulletin:*` tags — controls global zone channel access.
+    pub bulletin_channels: SmallVec<[String; 6]>,
 }
 
 #[derive(Clone, Debug)]
@@ -99,8 +102,41 @@ impl Default for EntityProfile {
             flock_range: 0,
             flock_max: 1,
             flock_alert_range: 0,
+            bulletin_channels: SmallVec::new(),
         }
     }
+}
+
+impl EntityProfile {
+    pub fn has_bulletin_access(&self, channel: &str) -> bool {
+        if self
+            .bulletin_channels
+            .iter()
+            .any(|c| c == "full")
+        {
+            return true;
+        }
+        let key = match channel {
+            "food_zones" => "food",
+            "predator_zones" => "predator",
+            "prey_zones" => "prey",
+            "water_zones" => "water",
+            "corpse_zones" => "corpse",
+            "shelter_zones" => "shelter",
+            _ => return false,
+        };
+        self.bulletin_channels.iter().any(|c| c == key)
+    }
+}
+
+pub fn parse_bulletin_channels(tags: &[String]) -> SmallVec<[String; 6]> {
+    let mut out = SmallVec::new();
+    for t in tags {
+        if let Some(rest) = t.strip_prefix("bulletin:") {
+            out.push(rest.to_string());
+        }
+    }
+    out
 }
 
 pub struct FlockParams {
