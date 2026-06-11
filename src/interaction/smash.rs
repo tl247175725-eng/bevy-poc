@@ -57,6 +57,7 @@ pub fn damage_entity_hp(world: &mut WorldState, target: EntityId, amount: i32) -
         return false;
     }
     entity.hp = (entity.hp - amount).max(0);
+    entity.wake();
     entity.hp <= 0
 }
 

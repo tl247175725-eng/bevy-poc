@@ -11,14 +11,45 @@ use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
     card_has_capability, card_has_tag, chebyshev_distance, hunt_target_score,
-    is_hunt_target_for_pack, mark_ecology_fed, HUNT_RANGE, HUNT_SCORE_INF,
+    is_hunt_target_for_pack, mark_ecology_fed, parse_max_starve, HUNT_RANGE, HUNT_SCORE_INF,
+    GRID_HEIGHT, GRID_WIDTH,
 };
 use crate::world_state::{EcologyState, WorldState};
 
+pub const SLEEP_DURATION_TICKS: u64 = 5;
+pub const WAKE_ACTIVITY_RANGE: u8 = 6;
+const SLEEP_HUNGER_RATIO: f32 = 0.3;
+
+pub fn wake_autonomous_near(world: &mut WorldState, x: u8, y: u8, range: u8) {
+    let tick = world.tick_count;
+    let min_x = x.saturating_sub(range);
+    let max_x = (x as u16 + range as u16).min(GRID_WIDTH as u16 - 1) as u8;
+    let min_y = y.saturating_sub(range);
+    let max_y = (y as u16 + range as u16).min(GRID_HEIGHT as u16 - 1) as u8;
+    for gy in min_y..=max_y {
+        for gx in min_x..=max_x {
+            for id in world.entities_at(gx, gy) {
+                let Some(entity) = world.entities.get_mut(&id) else {
+                    continue;
+                };
+                if entity.is_sleeping(tick)
+                    && entity.is_autonomous(&world.card_defs)
+                {
+                    entity.wake();
+                }
+            }
+        }
+    }
+}
+
 /// End-of-tick reactive pass for all autonomous entities.
 pub fn mark_baseline_reactive_tick(world: &mut WorldState) {
+    let tick = world.tick_count;
     for entity in world.entities.values_mut() {
         if entity.is_corpse || entity.in_den || entity.in_burrow {
+            continue;
+        }
+        if entity.is_sleeping(tick) {
             continue;
         }
         if entity.is_autonomous(&world.card_defs) {
@@ -28,10 +59,13 @@ pub fn mark_baseline_reactive_tick(world: &mut WorldState) {
 }
 
 pub fn flush_reactive_tick(world: &mut WorldState, delta: f32) {
+    let tick = world.tick_count;
     let mut ids: Vec<EntityId> = world
         .entities
         .iter()
-        .filter(|(_, e)| e.needs_grazing_tick || e.needs_patrol)
+        .filter(|(_, e)| {
+            (e.needs_grazing_tick || e.needs_patrol) && !e.is_sleeping(tick)
+        })
         .map(|(id, _)| *id)
         .collect();
     ids.sort_by_key(|id| {
@@ -88,7 +122,7 @@ pub fn mark_predators_near_prey_needs_patrol(
     for pid in predators {
         if let Some(entity) = world.entities.get_mut(&pid) {
             if !entity.is_corpse && !entity.in_den {
-                entity.needs_grazing_tick = true;
+                entity.wake();
             }
         }
     }
@@ -104,6 +138,10 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
     };
 
     if card_has_tag(&def, "juvenile") {
+        return;
+    }
+
+    if e.is_sleeping(world.tick_count) {
         return;
     }
 
@@ -160,16 +198,21 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         (-(a.priority as i32), drive_tie_rank(a.behavior)).cmp(&(-(b.priority as i32), drive_tie_rank(b.behavior)))
     });
 
-    if let Some(drive) = sorted.first() {
+    let executed_drive = if let Some(drive) = sorted.first() {
         execute_drive(world, id, x, y, drive, &profile, &def, delta);
+        true
     } else if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
         wander(world, id, x, y, world.tick_count);
         if let Some(e) = world.entities.get_mut(&id) {
             e.ecology_state = EcologyState::Patrolling;
         }
-    } else if let Some(e) = world.entities.get_mut(&id) {
-        e.ecology_state = EcologyState::Idle;
-    }
+        true
+    } else {
+        if let Some(e) = world.entities.get_mut(&id) {
+            e.ecology_state = EcologyState::Idle;
+        }
+        false
+    };
 
     // Idle cover-user: auto-hide if on grass/bush when no other drive active
     if let Some(e) = world.entities.get(&id) {
@@ -179,6 +222,40 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         {
             try_auto_hide_after_flee(world, id, &profile);
         }
+    }
+
+    if !executed_drive {
+        try_enter_sleep(world, id, &def);
+    }
+}
+
+fn try_enter_sleep(world: &mut WorldState, id: EntityId, def: &CardDef) {
+    let tick = world.tick_count;
+    let Some(entity) = world.entities.get(&id) else {
+        return;
+    };
+    if !entity.is_autonomous(&world.card_defs) {
+        return;
+    }
+    if !matches!(
+        entity.ecology_state,
+        EcologyState::Idle | EcologyState::Wandering
+    ) {
+        return;
+    }
+    if entity.in_cover || entity.in_den || entity.in_burrow {
+        return;
+    }
+    let max_starve = parse_max_starve(def);
+    if max_starve <= 0 {
+        return;
+    }
+    let hunger_ratio = entity.starve_days as f32 / max_starve as f32;
+    if hunger_ratio >= SLEEP_HUNGER_RATIO {
+        return;
+    }
+    if let Some(entity) = world.entities.get_mut(&id) {
+        entity.sleep_until_tick = tick + SLEEP_DURATION_TICKS;
     }
 }
 
@@ -855,5 +932,48 @@ fn try_auto_hide_after_flee(world: &mut WorldState, id: EntityId, profile: &Enti
                 return;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod sleep_tests {
+    use super::*;
+    use crate::world_state::empty_world;
+
+    #[test]
+    fn sleeping_entity_skips_reactive_tick() {
+        let mut world = empty_world();
+        world.tick_count = 10;
+        let sheep = world.spawn("sheep", 5, 5);
+        world.entities.get_mut(&sheep).unwrap().sleep_until_tick = 20;
+        let before = world.entities[&sheep].ecology_state;
+        tick_reactive(&mut world, sheep, 1.0);
+        assert_eq!(world.entities[&sheep].ecology_state, before);
+        assert!(world.entities[&sheep].is_sleeping(10));
+    }
+
+    #[test]
+    fn fed_idle_entity_enters_sleep_after_tick() {
+        let mut world = empty_world();
+        world.tick_count = 10;
+        let sheep = world.spawn("sheep", 5, 5);
+        {
+            let e = world.entities.get_mut(&sheep).unwrap();
+            e.starve_days = 0;
+            e.ecology_state = EcologyState::Idle;
+        }
+        tick_reactive(&mut world, sheep, 1.0);
+        assert!(world.entities[&sheep].is_sleeping(10));
+        assert_eq!(world.entities[&sheep].sleep_until_tick, 15);
+    }
+
+    #[test]
+    fn nearby_movement_wakes_sleeping_entity() {
+        let mut world = empty_world();
+        world.tick_count = 10;
+        let sheep = world.spawn("sheep", 5, 5);
+        world.entities.get_mut(&sheep).unwrap().sleep_until_tick = 20;
+        wake_autonomous_near(&mut world, 6, 5, WAKE_ACTIVITY_RANGE);
+        assert!(!world.entities[&sheep].is_sleeping(10));
     }
 }

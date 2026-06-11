@@ -39,6 +39,7 @@ pub fn tick_starvation(world: &mut WorldState) {
         if !fed {
             if let Some(e) = world.entities.get_mut(&id) {
                 e.starve_days += 1;
+                e.wake();
             }
         }
         let starve_days = world.entities.get(&id).map(|e| e.starve_days).unwrap_or(0);

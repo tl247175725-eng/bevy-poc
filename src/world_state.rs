@@ -72,11 +72,22 @@ pub struct Entity {
     pub needs_patrol: bool,
     /// Baseline herbivore/forager ecology tick — cleared by move or end-of-tick flush.
     pub needs_grazing_tick: bool,
+    /// Skip reactive AI until this tick (0 = awake).
+    pub sleep_until_tick: u64,
     /// Precomputed axiom profile (tags parsed once at spawn / refresh).
     pub profile: crate::axioms::EntityProfile,
 }
 
 impl Entity {
+    pub fn is_sleeping(&self, tick: u64) -> bool {
+        self.sleep_until_tick > tick
+    }
+
+    pub fn wake(&mut self) {
+        self.sleep_until_tick = 0;
+        self.needs_grazing_tick = true;
+    }
+
     pub fn is_autonomous(&self, defs: &HashMap<String, CardDef>) -> bool {
         defs.get(&self.type_name)
             .map(|d| card_has_capability(d, "capability.move"))
@@ -316,6 +327,7 @@ impl WorldState {
             host_pool_y: None,
             needs_patrol: false,
             needs_grazing_tick: false,
+            sleep_until_tick: 0,
             profile,
         };
         if type_name == "bush" {
@@ -505,6 +517,7 @@ impl WorldState {
                 entity.in_cover = false;
                 entity.hidden_in_grass = false;
                 entity.host_cover_id = None;
+                entity.wake();
             }
         }
     }

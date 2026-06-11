@@ -8,7 +8,10 @@ use crate::game_constants::WILDPREY_FEAR_RANGE;
 use crate::sim_events::SimEvent;
 use crate::spatial_index::EntityId;
 use crate::systems::movement::flee_from;
-use crate::systems::tick_reactive::{mark_predators_near_prey_needs_patrol, tick_reactive};
+use crate::systems::tick_reactive::{
+    mark_predators_near_prey_needs_patrol, tick_reactive, wake_autonomous_near,
+    WAKE_ACTIVITY_RANGE,
+};
 use crate::world_rules::{chebyshev_distance, card_has_tag};
 use crate::world_state::{EcologyState, WorldState};
 
@@ -102,6 +105,12 @@ impl EventRegistry {
         if let Some(def) = mover_def.as_ref() {
             if is_hunt_prey(def) {
                 mark_predators_near_prey_needs_patrol(world, id, to.0, to.1);
+            }
+            if is_hunt_prey(def)
+                || card_has_tag(def, "predator")
+                || card_has_tag(def, "mesopredator")
+            {
+                wake_autonomous_near(world, to.0, to.1, WAKE_ACTIVITY_RANGE);
             }
             if card_has_tag(def, "predator") || card_has_tag(def, "mesopredator") {
                 notify_prey_near_predator(world, id, from, to);
@@ -212,6 +221,7 @@ fn notify_prey_near_predator(
             flee_from(world, prey_id, prey.x, prey.y, to.0, to.1);
         }
         if let Some(e) = world.entities.get_mut(&prey_id) {
+            e.wake();
             e.ecology_state = EcologyState::Fleeing;
         }
     }
