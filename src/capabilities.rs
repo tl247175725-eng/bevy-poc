@@ -52,6 +52,7 @@ static CAPABILITIES: LazyLock<HashMap<&'static str, &'static [&'static str]>> = 
     m.insert("bambooRatCorpse", &["capability.be_butchered", "capability.sanitation_target"][..]);
     m.insert("fishCorpse", &["capability.be_butchered", "capability.sanitation_target"][..]);
     m.insert("waterBugCorpse", &["capability.be_butchered", "capability.sanitation_target"][..]);
+    m.insert("landBugCorpse", &["capability.be_butchered", "capability.sanitation_target"][..]);
     m.insert("sheepMeat", &["capability.be_carried", "capability.be_stored", "capability.be_consumed", "capability.be_cooked", "capability.be_traded", "capability.perishable"][..]);
     m.insert("rabbitMeat", &["capability.be_carried", "capability.be_stored", "capability.be_consumed", "capability.be_cooked", "capability.be_traded", "capability.perishable"][..]);
     m.insert("deerMeat", &["capability.be_carried", "capability.be_stored", "capability.be_consumed", "capability.be_cooked", "capability.be_traded", "capability.perishable"][..]);

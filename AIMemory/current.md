@@ -1,7 +1,7 @@
-# Current Handoff
+﻿# Current Handoff
 - file: AIMemory/handoff_fix-tests.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
 修测试——藏容纳逻辑更新后旧测试断言不匹配。

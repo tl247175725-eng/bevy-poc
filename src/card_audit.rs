@@ -13,6 +13,7 @@ static TAG_DIMENSIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock:
         "omnivore", "omnivore.small", "grazer", "scavenger", "burrower", "filter_feeder", "aquatic",
         "volant", "elder", "youth", "forager", "worker", "observer", "customer", "autonomous",
         "basic", "smallHerbivore", "smallPrey", "largePrey", "wildPrey", "tiny", "small",
+        "insect",
         "underground",
     ];
     for t in identity {
@@ -101,6 +102,7 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("harvest_product:")
         || tag.starts_with("perception:")
         || tag.starts_with("bridge:")
+        || tag.starts_with("bulletin:")
     {
         return Some("action");
     }

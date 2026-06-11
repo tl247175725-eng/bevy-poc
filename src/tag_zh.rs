@@ -63,6 +63,7 @@ static TAG_ZH: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| 
         ("herbivore", "食草"),
         ("home", "居所"),
         ("human", "人类"),
+        ("insect", "昆虫"),
         ("juvenile", "幼体"),
         ("largePrey", "大猎物"),
         ("material", "材料"),
@@ -236,6 +237,7 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("harvest_product:")
         || token.starts_with("perception:")
         || token.starts_with("bridge:")
+        || token.starts_with("bulletin:")
         || token == "player"
         || token == "meat_diet"
         || token == "den_resident"
@@ -270,6 +272,9 @@ pub fn tag_zh(token: &str) -> String {
     }
     if token.starts_with("drive:") {
         return "行为驱动".to_string();
+    }
+    if token.starts_with("bulletin:") {
+        return "公告板频道".to_string();
     }
     if token.starts_with("move_speed:") {
         return "移动速度".to_string();

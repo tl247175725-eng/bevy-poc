@@ -21,7 +21,9 @@ fn cross_layer_herbivore_baseline_grazing_tick() {
     assert!(w.entities[&sheep].needs_grazing_tick);
     flush_herbivore_tick(&mut w, 1.0);
     assert!(!w.entities[&sheep].needs_grazing_tick);
-    assert!(!w.entities.contains_key(&grass));
+    assert!(w.entities.contains_key(&grass));
+    assert_eq!(w.entities[&grass].hp, 3);
+    assert!(w.entities[&sheep].fed_today);
 }
 
 #[test]
