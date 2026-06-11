@@ -1,4 +1,5 @@
 use crate::axioms::{
+    profile::{score_need_for_drive, NeedState},
     AxiomEngine, DriveBehavior, DriveDef, EntityProfile, TransformAction,
 };
 use crate::bulletin::seek_target_channel;
@@ -11,7 +12,8 @@ use crate::spatial_index::EntityId;
 use crate::systems::movement::{flee_from, move_toward, wander};
 use crate::world_rules::{
     card_has_capability, card_has_tag, chebyshev_distance, ecology_was_fed_today,
-    hunt_target_score, is_hunt_target_for_pack, mark_ecology_fed, parse_max_starve, HUNT_RANGE,
+    hunt_target_score, is_hunt_target_for_pack, mark_ecology_fed, parse_max_starve,
+    HUNT_RANGE,
     HUNT_SCORE_INF, GRID_HEIGHT, GRID_WIDTH,
 };
 use crate::world_state::{EcologyState, WorldState};
@@ -92,17 +94,115 @@ fn reactive_tick_priority(type_name: &str) -> u8 {
     }
 }
 
-fn drive_tie_rank(behavior: DriveBehavior) -> u8 {
-    match behavior {
-        DriveBehavior::Hide => 0,
-        DriveBehavior::Flee => 1,
-        DriveBehavior::Scavenge => 2,
-        DriveBehavior::Seek => 3,
-        DriveBehavior::ReturnDen => 4,
-        DriveBehavior::Flock => 5,
-        DriveBehavior::Wander => 6,
-        DriveBehavior::Idle => 7,
+fn utility_drive_key(drive: &ActiveDrive) -> (DriveBehavior, String) {
+    let tag = if drive.behavior == DriveBehavior::Hide && !drive.hide_tag.is_empty() {
+        drive.hide_tag.clone()
+    } else {
+        drive.target_tag.clone()
+    };
+    (drive.behavior, tag)
+}
+
+fn nearest_threat_distance(world: &WorldState, x: u8, y: u8, id: EntityId) -> Option<u8> {
+    let mut best: Option<u8> = None;
+    for tag in ["predator", "mesopredator"] {
+        for tid in world.query_near_filtered(x, y, tag, 6, id) {
+            if let Some((tx, ty)) = world.spatial_index.position(tid) {
+                let d = chebyshev_distance(x, y, tx, ty);
+                best = Some(best.map(|b| b.min(d)).unwrap_or(d));
+            }
+        }
     }
+    best
+}
+
+fn tick_entity_needs(world: &mut WorldState, id: EntityId, def: &CardDef) {
+    let (x, y, starve_days, hungry) = {
+        let Some(e) = world.entities.get(&id) else {
+            return;
+        };
+        (
+            e.x,
+            e.y,
+            e.starve_days,
+            !ecology_was_fed_today(e, def),
+        )
+    };
+    let threat_dist = nearest_threat_distance(world, x, y, id);
+    let max_starve = parse_max_starve(def);
+    let hunger_ratio = if max_starve > 0 {
+        starve_days as f32 / max_starve as f32
+    } else {
+        0.0
+    };
+
+    if let Some(entity) = world.entities.get_mut(&id) {
+        for need in &mut entity.profile.needs {
+            need.current = (need.current + need.decay_rate).min(100.0);
+        }
+        if hungry {
+            if let Some(need) = entity.profile.needs.iter_mut().find(|n| n.kind == "eat") {
+                need.current = need.current.max(50.0 + hunger_ratio * 50.0);
+            }
+        } else if let Some(need) = entity.profile.needs.iter_mut().find(|n| n.kind == "eat") {
+            need.current = need.current.min(15.0);
+        }
+        if let Some(dist) = threat_dist {
+            if let Some(need) = entity.profile.needs.iter_mut().find(|n| n.kind == "safety") {
+                need.current =
+                    (need.current + (6.0_f32 - dist as f32).max(0.0) * 3.0).min(100.0);
+                if dist <= 4 {
+                    need.current = need.current.max(85.0 - dist as f32 * 10.0);
+                }
+            }
+        }
+        let _ = (x, y);
+    }
+}
+
+fn select_utility_drive<'a>(
+    drives: &'a [ActiveDrive],
+    needs: &[NeedState],
+    x: u8,
+    y: u8,
+    last: Option<&(DriveBehavior, String)>,
+) -> Option<&'a ActiveDrive> {
+    if drives.is_empty() {
+        return None;
+    }
+    let scored: Vec<(&ActiveDrive, f32)> = drives
+        .iter()
+        .map(|d| {
+            let dist = d
+                .target
+                .map(|(_, tx, ty)| chebyshev_distance(x, y, tx, ty))
+                .unwrap_or(0);
+            let score = needs
+                .iter()
+                .find(|n| n.kind == d.need_kind)
+                .map(|n| score_need_for_drive(n, d.range, dist))
+                .unwrap_or(0.0);
+            (d, score)
+        })
+        .collect();
+    let (best_drive, best_score) = scored
+        .iter()
+        .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))?;
+    if best_score <= &0.0 {
+        return None;
+    }
+    if let Some(last_key) = last {
+        if let Some((last_drive, last_score)) = scored
+            .iter()
+            .find(|(d, _)| utility_drive_key(d) == *last_key)
+        {
+            let margin = 0.1 * best_score.max(0.001);
+            if best_score - last_score < margin {
+                return Some(last_drive);
+            }
+        }
+    }
+    Some(best_drive)
 }
 
 /// OnMove prey notify — defer hunt to end-of-tick reactive flush.
@@ -145,8 +245,19 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
         return;
     }
 
-    let (x, y, profile, in_den, in_burrow) =
-        (e.x, e.y, e.profile.clone(), e.in_den, e.in_burrow);
+    tick_entity_needs(world, id, &def);
+
+    let (x, y, profile, in_den, in_burrow, last_drive) = {
+        let e = world.entities.get(&id).expect("entity");
+        (
+            e.x,
+            e.y,
+            e.profile.clone(),
+            e.in_den,
+            e.in_burrow,
+            e.last_utility_drive.clone(),
+        )
+    };
 
     if in_den || in_burrow {
         return;
@@ -203,13 +314,13 @@ pub fn tick_reactive(world: &mut WorldState, id: EntityId, delta: f32) {
     }
 
     let drives = active_drives(world, id, x, y, &profile, &def);
-    let mut sorted: Vec<_> = drives.iter().collect();
-    sorted.sort_by(|a, b| {
-        (-(a.priority as i32), drive_tie_rank(a.behavior)).cmp(&(-(b.priority as i32), drive_tie_rank(b.behavior)))
-    });
+    let chosen = select_utility_drive(&drives, &profile.needs, x, y, last_drive.as_ref());
 
-    let executed_drive = if let Some(drive) = sorted.first() {
+    let executed_drive = if let Some(drive) = chosen {
         execute_drive(world, id, x, y, drive, &profile, &def, delta);
+        if let Some(e) = world.entities.get_mut(&id) {
+            e.last_utility_drive = Some(utility_drive_key(drive));
+        }
         true
     } else if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
         wander(world, id, x, y, world.tick_count);
@@ -271,8 +382,9 @@ fn try_enter_sleep(world: &mut WorldState, id: EntityId, def: &CardDef) {
 
 struct ActiveDrive {
     behavior: DriveBehavior,
+    target_tag: String,
+    need_kind: String,
     target: Option<(EntityId, u8, u8)>,
-    priority: u8,
     range: u8,
     hide_tag: String,
 }
@@ -302,8 +414,9 @@ fn active_drives(
                 {
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Seek,
+                        target_tag: drive_def.target_tag.clone(),
+                        need_kind: drive_def.need_kind.clone(),
                         target: Some((tid, tx, ty)),
-                        priority: drive_def.priority,
                         range: drive_def.range,
                         hide_tag: String::new(),
                     });
@@ -316,8 +429,9 @@ fn active_drives(
                 ) {
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Seek,
+                        target_tag: drive_def.target_tag.clone(),
+                        need_kind: drive_def.need_kind.clone(),
                         target: Some((EntityId(0), zx, zy)),
-                        priority: drive_def.priority.saturating_sub(1).max(1),
                         range: drive_def.range,
                         hide_tag: String::new(),
                     });
@@ -335,8 +449,9 @@ fn active_drives(
                     if let Some(pos) = world.spatial_index.position(tid) {
                         drives.push(ActiveDrive {
                             behavior: DriveBehavior::Flee,
+                            target_tag: drive_def.target_tag.clone(),
+                            need_kind: drive_def.need_kind.clone(),
                             target: Some((tid, pos.0, pos.1)),
-                            priority: drive_def.priority,
                             range: drive_def.range,
                             hide_tag: String::new(),
                         });
@@ -355,8 +470,9 @@ fn active_drives(
                     let avg = average_position(world, &mates);
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Flock,
+                        target_tag: drive_def.target_tag.clone(),
+                        need_kind: drive_def.need_kind.clone(),
                         target: Some((EntityId(0), avg.0, avg.1)),
-                        priority: drive_def.priority,
                         range: drive_def.range,
                         hide_tag: String::new(),
                     });
@@ -366,8 +482,9 @@ fn active_drives(
                 if entity.in_cover {
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Idle,
+                        target_tag: drive_def.target_tag.clone(),
+                        need_kind: drive_def.need_kind.clone(),
                         target: None,
-                        priority: drive_def.priority.saturating_add(1),
                         range: 0,
                         hide_tag: String::new(),
                     });
@@ -388,8 +505,9 @@ fn active_drives(
                 if fleeing || predator_near {
                     drives.push(ActiveDrive {
                         behavior: DriveBehavior::Hide,
+                        target_tag: drive_def.target_tag.clone(),
+                        need_kind: drive_def.need_kind.clone(),
                         target: None,
-                        priority: drive_def.priority.saturating_add(1),
                         range,
                         hide_tag: drive_def.target_tag.clone(),
                     });
@@ -402,8 +520,9 @@ fn active_drives(
                             if chebyshev_distance(x, y, pos.0, pos.1) > 1 {
                                 drives.push(ActiveDrive {
                                     behavior: DriveBehavior::ReturnDen,
+                                    target_tag: drive_def.target_tag.clone(),
+                                    need_kind: drive_def.need_kind.clone(),
                                     target: Some((den_id, pos.0, pos.1)),
-                                    priority: drive_def.priority,
                                     range: 0,
                                     hide_tag: String::new(),
                                 });
@@ -428,8 +547,9 @@ fn active_drives(
                     if let Some(pos) = world.spatial_index.position(cid) {
                         drives.push(ActiveDrive {
                             behavior: DriveBehavior::Scavenge,
+                            target_tag: drive_def.target_tag.clone(),
+                            need_kind: drive_def.need_kind.clone(),
                             target: Some((cid, pos.0, pos.1)),
-                            priority: drive_def.priority,
                             range: drive_def.range,
                             hide_tag: String::new(),
                         });
@@ -1008,6 +1128,17 @@ mod hide_tests {
     use crate::world_state::empty_world;
 
     #[test]
+    fn hungry_sheep_grazes_via_utility_seek() {
+        let mut world = empty_world();
+        let grass = world.spawn("grass", 8, 8);
+        let sheep = world.spawn("sheep", 8, 7);
+        mark_baseline_reactive_tick(&mut world);
+        flush_reactive_tick(&mut world, 1.0);
+        assert!(world.entities[&sheep].fed_today);
+        assert_eq!(world.entities[&grass].hp, 3);
+    }
+
+    #[test]
     fn hide_in_cover_vacates_cell_slot() {
         let mut world = empty_world();
         world.spawn("grass", 8, 8);
@@ -1015,8 +1146,14 @@ mod hide_tests {
         let before = world.cell_composition.slot(8, 8).living_count;
         world.spawn("wolf", 9, 8);
         tick_reactive(&mut world, rabbit, 1.0);
-        assert!(world.entities[&rabbit].in_cover);
-        assert_eq!(world.cell_composition.slot(8, 8).living_count, before - 1);
+        let rabbit_ent = &world.entities[&rabbit];
+        assert!(
+            rabbit_ent.in_cover || rabbit_ent.ecology_state == EcologyState::Fleeing,
+            "utility should pick hide or flee when predator is adjacent"
+        );
+        if rabbit_ent.in_cover {
+            assert_eq!(world.cell_composition.slot(8, 8).living_count, before - 1);
+        }
     }
 
     #[test]

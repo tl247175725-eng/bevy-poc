@@ -74,6 +74,8 @@ pub struct Entity {
     pub needs_grazing_tick: bool,
     /// Skip reactive AI until this tick (0 = awake).
     pub sleep_until_tick: u64,
+    /// Last utility-selected drive — hysteresis anchor for the next tick.
+    pub last_utility_drive: Option<(crate::axioms::DriveBehavior, String)>,
     /// Precomputed axiom profile (tags parsed once at spawn / refresh).
     pub profile: crate::axioms::EntityProfile,
 }
@@ -328,6 +330,7 @@ impl WorldState {
             needs_patrol: false,
             needs_grazing_tick: false,
             sleep_until_tick: 0,
+            last_utility_drive: None,
             profile,
         };
         if type_name == "bush" {

@@ -1,7 +1,7 @@
-# Current Handoff
+﻿# Current Handoff
 - file: AIMemory/handoff_utility-engine.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
 保留 drive 执行层，替换固定优先级选择为动态效用打分。

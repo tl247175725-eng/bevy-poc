@@ -12,7 +12,8 @@ pub use laws::{
     Transformation, Traversal,
 };
 pub use profile::{
-    ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium, SocialStructure,
+    ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium, NeedCurve, NeedState,
+    SocialStructure,
 };
 
 use crate::card_def::CardDef;
@@ -44,6 +45,11 @@ impl AxiomEngine {
         }
 
         let flock = profile::parse_flock_params(tags);
+        let drives = profile::parse_drives(tags);
+        let mut needs = profile::parse_needs(tags);
+        if needs.is_empty() {
+            needs = profile::default_needs_for_drives(&drives);
+        }
 
         EntityProfile {
             entity_id,
@@ -59,7 +65,8 @@ impl AxiomEngine {
             keen_eyed_mod: profile::parse_keen_eyed_mod(tags),
             energy: profile::parse_energy(tags, hp),
             efficiencies: profile::parse_efficiencies(tags),
-            drives: profile::parse_drives(tags),
+            drives,
+            needs,
             move_speed: profile::parse_move_speed(tags),
             sprint_speed: profile::parse_sprint_speed(tags),
             current_medium,

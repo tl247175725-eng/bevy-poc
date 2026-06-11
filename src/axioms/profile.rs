@@ -14,6 +14,21 @@ pub enum SocialStructure {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NeedCurve {
+    Steep,
+    Flat,
+    Sharp,
+}
+
+#[derive(Clone, Debug)]
+pub struct NeedState {
+    pub kind: String,
+    pub current: f32,
+    pub decay_rate: f32,
+    pub curve: NeedCurve,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DriveBehavior {
     Seek,
     Flee,
@@ -32,6 +47,8 @@ pub struct DriveDef {
     pub range: u8,
     pub priority: u8,
     pub condition_fed: bool,
+    /// Need channel this drive satisfies — used by utility scoring.
+    pub need_kind: String,
 }
 
 /// Precomputed from card tags once at spawn; systems read profiles, not raw tag vecs.
@@ -55,6 +72,8 @@ pub struct EntityProfile {
     pub energy: u32,
     pub efficiencies: SmallVec<[(TransformAction, f32); 6]>,
     pub drives: SmallVec<[DriveDef; 6]>,
+    /// Runtime need urgency — decayed each reactive tick.
+    pub needs: SmallVec<[NeedState; 4]>,
 
     /// Seconds per grid step for normal movement (always 0.25).
     pub move_speed: f32,
@@ -95,6 +114,7 @@ impl Default for EntityProfile {
             energy: 0,
             efficiencies: SmallVec::new(),
             drives: SmallVec::new(),
+            needs: SmallVec::new(),
             move_speed: 0.25,
             sprint_speed: 0.12,
             current_medium: "land".into(),
@@ -244,6 +264,117 @@ pub fn parse_sprint_speed(tags: &[String]) -> f32 {
     0.12
 }
 
+pub fn parse_need_curve(name: &str) -> NeedCurve {
+    match name {
+        "flat" => NeedCurve::Flat,
+        "sharp" => NeedCurve::Sharp,
+        _ => NeedCurve::Steep,
+    }
+}
+
+pub fn parse_needs(tags: &[String]) -> SmallVec<[NeedState; 4]> {
+    let mut out = SmallVec::new();
+    for t in tags {
+        let Some(rest) = t.strip_prefix("need:") else {
+            continue;
+        };
+        let (kind, params) = match rest.split_once('(') {
+            Some((k, p)) => (k, p.trim_end_matches(')')),
+            None => (rest, ""),
+        };
+        let decay_rate = parse_tag_f32_param(params, "rate").unwrap_or(0.5);
+        let curve = parse_tag_str_param(params, "curve")
+            .map(|c| parse_need_curve(&c))
+            .unwrap_or(NeedCurve::Steep);
+        out.push(NeedState {
+            kind: kind.to_string(),
+            current: 0.0,
+            decay_rate,
+            curve,
+        });
+    }
+    out
+}
+
+fn needs_contain(needs: &[NeedState], kind: &str) -> bool {
+    needs.iter().any(|n| n.kind == kind)
+}
+
+pub fn default_needs_for_drives(drives: &[DriveDef]) -> SmallVec<[NeedState; 4]> {
+    let mut out = SmallVec::new();
+    for drive in drives {
+        match drive.need_kind.as_str() {
+            "eat" if !needs_contain(&out, "eat") => out.push(NeedState {
+                kind: "eat".into(),
+                current: 0.0,
+                decay_rate: 0.5,
+                curve: NeedCurve::Steep,
+            }),
+            "safety" if !needs_contain(&out, "safety") => out.push(NeedState {
+                kind: "safety".into(),
+                current: 0.0,
+                decay_rate: 1.0,
+                curve: NeedCurve::Sharp,
+            }),
+            "social" if !needs_contain(&out, "social") => out.push(NeedState {
+                kind: "social".into(),
+                current: 0.0,
+                decay_rate: 0.2,
+                curve: NeedCurve::Flat,
+            }),
+            "rest" if !needs_contain(&out, "rest") => out.push(NeedState {
+                kind: "rest".into(),
+                current: 0.0,
+                decay_rate: 0.2,
+                curve: NeedCurve::Flat,
+            }),
+            _ => {}
+        }
+    }
+    out
+}
+
+pub fn drive_need_kind(behavior: DriveBehavior, target_tag: &str) -> String {
+    match behavior {
+        DriveBehavior::Flee | DriveBehavior::Hide => "safety".into(),
+        DriveBehavior::Flock => "social".into(),
+        DriveBehavior::ReturnDen => "rest".into(),
+        DriveBehavior::Scavenge => "eat".into(),
+        DriveBehavior::Seek => match target_tag {
+            "herbivore" | "smallPrey" | "largePrey" | "smallHerbivore" | "algae" | "fish" => {
+                "eat".into()
+            }
+            _ => "eat".into(),
+        },
+        _ => "explore".into(),
+    }
+}
+
+pub fn need_curve_value(need: &NeedState) -> f32 {
+    let t = (need.current / 100.0).clamp(0.0, 1.0);
+    match need.curve {
+        NeedCurve::Steep => t.powi(3),
+        NeedCurve::Flat => t,
+        NeedCurve::Sharp => {
+            if need.current > 60.0 {
+                t
+            } else {
+                0.0
+            }
+        }
+    }
+}
+
+pub fn score_need_for_drive(need: &NeedState, range: u8, distance: u8) -> f32 {
+    let base = need_curve_value(need);
+    let attenuation = if range > 0 {
+        1.0 - (distance as f32 / range as f32).min(1.0) * 0.5
+    } else {
+        1.0
+    };
+    base * attenuation
+}
+
 pub fn parse_drives(tags: &[String]) -> SmallVec<[DriveDef; 6]> {
     let mut out = SmallVec::new();
     for t in tags {
@@ -271,12 +402,14 @@ pub fn parse_drives(tags: &[String]) -> SmallVec<[DriveDef; 6]> {
         });
         let priority = parse_tag_u8_param(params, "priority").unwrap_or(1);
         let condition_fed = behavior == DriveBehavior::Seek;
+        let need_kind = drive_need_kind(behavior, &target_tag);
         out.push(DriveDef {
             behavior,
             target_tag,
             range,
             priority,
             condition_fed,
+            need_kind,
         });
     }
     out
@@ -294,6 +427,17 @@ fn parse_tag_str_param(s: &str, key: &str) -> Option<String> {
 }
 
 fn parse_tag_u8_param(s: &str, key: &str) -> Option<u8> {
+    let needle = format!("{key}=");
+    for part in s.split(',') {
+        let part = part.trim();
+        if let Some(v) = part.strip_prefix(&needle) {
+            return v.parse().ok();
+        }
+    }
+    None
+}
+
+fn parse_tag_f32_param(s: &str, key: &str) -> Option<f32> {
     let needle = format!("{key}=");
     for part in s.split(',') {
         let part = part.trim();
@@ -468,5 +612,43 @@ pub fn medium_for_cell(terrain: &str) -> Medium {
         "water".into()
     } else {
         "land".into()
+    }
+}
+
+#[cfg(test)]
+mod need_tests {
+    use super::*;
+
+    #[test]
+    fn steep_curve_rises_with_urgency() {
+        let low = NeedState {
+            kind: "eat".into(),
+            current: 30.0,
+            decay_rate: 0.5,
+            curve: NeedCurve::Steep,
+        };
+        let high = NeedState {
+            kind: "eat".into(),
+            current: 90.0,
+            decay_rate: 0.5,
+            curve: NeedCurve::Steep,
+        };
+        assert!(need_curve_value(&high) > need_curve_value(&low) * 5.0);
+    }
+
+    #[test]
+    fn parse_need_tags() {
+        let tags = vec!["need:eat(rate=0.5,curve=steep)".to_string()];
+        let needs = parse_needs(&tags);
+        assert_eq!(needs[0].kind, "eat");
+        assert!((needs[0].decay_rate - 0.5).abs() < f32::EPSILON);
+        assert_eq!(needs[0].curve, NeedCurve::Steep);
+    }
+
+    #[test]
+    fn drive_need_kind_maps_flee_to_safety() {
+        assert_eq!(drive_need_kind(DriveBehavior::Flee, "predator"), "safety");
+        assert_eq!(drive_need_kind(DriveBehavior::Seek, "foodSource"), "eat");
+        assert_eq!(drive_need_kind(DriveBehavior::Flock, "sheep"), "social");
     }
 }

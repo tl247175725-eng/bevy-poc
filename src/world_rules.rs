@@ -464,6 +464,9 @@ pub fn mark_ecology_fed(entity: &mut crate::world_state::Entity, def: &CardDef) 
         entity.fed = true;
     }
     entity.starve_days = 0;
+    if let Some(need) = entity.profile.needs.iter_mut().find(|n| n.kind == "eat") {
+        need.current = 0.0;
+    }
 }
 
 pub fn ecology_was_fed_today(entity: &crate::world_state::Entity, def: &CardDef) -> bool {

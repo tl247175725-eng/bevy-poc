@@ -238,6 +238,7 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("perception:")
         || token.starts_with("bridge:")
         || token.starts_with("bulletin:")
+        || token.starts_with("need:")
         || token == "player"
         || token == "meat_diet"
         || token == "den_resident"
@@ -275,6 +276,9 @@ pub fn tag_zh(token: &str) -> String {
     }
     if token.starts_with("bulletin:") {
         return "公告板频道".to_string();
+    }
+    if token.starts_with("need:") {
+        return "需求驱动".to_string();
     }
     if token.starts_with("move_speed:") {
         return "移动速度".to_string();

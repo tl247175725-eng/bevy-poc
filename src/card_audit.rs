@@ -103,6 +103,7 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("perception:")
         || tag.starts_with("bridge:")
         || tag.starts_with("bulletin:")
+        || tag.starts_with("need:")
     {
         return Some("action");
     }
