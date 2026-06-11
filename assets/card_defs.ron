@@ -831,7 +831,7 @@
         type_name: "waterBug",
         display_name: "水虫",
         icon: "虫",
-        tags: ["tiny", "aquatic", "grazer", "volant", "smallPrey", "sprint:fast", "corpse_type:waterBugCorpse", "max_starve:2", "perception:visual(r=4)", "drive:seek(target=algae, range=2, priority=2)", "drive:flee(target=fish, range=2, priority=3)"],
+        tags: ["tiny", "aquatic", "grazer", "volant", "smallPrey", "sprint:fast", "corpse_type:none", "max_starve:2", "perception:visual(r=4)", "drive:seek(target=algae, range=2, priority=2)", "drive:flee(target=fish, range=2, priority=3)"],
         color: (138, 184, 74, 255),
         hp: 1,
         is_rooted: false,
