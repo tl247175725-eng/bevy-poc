@@ -1,13 +1,14 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_environment-systems.md
+# Current Handoff
+- file: AIMemory/handoff_decay-disease.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-温度/季节扩展 SimClock。地块标签在 ensure_map_ecology 分配。衰老在 Entity 上。
+腐败四阶段标签驱动 + 疾病因果触发。
 
 ## 架构反馈
-复现有 SimClock + terrain_ecology。
+复用 tick_environment 腐败逻辑 + Entity 临时标签。
 
 ## 智能验收
-- 冬天结冰、地块有肥力、老年死亡
+- 腐败变色→腐殖土
+- 吃腐肉中毒
