@@ -1,14 +1,14 @@
 # Current Handoff
-- file: AIMemory/handoff_decay-disease.md
+- file: AIMemory/handoff_producers-decomposers.md
 - mode: Standard
 - status: pending
 
 ## 架构计划
-腐败四阶段标签驱动 + 疾病因果触发。
+生产者按土壤标签生成。分解者走 in_ground。粪便循环。
 
 ## 架构反馈
-复用 tick_environment 腐败逻辑 + Entity 临时标签。
+复用 spawn + 地块标签。
 
 ## 智能验收
-- 腐败变色→腐殖土
-- 吃腐肉中毒
+- 不同地块不同植物
+- 粪便→分解→肥力
