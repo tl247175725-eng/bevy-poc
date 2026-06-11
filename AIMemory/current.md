@@ -1,14 +1,15 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_producers-decomposers.md
+# Current Handoff
+- file: AIMemory/handoff_fix-compose-height.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-生产者按土壤标签生成。分解者走 in_ground。粪便循环。
+草皮/粪便/腐殖土改 height:flat。compose 加高度判。
 
 ## 架构反馈
-复用 spawn + 地块标签。
+incorporeal 滥用导致 compose 失效。
 
 ## 智能验收
-- 不同地块不同植物
-- 粪便→分解→肥力
+- 草不叠
+- 粪不堆
+- 动物能踩草
