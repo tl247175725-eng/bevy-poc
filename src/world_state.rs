@@ -311,7 +311,10 @@ impl WorldState {
                 || type_name == "shellfish"
                 || type_name == "waterCaltrop"
                 || type_name == "lotus",
-            in_ground: type_name == "wildYam" || type_name == "landBug",
+            in_ground: matches!(
+                type_name,
+                "wildYam" | "landBug" | "burrowTuber" | "dungBeetle" | "earthworm"
+            ),
             in_burrow: false,
             carrying: None,
             stunned: false,

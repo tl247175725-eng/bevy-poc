@@ -23,6 +23,7 @@ static TAG_DIMENSIONS: LazyLock<HashMap<&'static str, &'static str>> = LazyLock:
         "material", "material.lumber", "material.shard", "material.stone", "material.tool_head",
         "wood", "hard", "sharp", "blunt", "tough", "fiber", "fuel", "fuel.fire", "commodity",
         "copper", "cooked", "perishable", "dry", "corpse", "food.edible", "tuber", "floating",
+        "arid", "fungi", "fern", "fertilizer", "decomposer", "shaded",
         "sessile", "rooted", "structure", "weapon", "tool", "container", "container.water",
         "businessUnit", "mushroomFarm", "craft", "currency",
     ];

@@ -1,7 +1,7 @@
-# Current Handoff
+﻿# Current Handoff
 - file: AIMemory/handoff_producers-decomposers.md
 - mode: Standard
-- status: pending
+- status: completed
 
 ## 架构计划
 生产者按土壤标签生成。分解者走 in_ground。粪便循环。

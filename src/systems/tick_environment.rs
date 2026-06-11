@@ -20,6 +20,9 @@ pub fn tick_environment(world: &mut WorldState, delta: f32) {
     tick_entity_aging(world);
     crate::systems::grass_regen::tick_grass_regen(world);
     crate::systems::grass_regen::tick_bush_regen(world);
+    crate::systems::tick_producer_spawn::tick_producer_spawn(world);
+    crate::systems::tick_producer_spawn::tick_producer_growth(world);
+    crate::systems::tick_decomposer::tick_decomposer(world);
     crate::systems::tick_starvation::tick_starvation(world);
     tick_river_bounce(world);
     tick_fire_on_water(world);

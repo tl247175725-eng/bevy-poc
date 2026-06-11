@@ -15,6 +15,8 @@ pub fn tick_starvation(world: &mut WorldState) {
     }
     world.last_processed_day = day;
 
+    crate::systems::tick_decomposer::tick_dung_from_fed_animals(world);
+
     let beings: Vec<(EntityId, String)> = world
         .entities
         .values()

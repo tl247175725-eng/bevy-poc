@@ -102,6 +102,13 @@ static CAPABILITIES: LazyLock<HashMap<&'static str, &'static [&'static str]>> = 
     m.insert("waterBuffaloCalf", &["capability.move", "capability.move_juvenile", "capability.forage", "capability.flee", "capability.be_hunted", "capability.grow"][..]);
     m.insert("dryGrass", &["capability.be_carried", "capability.be_used_as_material", "capability.transform_input"][..]);
     m.insert("grassRope", &["capability.be_carried", "capability.be_used_as_material"][..]);
+    m.insert("aridGrass", &["capability.define_domain", "capability.produce_resource", "capability.be_used_as_material"][..]);
+    m.insert("soilMushroom", &["capability.be_consumed", "capability.perishable"][..]);
+    m.insert("burrowTuber", &["capability.be_collected"][..]);
+    m.insert("fern", &["capability.define_domain", "capability.produce_resource"][..]);
+    m.insert("dung", &["capability.perishable", "capability.sanitation_target"][..]);
+    m.insert("dungBeetle", &["capability.move", "capability.scavenge"][..]);
+    m.insert("earthworm", &["capability.move"][..]);
     m
 });
 

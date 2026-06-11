@@ -41,6 +41,13 @@ fn hex_light(bg: &str, border: &str) -> CardStyle {
 pub fn card_style(type_name: &str, def: &CardDef) -> CardStyle {
     match type_name {
         "grass" => hex("c9f28b", "5d9d36"),
+        "aridGrass" => hex("d2c878", "9a8830"),
+        "soilMushroom" => hex("dcc0c8", "a06070"),
+        "burrowTuber" => hex("a88858", "685028"),
+        "fern" => hex("78a860", "487838"),
+        "dung" => hex("786048", "483828"),
+        "dungBeetle" => hex("584830", "383020"),
+        "earthworm" => hex("c08068", "804838"),
         "dryGrass" => hex("ead179", "aa7d22"),
         "tree" => hex_light("2f7f43", "18552b"),
         "bush" => hex_light("3f8f55", "1f5f36"),
