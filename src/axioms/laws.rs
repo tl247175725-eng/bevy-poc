@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use super::composition::CellSlot;
-use super::profile::{EntityProfile, Medium};
+use super::profile::{EntityProfile, Height, Medium};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransformAction {
@@ -39,11 +39,26 @@ pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
         return Composition::Allowed { remaining: u8::MAX };
     }
 
+    if cell.has_only_corpses() {
+        return Composition::Allowed { remaining: u8::MAX };
+    }
+
     if cell.living_count > 0 {
-        return Composition::Denied {
-            current: cell.living_count,
-            max: 1,
-        };
+        if incoming.height <= Height::Low && cell.occupant_height <= Height::Low {
+            if incoming.height == Height::Low && cell.occupant_height == Height::Flat {
+                return Composition::Allowed { remaining: 0 };
+            }
+            return Composition::Denied {
+                current: cell.living_count,
+                max: 1,
+            };
+        }
+        if cell.occupant_height > Height::Low {
+            return Composition::Denied {
+                current: cell.living_count,
+                max: 1,
+            };
+        }
     }
 
     Composition::Allowed { remaining: 0 }
@@ -163,5 +178,72 @@ pub fn transform(
         energy_drawn: drawn,
         energy_received: received,
         energy_lost: lost,
+    }
+}
+
+#[cfg(test)]
+mod compose_tests {
+    use super::*;
+    use crate::axioms::profile::{EntityProfile, Height};
+    use smallvec::SmallVec;
+
+    fn profile_with_height(height: Height) -> EntityProfile {
+        EntityProfile {
+            height,
+            ..EntityProfile::default()
+        }
+    }
+
+    fn cell_with(living: u8, occupant_height: Height) -> CellSlot {
+        CellSlot {
+            medium: "land".into(),
+            tags: SmallVec::new(),
+            living_count: living,
+            corpse_count: 0,
+            occupant_height,
+        }
+    }
+
+    #[test]
+    fn flat_on_flat_denied() {
+        let cell = cell_with(1, Height::Flat);
+        let grass = profile_with_height(Height::Flat);
+        assert!(matches!(compose(&cell, &grass), Composition::Denied { .. }));
+    }
+
+    #[test]
+    fn medium_over_flat_allowed() {
+        let cell = cell_with(1, Height::Flat);
+        let sheep = profile_with_height(Height::Medium);
+        assert!(matches!(compose(&cell, &sheep), Composition::Allowed { .. }));
+    }
+
+    #[test]
+    fn low_over_flat_allowed() {
+        let cell = cell_with(1, Height::Flat);
+        let rabbit = profile_with_height(Height::Low);
+        assert!(matches!(compose(&cell, &rabbit), Composition::Allowed { .. }));
+    }
+
+    #[test]
+    fn flat_on_flat_still_denied() {
+        let cell = cell_with(1, Height::Flat);
+        let dung = profile_with_height(Height::Flat);
+        assert!(matches!(compose(&cell, &dung), Composition::Denied { .. }));
+    }
+
+    #[test]
+    fn medium_on_medium_denied() {
+        let cell = cell_with(1, Height::Medium);
+        let deer = profile_with_height(Height::Medium);
+        assert!(matches!(compose(&cell, &deer), Composition::Denied { .. }));
+    }
+
+    #[test]
+    fn incorporeal_always_allowed() {
+        let cell = cell_with(1, Height::Medium);
+        let mut overlay = profile_with_height(Height::Flat);
+        overlay.incorporeal = true;
+        assert!(matches!(compose(&cell, &overlay), Composition::Allowed { .. }));
     }
 }

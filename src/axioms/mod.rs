@@ -12,7 +12,7 @@ pub use laws::{
     Transformation, Traversal,
 };
 pub use profile::{
-    ChannelDef, DriveBehavior, DriveDef, EntityProfile, Medium, NeedCurve, NeedState,
+    ChannelDef, DriveBehavior, DriveDef, EntityProfile, Height, Medium, NeedCurve, NeedState,
     SocialStructure,
 };
 
@@ -55,6 +55,7 @@ impl AxiomEngine {
             entity_id,
             type_name: type_name.to_string(),
             size: profile::parse_size(tags, type_name),
+            height: profile::parse_height(tags),
             incorporeal: tags.iter().any(|t| t == "capability.incorporeal"),
             native_medium,
             bridges,

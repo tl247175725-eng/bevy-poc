@@ -1,5 +1,7 @@
 //! Soil-tag-driven producer spawn and regrowth.
 
+use crate::axioms::composition::entity_occupies_active_cell;
+use crate::axioms::Height;
 use crate::ecology_log::eco_log;
 use crate::terrain::terrain_at;
 use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
@@ -26,11 +28,21 @@ fn spawn_roll(tick: u64, x: u8, y: u8, salt: u32) -> u32 {
     (h % 100) as u32
 }
 
+fn cell_has_flat_occupant(world: &WorldState, x: u8, y: u8) -> bool {
+    world.entities_at(x, y).into_iter().any(|id| {
+        world.entities.get(&id).is_some_and(|e| {
+            !e.is_corpse
+                && e.profile.height == Height::Flat
+                && entity_occupies_active_cell(e)
+        })
+    })
+}
+
 fn cell_open_for_surface(world: &WorldState, x: u8, y: u8) -> bool {
     if !matches!(terrain_at(world, x, y), "land" | "wetland" | "bank" | "riverbank") {
         return false;
     }
-    world.cell_composition.slot(x, y).living_count == 0
+    world.cell_composition.slot(x, y).living_count == 0 && !cell_has_flat_occupant(world, x, y)
 }
 
 pub fn tick_producer_spawn(world: &mut WorldState) {

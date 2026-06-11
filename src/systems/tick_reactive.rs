@@ -1103,6 +1103,9 @@ fn try_hide_in_cover_at(world: &mut WorldState, id: EntityId, hide_tag: &str) {
         return;
     };
     world.cell_composition.vacate_entity(x, y, &entity);
+    if world.cell_composition.slot(x, y).living_count > 0 {
+        world.refresh_cell_occupant_height(x, y);
+    }
     if let Some(e) = world.entities.get_mut(&id) {
         e.in_cover = true;
         e.hidden_in_grass = hide_tag == "grass";

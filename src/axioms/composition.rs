@@ -4,7 +4,7 @@ use crate::world_state::{Entity, WorldState};
 use smallvec::SmallVec;
 
 use super::laws::compose;
-use super::profile::{medium_for_cell, EntityProfile, Medium};
+use super::profile::{medium_for_cell, EntityProfile, Height, Medium};
 
 pub type MediumAlias = Medium;
 
@@ -14,6 +14,7 @@ pub struct CellSlot {
     pub tags: SmallVec<[String; 6]>,
     pub living_count: u8,
     pub corpse_count: u8,
+    pub occupant_height: Height,
 }
 
 impl CellSlot {
@@ -32,6 +33,7 @@ fn empty_slot(medium: Medium) -> CellSlot {
         tags: SmallVec::new(),
         living_count: 0,
         corpse_count: 0,
+        occupant_height: Height::Flat,
     }
 }
 
@@ -105,6 +107,7 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_add(1);
+        slot.occupant_height = slot.occupant_height.max(entity.profile.height);
     }
 
     pub fn vacate_entity(&mut self, x: u8, y: u8, entity: &Entity) {
@@ -117,6 +120,21 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_sub(1);
+        if slot.living_count == 0 {
+            slot.occupant_height = Height::Flat;
+        }
+    }
+
+    pub fn refresh_occupant_height(&mut self, world: &WorldState, x: u8, y: u8) {
+        let mut max_h = Height::Flat;
+        for id in world.entities_at(x, y) {
+            if let Some(e) = world.entities.get(&id) {
+                if entity_occupies_active_cell(e) && !e.is_corpse {
+                    max_h = max_h.max(e.profile.height);
+                }
+            }
+        }
+        self.slot_mut(x, y).occupant_height = max_h;
     }
 
     pub fn occupy(&mut self, x: u8, y: u8, profile: &EntityProfile) {
@@ -130,6 +148,7 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_add(1);
+        slot.occupant_height = slot.occupant_height.max(profile.height);
     }
 
     pub fn vacate(&mut self, x: u8, y: u8, profile: &EntityProfile) {
@@ -143,6 +162,9 @@ impl CellComposition {
             return;
         }
         slot.living_count = slot.living_count.saturating_sub(1);
+        if slot.living_count == 0 {
+            slot.occupant_height = Height::Flat;
+        }
     }
 
     pub fn can_occupy(&self, x: u8, y: u8, profile: &EntityProfile) -> bool {

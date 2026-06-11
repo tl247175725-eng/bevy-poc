@@ -1,5 +1,6 @@
 use crate::axioms::{
-    AxiomEngine, CausalEvent, CausalStorage, CellComposition, Composition, Medium, Traversal,
+    composition::entity_occupies_active_cell, AxiomEngine, CausalEvent, CausalStorage,
+    CellComposition, Composition, Height, Medium, Traversal,
 };
 use crate::bulletin::BulletinBoard;
 use crate::card_def::{card_defs_map, load_card_defs, CardDef};
@@ -276,7 +277,7 @@ impl WorldState {
         let camp_on_shallow = matches!(terrain, "river" | "ford")
             && crate::world_rules::is_camp_fire_anchor(&def);
         let terrain_blocked = water_terrain && !can_use_water && !camp_on_shallow;
-        let blocked = terrain_blocked || self.cell_composition.slot(x, y).living_count > 0;
+        let blocked = terrain_blocked || !self.cell_composition.can_occupy(x, y, &profile);
         if blocked {
             // Use native medium for search, not water medium from blocked cell
             let mut search_profile = profile.clone();
@@ -473,6 +474,11 @@ impl WorldState {
         let (old_x, old_y) = old;
         self.cell_composition
             .vacate_entity(old_x, old_y, &old_entity);
+        if self.cell_composition.slot(old_x, old_y).living_count > 0 {
+            self.refresh_cell_occupant_height(old_x, old_y);
+        }
+
+        self.flatten_ground_cover_at(id, new_x, new_y, profile.height);
 
         if let Some(entity) = self.entities.get_mut(&id) {
             entity.x = new_x;
@@ -532,11 +538,54 @@ impl WorldState {
         }
     }
 
+    pub fn refresh_cell_occupant_height(&mut self, x: u8, y: u8) {
+        let mut max_h = Height::Flat;
+        for id in self.entities_at(x, y) {
+            if let Some(e) = self.entities.get(&id) {
+                if entity_occupies_active_cell(e) && !e.is_corpse {
+                    max_h = max_h.max(e.profile.height);
+                }
+            }
+        }
+        self.cell_composition.slot_mut(x, y).occupant_height = max_h;
+    }
+
+    fn flatten_ground_cover_at(
+        &mut self,
+        mover_id: EntityId,
+        x: u8,
+        y: u8,
+        incoming_height: Height,
+    ) {
+        if incoming_height <= Height::Low {
+            return;
+        }
+        let victims: Vec<_> = self
+            .entities_at(x, y)
+            .into_iter()
+            .filter(|&id| id != mover_id)
+            .filter(|&id| {
+                self.entities.get(&id).is_some_and(|e| {
+                    !e.is_corpse
+                        && e.profile.height <= Height::Low
+                        && entity_occupies_active_cell(e)
+                })
+            })
+            .collect();
+        for victim in victims {
+            self.remove_entity(victim);
+        }
+    }
+
     pub fn remove_entity(&mut self, id: EntityId) {
         self.release_cover_host(id);
         let entity = self.entities.get(&id).cloned();
         if let Some(ref e) = entity {
-            self.cell_composition.vacate_entity(e.x, e.y, e);
+            let (x, y) = (e.x, e.y);
+            self.cell_composition.vacate_entity(x, y, e);
+            if self.cell_composition.slot(x, y).living_count > 0 {
+                self.refresh_cell_occupant_height(x, y);
+            }
             crate::sim_observer::on_despawn(self, &e.type_name, e.x, e.y);
             AxiomEngine::trace(
                 &mut self.causal_storage,

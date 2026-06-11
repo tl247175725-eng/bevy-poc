@@ -5,6 +5,14 @@ use super::laws::TransformAction;
 
 pub type Medium = String;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Height {
+    Flat,
+    Low,
+    Medium,
+    High,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SocialStructure {
     Flock,
@@ -58,6 +66,7 @@ pub struct EntityProfile {
     pub type_name: String,
 
     pub size: u8,
+    pub height: Height,
     pub incorporeal: bool,
 
     pub native_medium: Medium,
@@ -103,6 +112,7 @@ impl Default for EntityProfile {
             entity_id: EntityId(0),
             type_name: String::new(),
             size: 1,
+            height: Height::Medium,
             incorporeal: false,
             native_medium: "land".into(),
             bridges: SmallVec::new(),
@@ -446,6 +456,35 @@ fn parse_tag_f32_param(s: &str, key: &str) -> Option<f32> {
         }
     }
     None
+}
+
+pub fn parse_height(tags: &[String]) -> Height {
+    for t in tags {
+        if let Some(name) = t.strip_prefix("height:") {
+            return match name {
+                "flat" => Height::Flat,
+                "low" => Height::Low,
+                "medium" => Height::Medium,
+                "high" => Height::High,
+                _ => Height::Medium,
+            };
+        }
+    }
+    if tags.iter().any(|t| t == "body.large") {
+        return Height::High;
+    }
+    if tags.iter().any(|t| t == "body.tiny") {
+        return Height::Low;
+    }
+    if is_being_tagged(tags)
+        || tags.iter().any(|t| t == "body.medium" || t == "body.small")
+    {
+        return Height::Medium;
+    }
+    if tags.iter().any(|t| t == "bush" || t == "foodSource" || t == "fungi" || t == "fern") {
+        return Height::Low;
+    }
+    Height::Medium
 }
 
 pub fn parse_size(tags: &[String], type_name: &str) -> u8 {
