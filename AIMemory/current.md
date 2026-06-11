@@ -1,13 +1,14 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_fix-tests.md
+# Current Handoff
+- file: AIMemory/handoff_utility-engine.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-修测试——藏容纳逻辑更新后旧测试断言不匹配。
+保留 drive 执行层，替换固定优先级选择为动态效用打分。
 
 ## 架构反馈
-无。
+need 值随时间衰减，打分替代 priority 标签。
 
 ## 智能验收
-- cargo test --release 全 PASS
+- 饿时 seek 分高，饱时低
+- 羊饿急冒险过狼区找草
