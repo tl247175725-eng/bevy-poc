@@ -1,14 +1,13 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_utility-engine.md
+# Current Handoff
+- file: AIMemory/handoff_environment-systems.md
 - mode: Standard
-- status: completed
+- status: pending
 
 ## 架构计划
-保留 drive 执行层，替换固定优先级选择为动态效用打分。
+温度/季节扩展 SimClock。地块标签在 ensure_map_ecology 分配。衰老在 Entity 上。
 
 ## 架构反馈
-need 值随时间衰减，打分替代 priority 标签。
+复现有 SimClock + terrain_ecology。
 
 ## 智能验收
-- 饿时 seek 分高，饱时低
-- 羊饿急冒险过狼区找草
+- 冬天结冰、地块有肥力、老年死亡
