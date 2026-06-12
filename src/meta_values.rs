@@ -26,11 +26,11 @@ pub fn size_to_speed_mod(size: u8) -> f32 {
 pub const BASE_MOVE_SPEED: f32 = GRID_CELL_SIZE;
 
 pub fn entity_move_speed(size: u8) -> f32 {
-    BASE_MOVE_SPEED / size_to_speed_mod(size)
+    BASE_MOVE_SPEED * size_to_speed_mod(size)
 }
 
 pub fn entity_sprint_speed(size: u8, sprint_tier: f32) -> f32 {
-    BASE_MOVE_SPEED / (size_to_speed_mod(size) * sprint_tier)
+    BASE_MOVE_SPEED * size_to_speed_mod(size) / sprint_tier
 }
 
 pub fn impact_damage(weight: u8, speed: f32) -> i32 {
