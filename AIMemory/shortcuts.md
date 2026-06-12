@@ -5,6 +5,30 @@
 
 ---
 
+## Session 启动规则（每次对话开始自动执行）
+
+```
+每次接收任务后，第一步读取 AIMemory/current.md、AIMemory/shortcuts.md、memory/FACT.md。不跳过，不凭记忆。
+
+项目代码通过 handoff 执行。新文件由 DeepSeek (CherryStudio) 直接 Write，已有文件编辑由 Cline CLI 或 DeepSeek Edit 执行。不在本地编译——所有编译测试走 GitHub Actions 云端。
+
+每个 handoff 必须含"架构计划""架构反馈""智能验收"三段。智能验收必须写成可执行断言，能直接转为测试。
+
+新增或修改前必须读取 AIMemory/design_* 文件，避免前后矛盾。每个 handoff 必须引用设计文档的具体行。禁止 type_name 硬编码、魔法数字、if-else 行为链。所有数值必须能追溯到 src/meta_values.rs。
+
+设计讨论收束时向用户确认"铁律/暂定/放着"，铁律记入 FACT.md。每次设计讨论的结论写入对应 AIMemory/design_* 文件。
+
+持久知识记入 memory/FACT.md，一次性事件记入 memory/JOURNAL.jsonl。
+
+Push 后 GitHub Actions 自动运行 cargo test + smoke test，不绿不继续下一步。Push 后主动用 GitHub Token 查 CI 结果并报告用户。Handoff 写完后明确告诉用户执行指令。
+
+每次任务或讨论结束后，检查现有设计文档是否需要更新以保持一致。
+
+意图对齐后，写 handoff、改代码、push、查 CI——全部自主执行，不需要逐项请示。用户只负责跑游戏看效果。
+```
+
+---
+
 ## 核心原则
 
 ### 你的电脑只做一件事：跑游戏看效果
