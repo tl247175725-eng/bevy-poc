@@ -35,6 +35,9 @@ jobs:
 
       - name: Run unit tests
         run: cargo test --release 2>&1
+      - name: Show test failures (if any)
+        if: failure()
+        run: cargo test --release 2>&1 | grep -A 5 "FAILED\|panicked\|assertion" || true
 
       - name: Run smoke test
         run: cargo run --release -- --smoke-test 2>&1

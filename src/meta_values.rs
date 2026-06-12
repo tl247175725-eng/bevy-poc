@@ -8,7 +8,8 @@ pub const TICKS_PER_SECOND: f32 = 2.0;
 pub const SECONDS_PER_MINUTE: u32 = 60;
 pub const MINUTES_PER_HOUR: u32 = 60;
 pub const HOURS_PER_DAY: u32 = 24;
-pub const TICKS_PER_DAY: u64 = (TICKS_PER_SECOND * SECONDS_PER_MINUTE as f32 * MINUTES_PER_HOUR as f32 * HOURS_PER_DAY as f32) as u64;
+pub const TICKS_PER_SECOND_U64: u64 = 2;
+pub const TICKS_PER_DAY: u64 = TICKS_PER_SECOND_U64 * SECONDS_PER_MINUTE as u64 * MINUTES_PER_HOUR as u64 * HOURS_PER_DAY as u64;
 
 pub const GRID_CELL_SIZE: f32 = 1.0;
 pub const BASE_HP: i32 = 1;
