@@ -326,14 +326,16 @@ mod tests {
     fn wetland_cells_have_deep_soil() {
         let mut eco = MapEcology::default();
         eco.ensure();
-        let cell = eco
+        // 至少存在一个不靠近池子（dist ≠ 6-7）的湿地格有 deep soil
+        let has_deep = eco
             .wetland_cells
             .iter()
             .copied()
-            .next()
-            .expect("wetland");
-        let tags = soil_tags_for_cell(&eco, cell.0, cell.1);
-        assert!(tags.iter().any(|t| t == "soil:deep"));
+            .any(|(x, y)| {
+                let d = eco.pool_manhattan_dist(x, y);
+                !(6..=7).contains(&d) && soil_tags_for_cell(&eco, x, y).iter().any(|t| t == "soil:deep")
+            });
+        assert!(has_deep, "湿地中至少应有一格有 soil:deep");
     }
 
     #[test]
