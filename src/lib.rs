@@ -52,7 +52,7 @@ pub use card_def::{load_card_defs, load_card_defs_map, CardDef};
 pub use spatial_index::{EntityId, SpatialIndex};
 pub use terrain_colors::{rgba_to_f32, terrain_color, SELECTION_BORDER, cell_color_with_stress, river_stress_label};
 pub use rule_index::{
-    dual_track_eat, dual_track_graze, dual_track_hunt, rule_index, EcologyAction, RuleIndex,
+    rule_index, EcologyAction, RuleIndex,
 };
 pub use world_rules::*;
 pub use game_constants::{
