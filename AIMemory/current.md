@@ -1,16 +1,17 @@
-﻿# Current Handoff
-- file: AIMemory/handoff_fix-click-kills-hidden.md
+# Current Handoff
+- file: AIMemory/handoff_purification-phase1-foundation.md
 - mode: Standard
-- status: completed
+- status: ready
 
 ## 架构计划
-左键点击草丛：apply_smash_hit 拒绝 in_cover；resolve_selection_card 排除 in_cover；detect_drag_smash 跳过 in_cover；cell.overlay 不可拖拽。
+新建 `src/meta_values.rs`（世界基础量纲 + 派生规则 + 测试）和 `src/meta_actions.rs`（8 个原子动作枚举 + 执行结果枚举）。纯增量，不删任何现有代码。所有数字从 const 推导，无裸数字。
 
 ## 架构反馈
-交互安全层缺失——smash 目标应检查可砸性。
+这是整个整改的地基。后续所有改动从此派生。
 
 ## 智能验收
-- 点藏兔草丛兔子不死
-- 藏匿实体不可选中
-- 拖拽不误砸藏匿实体
-- 正常砸功能不受影响
+- cargo test 全 PASS
+- cargo build 成功
+- meta_values 中所有 pub fn 从 const 计算
+- meta_actions 覆盖 8 个元动作
+- lib.rs 正确注册
