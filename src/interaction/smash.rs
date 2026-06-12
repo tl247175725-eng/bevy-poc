@@ -77,6 +77,9 @@ pub fn apply_smash_hit(
     if source == target {
         return SmashOutcome::NoEffect;
     }
+    if tgt.in_cover {
+        return SmashOutcome::NoEffect;
+    }
 
     let src_name = display_name(world, &src.type_name);
     let tgt_name = display_name(world, &tgt.type_name);
@@ -269,5 +272,30 @@ pub fn finalize_prey_kill(
     if let Some(corpse) = world.entities.get_mut(&corpse_id) {
         corpse.is_corpse = true;
         corpse.decay_timer = 0.0;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::InteractionState;
+    use crate::sim_events::SimEventQueue;
+    use crate::world_state::empty_world;
+
+    #[test]
+    fn smash_ignores_target_in_cover() {
+        let mut world = empty_world();
+        let grass = world.spawn("grass", 8, 8);
+        let rabbit = world.spawn("rabbit", 8, 8);
+        world.entities.get_mut(&rabbit).unwrap().in_cover = true;
+        world.entities.get_mut(&rabbit).unwrap().host_cover_id = Some(grass);
+
+        let mut state = InteractionState::default();
+        let mut events = SimEventQueue::default();
+        let outcome = apply_smash_hit(&mut world, grass, rabbit, &mut state, &mut events);
+
+        assert_eq!(outcome, SmashOutcome::NoEffect);
+        assert_eq!(world.entities[&rabbit].hp, 1);
+        assert_eq!(events.pending_len(), 0);
     }
 }

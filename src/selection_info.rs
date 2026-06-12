@@ -82,6 +82,7 @@ pub fn resolve_selection_card(world: &WorldState, x: u8, y: u8) -> Option<Entity
                 && !e.in_tree
                 && !e.in_pool
                 && !e.in_ground
+                && !e.in_cover
         })
         .collect();
 
@@ -583,5 +584,16 @@ mod tests {
         w.spawn("fish", 8, 8);
         let panel = build_cell_panel(&w, 8, 8, 0.0);
         assert!(panel.lines.iter().any(|l| l.contains("鱼×2")));
+    }
+
+    #[test]
+    fn resolve_selection_skips_entities_in_cover() {
+        let mut w = empty_world();
+        let grass = w.spawn("grass", 8, 8);
+        let rabbit = w.spawn("rabbit", 8, 8);
+        w.entities.get_mut(&rabbit).unwrap().in_cover = true;
+        w.entities.get_mut(&rabbit).unwrap().host_cover_id = Some(grass);
+
+        assert_eq!(resolve_selection_card(&w, 8, 8), Some(grass));
     }
 }

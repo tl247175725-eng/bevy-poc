@@ -10,6 +10,7 @@ use crate::spatial_index::EntityId;
 use crate::terrain::is_blocked_terrain;
 use crate::terrain::terrain_at;
 use crate::viewport_layout::ViewportLayout;
+use crate::world_rules::card_has_tag;
 use crate::world_state::{MoveResult, WorldState};
 use crate::world_view::WorldView;
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
@@ -65,6 +66,9 @@ pub fn can_drag_entity(world: &WorldState, id: EntityId) -> bool {
     }
     if let Some(def) = world.card_defs.get(&entity.type_name) {
         if def.is_rooted {
+            return false;
+        }
+        if card_has_tag(def, "cell.overlay") {
             return false;
         }
     }
@@ -386,6 +390,14 @@ pub fn detect_drag_smash(
     let mut nearest: Option<(EntityId, f32, Vec2)> = None;
     for (cv, transform) in &cards {
         if cv.entity_id == source_id.0 {
+            continue;
+        }
+        if sim
+            .0
+            .entities
+            .get(&EntityId(cv.entity_id))
+            .is_some_and(|e| e.in_cover)
+        {
             continue;
         }
         let target_pos = transform.translation.truncate();
