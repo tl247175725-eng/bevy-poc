@@ -700,13 +700,6 @@ fn execute_drive(
                             }
                             return;
                         }
-                        let _ =
-                            crate::rule_index::dual_track_hunt(crate::rule_index::rule_index(), world, id);
-                        let _ = crate::rule_index::dual_track_stalk(
-                            crate::rule_index::rule_index(),
-                            world,
-                            id,
-                        );
                         if let Some(e) = world.entities.get_mut(&id) {
                             e.ecology_state = EcologyState::Hunting;
                         }
@@ -845,8 +838,6 @@ fn try_interact_at(world: &mut WorldState, actor_id: EntityId, target_id: Entity
         return;
     }
 
-    let _ = crate::rule_index::dual_track_graze(crate::rule_index::rule_index(), world, actor_id);
-    let _ = crate::rule_index::dual_track_eat(crate::rule_index::rule_index(), world, actor_id);
     try_consume(world, actor_id, target_id, def);
 }
 

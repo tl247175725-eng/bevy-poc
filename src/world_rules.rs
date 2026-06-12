@@ -531,42 +531,9 @@ pub const BEHAVIOR_MESOPREDATOR_HUNT: &str = "mesopredator_hunt";
 pub const BEHAVIOR_HERBIVORE_GRAZER: &str = "herbivore_grazer";
 pub const BEHAVIOR_COVER_FORAGER: &str = "cover_forager";
 
-/// Legacy if/else path — kept until RuleIndex dual-track fully agrees (Step 4).
-pub fn ecosystem_behavior_key_legacy(def: &CardDef, type_name: &str) -> &'static str {
-    match type_name {
-        "traveler" => return "traveler",
-        "mushroomFarmer" => return "mushroom_farmer",
-        "taoyuanElder" | "taoyuanForager" | "taoyuanYouth" => return "taoyuan",
-        _ => {}
-    }
-    if matches!(type_name, "wolf" | "wolfCub" | "fox" | "foxCub")
-        && (is_predator(def) || is_mesopredator(def))
-    {
-        return BEHAVIOR_PREDATOR_DEN;
-    }
-    if is_predator(def) && card_has_capability(def, "capability.hunt") {
-        return BEHAVIOR_PREDATOR_DEN;
-    }
-    if is_mesopredator(def) && !card_has_capability(def, "capability.return_home") {
-        return BEHAVIOR_MESOPREDATOR_HUNT;
-    }
-    if card_has_tag(def, "cover_user")
-        || card_has_tag(def, "burrower")
-        || matches!(type_name, "fieldMouse" | "fieldMousePup" | "bambooRat")
-    {
-        return BEHAVIOR_COVER_FORAGER;
-    }
-    if is_herbivore(def)
-        || card_has_capability(def, "capability.forage")
-        || card_has_tag(def, "grazer")
-        || is_juvenile(def) && is_herbivore(def)
-    {
-        return BEHAVIOR_HERBIVORE_GRAZER;
-    }
-    ""
-}
-
-/// RuleIndex 查询 + 旧路径回退（双轨 Step 3/4）。
+/// Phase 3: RuleIndex 为唯一行为分发入口，直接查询。
 pub fn ecosystem_behavior_key(def: &CardDef, type_name: &str) -> &'static str {
-    crate::rule_index::merge_behavior_key(crate::rule_index::rule_index(), def, type_name)
+    crate::rule_index::rule_index()
+        .behavior_key_for(def, type_name)
+        .unwrap_or("")
 }

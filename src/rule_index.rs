@@ -357,10 +357,8 @@ impl RuleIndex {
     }
 }
 
-fn def_tags(def: &CardDef) -> Vec<String> {
-    let mut tags: Vec<String> = def.tags.clone();
-    tags.push(def.type_name.clone());
-    tags
+fn def_tags(def: &CardDef) -> &[String] {
+    &def.tags
 }
 
 fn pack_size_for(world: &WorldState, actor_def: &CardDef) -> usize {
@@ -422,12 +420,10 @@ fn near_camp_anchor(world: &WorldState, x: u8, y: u8) -> bool {
     false
 }
 
-fn behavior_rule_matches(def: &CardDef, type_name: &str, key: &str) -> bool {
+fn behavior_rule_matches(def: &CardDef, _type_name: &str, key: &str) -> bool {
     match key {
         BEHAVIOR_PREDATOR_DEN => {
-            matches!(type_name, "wolf" | "wolfCub" | "fox" | "foxCub")
-                && (is_predator(def) || is_mesopredator(def))
-                || is_predator(def) && card_has_capability(def, "capability.hunt")
+            is_predator(def) && card_has_capability(def, "capability.hunt")
         }
         BEHAVIOR_MESOPREDATOR_HUNT => {
             is_mesopredator(def) && !card_has_capability(def, "capability.return_home")
@@ -435,7 +431,6 @@ fn behavior_rule_matches(def: &CardDef, type_name: &str, key: &str) -> bool {
         BEHAVIOR_COVER_FORAGER => {
             card_has_tag(def, "cover_user")
                 || card_has_tag(def, "burrower")
-                || matches!(type_name, "fieldMouse" | "fieldMousePup" | "bambooRat")
         }
         BEHAVIOR_HERBIVORE_GRAZER => {
             is_herbivore(def)
@@ -446,151 +441,8 @@ fn behavior_rule_matches(def: &CardDef, type_name: &str, key: &str) -> bool {
     }
 }
 
-// --- legacy mirrors for dual-track ---
-
-pub fn legacy_should_hunt(world: &WorldState, actor_id: EntityId) -> bool {
-    let Some(actor) = world.entities.get(&actor_id) else {
-        return false;
-    };
-    let Some(def) = world.card_defs.get(&actor.type_name) else {
-        return false;
-    };
-    if !can_hunt_def(def) {
-        return false;
-    }
-    let pack = pack_size_for(world, def);
-    prey_in_range(world, actor_id, actor.x, actor.y, HUNT_RANGE, def, pack).is_some()
-}
-
-pub fn legacy_should_stalk(world: &WorldState, actor_id: EntityId) -> bool {
-    let Some(actor) = world.entities.get(&actor_id) else {
-        return false;
-    };
-    let Some(def) = world.card_defs.get(&actor.type_name) else {
-        return false;
-    };
-    legacy_should_hunt(world, actor_id)
-        && (is_mesopredator(def) || card_has_tag(def, "sharp"))
-}
-
-pub fn legacy_should_flee_if_alone(world: &WorldState, actor_id: EntityId) -> bool {
-    let Some(actor) = world.entities.get(&actor_id) else {
-        return false;
-    };
-    let Some(def) = world.card_defs.get(&actor.type_name) else {
-        return false;
-    };
-    if !card_has_tag(def, "pack_hunter") {
-        return false;
-    }
-    let pack_defs: Vec<&CardDef> = world
-        .entities
-        .values()
-        .filter(|e| e.type_name == def.type_name && !e.is_corpse)
-        .filter_map(|e| world.card_defs.get(&e.type_name))
-        .collect();
-    pack_hunter_under_strength(&pack_defs) && near_camp_anchor(world, actor.x, actor.y)
-}
-
-pub fn legacy_should_graze(world: &WorldState, actor_id: EntityId) -> bool {
-    let Some(actor) = world.entities.get(&actor_id) else {
-        return false;
-    };
-    grass_in_range(world, actor_id, actor.x, actor.y, 6)
-}
-
-pub fn legacy_should_eat(world: &WorldState, actor_id: EntityId) -> bool {
-    let Some(actor) = world.entities.get(&actor_id) else {
-        return false;
-    };
-    let Some(def) = world.card_defs.get(&actor.type_name) else {
-        return false;
-    };
-    legacy_should_graze(world, actor_id) && !ecology_was_fed_today(actor, def)
-}
-
-pub fn dual_track_action(
-    index: &RuleIndex,
-    world: &WorldState,
-    actor_id: EntityId,
-    action: EcologyAction,
-    legacy: bool,
-) -> bool {
-    let rete = index.evaluate_action(world, actor_id, action);
-    // Phase 2: RuleIndex 是唯一权威。不一致时报 rete 结果，不再回退 legacy。
-    // 如果此改动导致行为异常，说明 RuleIndex 的规则需要修正（Phase 3），
-    // 而非回退 legacy——legacy 路径将在 Phase 3 完成后删除。
-    let _ = legacy;
-    rete
-}
-
-pub fn dual_track_hunt(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
-    dual_track_action(
-        index,
-        world,
-        actor_id,
-        EcologyAction::Hunt,
-        legacy_should_hunt(world, actor_id),
-    )
-}
-
-pub fn dual_track_stalk(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
-    dual_track_action(
-        index,
-        world,
-        actor_id,
-        EcologyAction::Stalk,
-        legacy_should_stalk(world, actor_id),
-    )
-}
-
-pub fn dual_track_flee_if_alone(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
-    dual_track_action(
-        index,
-        world,
-        actor_id,
-        EcologyAction::FleeIfAlone,
-        legacy_should_flee_if_alone(world, actor_id),
-    )
-}
-
-pub fn dual_track_graze(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
-    dual_track_action(
-        index,
-        world,
-        actor_id,
-        EcologyAction::Graze,
-        legacy_should_graze(world, actor_id),
-    )
-}
-
-pub fn dual_track_eat(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
-    dual_track_action(
-        index,
-        world,
-        actor_id,
-        EcologyAction::Eat,
-        legacy_should_eat(world, actor_id),
-    )
-}
-
 static RULE_INDEX: std::sync::OnceLock<RuleIndex> = std::sync::OnceLock::new();
 
 pub fn rule_index() -> &'static RuleIndex {
     RULE_INDEX.get_or_init(RuleIndex::build)
-}
-
-/// Step 3/4：RuleIndex 与 legacy 一致时用索引结果，否则回退 legacy。
-pub fn merge_behavior_key(
-    index: &RuleIndex,
-    def: &CardDef,
-    type_name: &str,
-) -> &'static str {
-    let legacy = crate::world_rules::ecosystem_behavior_key_legacy(def, type_name);
-    if let Some(key) = index.behavior_key_for(def, type_name) {
-        if key == legacy || legacy.is_empty() {
-            return if legacy.is_empty() { key } else { legacy };
-        }
-    }
-    legacy
 }
