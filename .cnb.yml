@@ -6,8 +6,7 @@ main:
       docker:
         image: rust:latest
         volumes:
-          - /root/.cargo/registry:copy-on-write
-          - /workspace/target:copy-on-write
+          - /root/.cargo:copy-on-write
       env:
         CARGO_TERM_COLOR: always
         CARGO_NET_RETRY: 5
