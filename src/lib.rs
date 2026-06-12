@@ -13,6 +13,8 @@ pub mod game_ui_panel;
 pub mod grid_render;
 pub mod initial_spawn;
 pub mod interaction;
+pub mod meta_actions;
+pub mod meta_values;
 pub mod panel_ui;
 pub mod pathfinding;
 pub mod player;
