@@ -5,10 +5,25 @@ main:
         cpus: 8
       docker:
         image: rust:latest
+        volumes:
+          - /root/.cargo/registry:copy-on-write
+          - /workspace/target:copy-on-write
       env:
         CARGO_TERM_COLOR: always
         CARGO_NET_RETRY: 5
+        CARGO_BUILD_JOBS: 8
       stages:
+        - name: cargo mirror
+          script:
+            - mkdir -p /root/.cargo
+            - |
+              cat > /root/.cargo/config.toml << 'EOF'
+              [source.crates-io]
+              replace-with = 'aliyun'
+
+              [source.aliyun]
+              registry = "sparse+https://mirrors.aliyun.com/crates.io-index/"
+              EOF
         - name: install deps
           script:
             - apt-get update -y && apt-get install -y pkg-config libudev-dev libasound2-dev
