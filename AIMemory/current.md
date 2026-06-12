@@ -1,17 +1,17 @@
 # Current Handoff
-- file: AIMemory/handoff_fix-animal-oscillation.md
+- file: AIMemory/handoff_fix-click-kills-hidden.md
 - mode: Standard
 - status: ready
 
 ## 架构计划
-草食动物 fed_today 锁死 Seek → 无事可做。全部动物无驱动时统一 wander（四方向随机）。Flock 加重心死区。Flock state 修正。草不被动物踩毁。
+左键点击草丛 → 两条攻击路径（detect_drag_smash 视觉重叠 + find_impact_target 格内查找）均不检查 in_cover → 藏匿兔被砸死。修复：apply_smash_hit 拒绝 in_cover + resolve_selection_card 排除 in_cover + detect_drag_smash 跳过 in_cover + cell.overlay 不可拖拽。
 
 ## 架构反馈
-fed_today 粒度太粗，480 tick 无行为太久。Flock 缺分离力。wander 偏斜已修。
+交互安全层缺失——smash 目标应检查可砸性（visible、not_in_cover、alive）。当前仅检查 hp>0 和 corpse 状态。
 
 ## 智能验收
-- 动物吃完后不空转睡眠
-- 群不 2 格振荡
-- Flock 重心重合不移动
-- 草地不被路过踩毁
+- 点藏兔草丛兔子不死
+- 藏匿实体不可选中
+- 拖拽不误砸藏匿实体
+- 正常砸功能不受影响
 - cargo test + cargo build PASS
