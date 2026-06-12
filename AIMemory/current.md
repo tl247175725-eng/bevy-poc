@@ -1,17 +1,17 @@
 # Current Handoff
-- file: AIMemory/handoff_purification-phase1-foundation.md
+- file: AIMemory/handoff_purification-phase3-ruleindex-tags.md
 - mode: Standard
 - status: ready
 
 ## 架构计划
-新建 `src/meta_values.rs`（世界基础量纲 + 派生规则 + 测试）和 `src/meta_actions.rs`（8 个原子动作枚举 + 执行结果枚举）。纯增量，不删任何现有代码。所有数字从 const 推导，无裸数字。
+Phase 2 激活了 RuleIndex。Phase 3 清理其内部 type_name 硬编码：behavior_rule_matches 纯标签化、删除 def_tags type_name 注入、删除所有 legacy/dual_track 函数。
 
 ## 架构反馈
-这是整个整改的地基。后续所有改动从此派生。
+def_tags 注入 type_name 是最隐蔽的硬编码——type_name 以标签身份混入。删掉后缺标签的卡会暴露——补标签而非补 type_name。
 
 ## 智能验收
-- cargo test 全 PASS
-- cargo build 成功
-- meta_values 中所有 pub fn 从 const 计算
-- meta_actions 覆盖 8 个元动作
-- lib.rs 正确注册
+- behavior_rule_matches 无 type_name
+- legacy/dual_track 全部删除
+- ecosystem_behavior_key_legacy 删除
+- cargo test + smoke test 全 PASS
+- 相关卡定义标签完整
