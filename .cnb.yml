@@ -1,0 +1,18 @@
+# CNB 云原生构建 — 方寸商国：桃花源记
+main:
+  push:
+    - runner:
+        cpus: 8
+      docker:
+        image: rust:1.85
+      env:
+        CARGO_TERM_COLOR: always
+        CARGO_NET_RETRY: 5
+      stages:
+        - name: install deps
+          script:
+            - apt-get update -y && apt-get install -y pkg-config libudev-dev libasound2-dev
+        - name: cargo test
+          script: cargo test 2>&1
+        - name: smoke test
+          script: cargo run -- --smoke-test 2>&1
