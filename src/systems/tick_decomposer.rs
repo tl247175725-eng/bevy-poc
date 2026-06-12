@@ -1,7 +1,7 @@
 //! Dung production, decomposer spawn, and fertility cycling.
 
 use crate::ecology_log::{card_display_name, eco_log};
-use crate::world_rules::{chebyshev_distance, ecology_was_fed_today, is_being};
+use crate::world_rules::{card_has_tag, chebyshev_distance, ecology_was_fed_today, is_being};
 use crate::world_state::WorldState;
 
 pub fn upgrade_cell_fertility(world: &mut WorldState, x: u8, y: u8) {
@@ -65,9 +65,11 @@ fn spawn_decomposers(world: &mut WorldState) {
         return;
     }
     for entity in world.entities.values() {
-        if entity.type_name == "dung" && !entity.is_corpse {
+        let is_dung = world.card_defs.get(&entity.type_name)
+            .is_some_and(|d| card_has_tag(d, "fertilizer"));
+        if is_dung && !entity.is_corpse {
             let (x, y) = (entity.x, entity.y);
-            if world.count_type("dungBeetle") == 0
+            if world.count_by_tag("decomposer") == 0
                 && !world.has_tag_at(x, y, "decomposer")
             {
                 world.spawn("dungBeetle", x, y);
@@ -96,25 +98,24 @@ fn decompose_dung(world: &mut WorldState) {
     if world.tick_count % 15 != 0 {
         return;
     }
-    let beetles: Vec<_> = world
+    fn is_decomposer(world: &WorldState, e: &crate::world_state::Entity) -> bool {
+        world.card_defs.get(&e.type_name)
+            .is_some_and(|d| card_has_tag(d, "decomposer"))
+    }
+    let decomposers: Vec<_> = world
         .entities
         .values()
-        .filter(|e| e.type_name == "dungBeetle" && e.in_ground)
-        .map(|e| (e.id, e.x, e.y))
-        .collect();
-    let worms: Vec<_> = world
-        .entities
-        .values()
-        .filter(|e| e.type_name == "earthworm" && e.in_ground)
+        .filter(|e| is_decomposer(world, e) && e.in_ground)
         .map(|e| (e.id, e.x, e.y))
         .collect();
 
-    for &(_decomposer_id, dx, dy) in beetles.iter().chain(worms.iter()) {
+    for &(_decomposer_id, dx, dy) in &decomposers {
         let target = world
             .entities
             .values()
             .find(|e| {
-                e.type_name == "dung"
+                world.card_defs.get(&e.type_name)
+                    .is_some_and(|d| card_has_tag(d, "fertilizer"))
                     && !e.is_corpse
                     && chebyshev_distance(dx, dy, e.x, e.y) <= 1
             })

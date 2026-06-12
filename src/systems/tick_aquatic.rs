@@ -18,7 +18,8 @@ pub fn tick_aquatic(world: &mut WorldState, spatial_delta: f32) {
     let mut sessile: Vec<EntityId> = world
         .entities
         .values()
-        .filter(|e| matches!(e.type_name.as_str(), "shellfish" | "algae"))
+        .filter(|e| world.card_defs.get(&e.type_name)
+            .is_some_and(|d| card_has_tag(d, "sessile_aquatic")))
         .map(|e| e.id)
         .collect();
     for id in sessile.drain(..) {
@@ -45,7 +46,7 @@ fn tick_sessile_aquatic(world: &mut WorldState, id: EntityId, def: &CardDef) {
         return;
     }
     if is_sessile(def) {
-        if world.has_tag_at(x, y, "primary_producer") || world.count_type("algae") > 0 {
+        if world.has_tag_at(x, y, "primary_producer") || world.count_by_tag("primary_producer") > 0 {
             if let Some(e) = world.entities.get_mut(&id) {
                 mark_ecology_fed(e, def);
                 e.ecology_state = EcologyState::SeekingFood;
@@ -60,16 +61,16 @@ fn tick_algae_regen(world: &mut WorldState, delta: f32) {
         return;
     }
     world.grass_regen_timer = 0.0;
-    if (world.count_type("algae") as i32) >= ALGAE_CAP {
+    if (world.count_by_tag("primary_producer") as i32) >= ALGAE_CAP {
         return;
     }
     let pools: Vec<(u8, u8)> = world.pool_cells.iter().copied().collect();
     let per_pool_cap = pools.len().max(1);
     for (x, y) in pools {
-        if (world.count_type("algae") as i32) >= ALGAE_CAP {
+        if (world.count_by_tag("primary_producer") as i32) >= ALGAE_CAP {
             break;
         }
-        if world.count_type("algae") >= per_pool_cap {
+        if world.count_by_tag("primary_producer") >= per_pool_cap {
             break;
         }
         if world.has_tag_at(x, y, "algae") || !world.entities_at(x, y).is_empty() {
@@ -80,36 +81,31 @@ fn tick_algae_regen(world: &mut WorldState, delta: f32) {
 }
 
 fn migrate_aquatic(world: &mut WorldState) {
-    if (world.count_type("waterBug") as i32) < WATER_BUG_CAP {
-        if let Some((x, y)) = empty_pool_for(world, "waterBug") {
+    if (world.count_by_tag("species:waterBug") as i32) < WATER_BUG_CAP {
+        if let Some((x, y)) = empty_pool_tag(world, "species:waterBug", None) {
             world.spawn("waterBug", x, y);
         }
     }
-    if (world.count_type("fish") as i32) < FISH_CAP {
-        let cell = empty_pool_without(world, "fish", "waterBug")
-            .or_else(|| empty_pool_for(world, "fish"));
+    if (world.count_by_tag("species:fish") as i32) < FISH_CAP {
+        let cell = empty_pool_tag(world, "species:fish", Some("species:waterBug"))
+            .or_else(|| empty_pool_tag(world, "species:fish", None));
         if let Some((x, y)) = cell {
             world.spawn("fish", x, y);
         }
     }
 }
 
-fn empty_pool_for(world: &WorldState, type_name: &str) -> Option<(u8, u8)> {
-    empty_pool_without(world, type_name, type_name)
+fn entity_at_has_tag(world: &WorldState, x: u8, y: u8, tag: &str) -> bool {
+    world.entities_at(x, y).iter().any(|id| {
+        world.entities.get(id)
+            .and_then(|e| world.card_defs.get(&e.type_name))
+            .is_some_and(|d| card_has_tag(d, tag))
+    })
 }
 
-fn empty_pool_without(
-    world: &WorldState,
-    type_name: &str,
-    avoid_type: &str,
-) -> Option<(u8, u8)> {
+fn empty_pool_tag(world: &WorldState, tag: &str, avoid_tag: Option<&str>) -> Option<(u8, u8)> {
     world.pool_cells.iter().copied().find(|&(x, y)| {
-        let occupants: Vec<&str> = world
-            .entities_at(x, y)
-            .iter()
-            .filter_map(|id| world.entities.get(id).map(|e| e.type_name.as_str()))
-            .collect();
-        !occupants.iter().any(|t| *t == type_name)
-            && !occupants.iter().any(|t| *t == avoid_type)
+        !entity_at_has_tag(world, x, y, tag)
+            && !avoid_tag.is_some_and(|at| entity_at_has_tag(world, x, y, at))
     })
 }

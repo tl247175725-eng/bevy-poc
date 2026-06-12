@@ -115,7 +115,7 @@ pub fn is_blocked_for(world: &WorldState, x: u8, y: u8, exclude: Option<u64>) ->
             continue;
         }
         if let Some(e) = world.entities.get(&id) {
-            if blocks_path(e.type_name.as_str()) {
+            if blocks_cell(e) {
                 return true;
             }
         }
@@ -123,20 +123,19 @@ pub fn is_blocked_for(world: &WorldState, x: u8, y: u8, exclude: Option<u64>) ->
     false
 }
 
-fn blocks_path(type_name: &str) -> bool {
-    !matches!(
-        type_name,
-        "grass"
-            | "bush"
-            | "dryGrass"
-            | "humus"
-            | "algae"
-            | "berry"
-            | "mushroom"
-            | "fieldMouse"
-            | "landBug"
-            | "waterBug"
-    )
+fn blocks_cell(entity: &crate::world_state::Entity) -> bool {
+    use crate::axioms::composition::entity_occupies_active_cell;
+    use crate::world_rules::card_has_tag;
+    if !entity_occupies_active_cell(entity) {
+        return false;
+    }
+    if entity.profile.incorporeal {
+        return false;
+    }
+    if entity.profile.height <= crate::axioms::Height::Low {
+        return false;
+    }
+    true
 }
 
 fn in_grid(x: u8, y: u8) -> bool {

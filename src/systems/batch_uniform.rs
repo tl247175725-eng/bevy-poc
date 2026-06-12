@@ -62,11 +62,15 @@ pub fn flush_corpse_decay(world: &mut WorldState) {
         return;
     }
 
-    for (id, type_name, x, y, decay) in corpses {
-        let max_decay = match type_name.as_str() {
-            "wolfCorpse" => WOLF_CORPSE_DECAY,
-            "playerCorpse" => PLAYER_CORPSE_DECAY,
-            _ => CORPSE_DECAY_SECONDS,
+    for (id, _type_name, x, y, decay) in corpses {
+        let def = world.card_defs.get(&_type_name);
+        let has_tag = |tag: &str| def.is_some_and(|d| crate::world_rules::card_has_tag(d, tag));
+        let max_decay = if has_tag("decay:player") {
+            PLAYER_CORPSE_DECAY
+        } else if has_tag("decay:long") {
+            WOLF_CORPSE_DECAY
+        } else {
+            CORPSE_DECAY_SECONDS
         };
         if decay >= max_decay {
             world.remove_entity(id);
