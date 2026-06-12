@@ -517,11 +517,11 @@ pub fn dual_track_action(
     legacy: bool,
 ) -> bool {
     let rete = index.evaluate_action(world, actor_id, action);
-    if rete == legacy {
-        rete
-    } else {
-        legacy
-    }
+    // Phase 2: RuleIndex 是唯一权威。不一致时报 rete 结果，不再回退 legacy。
+    // 如果此改动导致行为异常，说明 RuleIndex 的规则需要修正（Phase 3），
+    // 而非回退 legacy——legacy 路径将在 Phase 3 完成后删除。
+    let _ = legacy;
+    rete
 }
 
 pub fn dual_track_hunt(index: &RuleIndex, world: &WorldState, actor_id: EntityId) -> bool {
