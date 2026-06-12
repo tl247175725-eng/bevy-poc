@@ -4,7 +4,7 @@ main:
     - runner:
         cpus: 8
       docker:
-        image: rust:1.85
+        image: rust:latest
       env:
         CARGO_TERM_COLOR: always
         CARGO_NET_RETRY: 5
