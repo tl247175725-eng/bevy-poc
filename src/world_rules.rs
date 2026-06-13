@@ -499,7 +499,7 @@ pub fn corpse_type_for(world: &crate::world_state::WorldState, living_type: &str
 }
 
 pub fn is_sessile(def: &CardDef) -> bool {
-    card_has_tag(def, "sessile")
+    card_has_tag(def, "sessile_aquatic") || card_has_tag(def, "sessile")
 }
 
 pub fn is_floating(def: &CardDef) -> bool {
