@@ -331,7 +331,7 @@ fn assert_26_fish_tags() {
 #[test]
 fn assert_27_shellfish_tags() {
     let world = empty_world();
-    assert!(card_has_tag(def(&world, "shellfish"), "sessile"));
+    assert!(card_has_tag(def(&world, "shellfish"), "sessile_aquatic"));
 }
 
 #[test]
