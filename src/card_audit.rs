@@ -110,7 +110,10 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("soil:")
         || tag.starts_with("fertility:")
         || tag.starts_with("height:")
+        || tag.starts_with("species:")
+        || tag.starts_with("decay:")
         || tag == "shaded"
+        || tag == "sessile_aquatic"
     {
         return Some("action");
     }

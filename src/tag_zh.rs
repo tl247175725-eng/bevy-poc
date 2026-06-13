@@ -250,7 +250,10 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("soil:")
         || token.starts_with("fertility:")
         || token.starts_with("height:")
+        || token.starts_with("species:")
+        || token.starts_with("decay:")
         || token == "shaded"
+        || token == "sessile_aquatic"
         || token == "player"
         || token == "meat_diet"
         || token == "den_resident"
