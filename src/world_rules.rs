@@ -258,44 +258,14 @@ pub fn is_hunt_target_for_pack(
     }
 }
 
+/// 已掏空——始终返回不可狩猎
 pub fn hunt_target_score(
-    hunter_def: &CardDef,
-    target_def: &CardDef,
-    distance: f32,
-    pack_adult_count: usize,
+    _hunter_def: &CardDef,
+    _target_def: &CardDef,
+    _distance: f32,
+    _pack_adult_count: usize,
 ) -> f32 {
-    if !is_hunt_target_for_pack(hunter_def, target_def, pack_adult_count) {
-        return HUNT_SCORE_INF;
-    }
-    let mut score = distance;
-    match hunt_profile_for(hunter_def) {
-        HUNT_PROFILE_PACK => match target_def.type_name.as_str() {
-            "deer" => score -= 2.0,
-            "sheep" => score -= 1.5,
-            "waterBuffaloCalf" | "deerFawn" | "lamb" => score -= 1.0,
-            "waterBuffalo" => return HUNT_SCORE_INF,
-            _ => {}
-        },
-        HUNT_PROFILE_MESO => {
-            if card_has_tag(target_def, "smallPrey") {
-                score -= 2.0;
-            } else if card_has_tag(target_def, "smallHerbivore") {
-                score -= 1.0;
-            }
-        }
-        HUNT_PROFILE_TOOL => {
-            if card_has_tag(target_def, "smallPrey") || card_has_tag(target_def, "smallHerbivore") {
-                score -= 3.0;
-            } else if is_tough_adult_prey(target_def) {
-                return HUNT_SCORE_INF;
-            } else if card_has_tag(target_def, "largePrey") && !card_has_tag(target_def, "juvenile")
-            {
-                score += 8.0;
-            }
-        }
-        _ => return HUNT_SCORE_INF,
-    }
-    score
+    HUNT_SCORE_INF
 }
 
 #[derive(Debug, Clone)]
