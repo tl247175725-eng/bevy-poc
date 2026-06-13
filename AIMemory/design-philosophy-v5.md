@@ -316,6 +316,85 @@ Poincaré-Bendixson 定理：二维动力系统的极限集只能是不动点或
 
 ---
 
+## 八、元数值体系（铁律）
+
+> 2026-06-13 深度讨论确认。同构 + 卡牌媒介兼容。
+
+### 8.1 时间
+
+```
+1 day    = 420 tick（铁律）
+1 phase  = 60 tick（清晨/早晨/上午/中午/下午/傍晚/深夜）
+1 season = 28 day
+1 year   = 4 season = 112 day
+
+无 second/minute/hour 中间层。
+所有速度、衰减、冷却用"每 tick"或"每天"表达。
+```
+
+### 8.2 感官
+
+**四通道：** 视觉(Vision)、听觉(Hearing)、嗅觉(Smell)、触觉(Touch)
+
+**标签表达：**
+```
+sense:vision(r=N, acuity=high|medium|low, motion_sensitive=true|false)
+sense:hearing(r=N, passive=true|false)
+sense:smell(r=N, passive=true|false)
+sense:touch(r=1)
+
+感知范围 = 感官标签 × 体型修正 × 时间段修正 × 环境条件
+感知结果 = DetectionQuality { range, fuzzy_level, identified }
+  → 不返回二元 Detected/Undetected, 返回模糊度
+```
+
+**主动感知元动作：** Scan / Listen / Sniff / Touch
+**信号发射元动作：** Shout / Move(脚步声) / Bleed(血腥味) / Burn(烟+光)
+
+### 8.3 物质
+
+**真实物理数值，不分级。** 标签 = 钥匙，数据在引擎内置材质数据库。
+
+| 属性 | 物理含义 | 游戏效果 |
+|---|---|---|
+| density | kg/m³ | 重量 → 移动速度、打击动量 |
+| hardness | 莫氏/维氏 | 能否切割/加工其他材料 |
+| yield_strength | MPa | 何时永久变形 |
+| fracture_strength | MPa | 何时彻底断裂 |
+| toughness | J/m³ | 脆vs韧——玻璃一砸碎，钢能扛 |
+| max_edge | 锋利度上限 | 切割攻击穿透力 |
+
+```
+铁: material:iron → 引擎查表 → density=7874, hardness=4, yield=500...
+木: material:wood → density=700, hardness=1, toughness=high, edge=none
+精金: material:adamantine → density=200, hardness=10, edge=100000
+仙人金身: material:celestial_body → density=8000, hardness=8
+```
+
+**超自然 ≠ 规则豁免。超自然 = 极端物理参数 + 公理覆盖 + 灵魂层状态。**
+90% 的超自然概念是标签组合——不需要改框架。
+
+## 九、元动作体系（当前状态）
+
+| 元动作 | 状态 | 说明 |
+|---|---|---|
+| Move | 已定 | 曼哈顿单步，compose+traverse 验证 |
+| Strike | 已定 | 1单位打击，damage_entity_hp |
+| Consume | 已定 | 走 AxiomEngine::transform |
+| Combine | 待讨论 | 两物合并为新物 |
+| Release | 待讨论 | 放置携带物到世界 |
+| Wait → Rest/Think/Observe/Appreciate/Examine | 已定 | pause标签分化 |
+| Hide/Emerge | 待讨论 | 掩护/出掩护 |
+
+### 防振荡法则（已定）
+
+1. **行为惯性**: 当前元动作序列不被打断（除非安全急迫度触发）
+2. **执行冷却**: 同一元动作组合有最小间隔
+3. **急迫度阈值**: 新需求必须 > 当前需求 1.2 倍才切换
+4. **良性振荡保留**: 需求饱和后的自然切换不消灭
+
+---
+
 ## 七、未来方向：从哲学僵尸到涌现世界
 
 当前阶段的目标是:
