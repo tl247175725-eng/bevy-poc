@@ -531,9 +531,7 @@ pub const BEHAVIOR_MESOPREDATOR_HUNT: &str = "mesopredator_hunt";
 pub const BEHAVIOR_HERBIVORE_GRAZER: &str = "herbivore_grazer";
 pub const BEHAVIOR_COVER_FORAGER: &str = "cover_forager";
 
-/// Phase 3: RuleIndex 为唯一行为分发入口，直接查询。
-pub fn ecosystem_behavior_key(def: &CardDef, type_name: &str) -> &'static str {
-    crate::rule_index::rule_index()
-        .behavior_key_for(def, type_name)
-        .unwrap_or("")
+/// 行为键查询——已掏空，所有实体均为空行为键
+pub fn ecosystem_behavior_key(_def: &CardDef, _type_name: &str) -> &'static str {
+    ""
 }
