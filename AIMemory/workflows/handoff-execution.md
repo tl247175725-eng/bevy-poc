@@ -29,11 +29,26 @@
 - **Grep 该标签字符串在 `src/` + `tests/` 中的所有引用**，确认全部已知后再改
 - 改完后检查 `src/card_audit.rs` 和 `src/tag_zh.rs` 是否注册了新标签
 
+## Push 前必须 — cargo check
+
+**改动代码后，必须先本地跑 `cargo check`。零错误才能 push。**
+
+```
+cargo check
+```
+
+- 只做类型检查，不生成代码，不链接——比 `cargo build` 快 5-10 倍
+- 拦住 100% 的编译期错误（缺导入、函数不存在、类型不匹配）
+- 首次跑会编译 Bevy 依赖的元数据（需要几分钟），后续增量只查改动文件（秒级）
+
+**如果 cargo check 报错 → 修 → 再 check → 零错误 → 才能 push。绝对不允许推未通过 cargo check 的代码。**
+
 ## Push 前自查
 
-1. Grep 查所有被删函数/标签的残留引用（`src/` + `tests/`）
-2. 检查 `card_audit.rs` 和 `tag_zh.rs` 是否注册了新标签
-3. 确保零遗漏再 push
+1. `cargo check` 零错误（必须，不可跳过）
+2. Grep 查所有被删函数/标签的残留引用（`src/` + `tests/`）
+3. 检查 `card_audit.rs` 和 `tag_zh.rs` 是否注册了新标签
+4. 确保零遗漏再 push
 
 ## Push 后
 
