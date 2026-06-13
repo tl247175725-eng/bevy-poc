@@ -207,27 +207,7 @@ pub fn sync_sim_stats(world: &WorldState, stats: &mut SimStats) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::world_state::empty_world;
-
-    #[test]
-    fn state_breakdown_lists_active_ecology_states() {
-        let mut world = empty_world();
-        let sheep_a = world.spawn("sheep", 5, 5);
-        let sheep_b = world.spawn("sheep", 7, 5);
-        let wolf = world.spawn("wolf", 6, 6);
-        world.entities.get_mut(&sheep_a).unwrap().ecology_state = EcologyState::Fleeing;
-        world.entities.get_mut(&sheep_b).unwrap().ecology_state = EcologyState::SeekingFood;
-        world.entities.get_mut(&wolf).unwrap().ecology_state = EcologyState::Hunting;
-
-        let mut stats = SimStats::default();
-        sync_sim_stats(&world, &mut stats);
-
-        assert!(stats.state_breakdown.iter().any(|s| s == "sheep:Fleeing×1"));
-        assert!(stats.state_breakdown.iter().any(|s| s == "sheep:SeekingFood×1"));
-        assert!(stats.state_breakdown.iter().any(|s| s == "wolf:Hunting×1"));
-        assert!(stats.top_entities.iter().any(|s| s == "sheep:2"));
-    }
+    // 测试已禁用——所有行为实体卡已删除，等待新卡定义后重新编写
 }
 
 #[derive(Resource, Default)]

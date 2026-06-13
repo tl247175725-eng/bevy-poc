@@ -254,6 +254,10 @@ pub fn tag_has_zh_mapping(token: &str) -> bool {
         || token.starts_with("decay:")
         || token == "shaded"
         || token == "sessile_aquatic"
+        || token.starts_with("cell.")
+        || token == "blocks_path"
+        || token == "hard"
+        || token == "wood"
         || token == "player"
         || token == "meat_diet"
         || token == "den_resident"

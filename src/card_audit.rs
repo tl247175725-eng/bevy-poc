@@ -114,6 +114,10 @@ pub fn tag_dimension(tag: &str) -> Option<&'static str> {
         || tag.starts_with("decay:")
         || tag == "shaded"
         || tag == "sessile_aquatic"
+        || tag.starts_with("cell.")
+        || tag == "blocks_path"
+        || tag == "hard"
+        || tag == "wood"
     {
         return Some("action");
     }
