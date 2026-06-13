@@ -1,7 +1,7 @@
 //! RuleIndex — tag_index 与 shared_node 去重断言。
 
 use bevy_poc::rule_index::{rule_index, EcologyAction, SharedCondition};
-use bevy_poc::world_rules::{ecosystem_behavior_key, ecosystem_behavior_key_legacy, HUNT_RANGE};
+use bevy_poc::world_rules::{ecosystem_behavior_key, BEHAVIOR_PREDATOR_DEN, HUNT_RANGE};
 use bevy_poc::world_state::empty_world;
 
 #[test]
@@ -54,11 +54,12 @@ fn rule_index_shared_in_range_node_deduped() {
 }
 
 #[test]
-fn ecosystem_behavior_key_dual_track_matches_legacy_on_wolf() {
+fn ecosystem_behavior_key_returns_predator_den_for_wolf() {
     let w = empty_world();
     let def = w.card_defs.get("wolf").unwrap();
     assert_eq!(
         ecosystem_behavior_key(def, "wolf"),
-        ecosystem_behavior_key_legacy(def, "wolf")
+        BEHAVIOR_PREDATOR_DEN,
+        "RuleIndex should classify wolf as predator_den"
     );
 }
