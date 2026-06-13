@@ -39,7 +39,8 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: bevy-poc-v5
+          shared-key: bevy-poc-v6
+          cache-on-failure: true
           cache-targets: false
 
       - name: cargo test
