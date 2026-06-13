@@ -47,7 +47,7 @@
         type_name: "grass",
         display_name: "草",
         icon: "草",
-        tags: ["grass", "foodSource", "cell.cover", "height:flat", "cell.overlay"],
+        tags: ["grass", "height:flat", "cell.overlay"],
         color: (144, 187, 108, 255),
         hp: 1,
         is_rooted: false,
