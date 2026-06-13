@@ -381,12 +381,13 @@ sense:touch(r=1)
 | 元动作 | 状态 | 定义 |
 |---|---|---|
 | Move | 铁律 | 曼哈顿单步，compose+traverse 验证 |
-| Strike | 铁律 | 唯一的冲击元动作。战斗/加工/分解同源，分歧来自参数（force/angle/intent）和材质属性 |
-| Consume | 铁律 | 走 AxiomEngine::transform，能量转化 |
-| Combine | 铁律 | 属性代数合并，不查配方表。产物由输入材质决定 |
-| Release | 待讨论 | 放置携带物到世界 |
+| Strike | 铁律 | 唯一冲击元动作。战斗/加工/分解同源，参数分歧 |
+| Consume | 铁律 | AxiomEngine::transform，能量转化 |
+| Combine | 铁律 | 属性代数合并，无配方。产物由输入材质决定 |
+| Release | 铁律 | 从携带态放置到世界，需 compose 验证 |
 | Pause | 铁律 | Wait → Rest/Think/Observe/Appreciate/Examine（pause:标签分化） |
-| Hide/Emerge | 待讨论 | 空间态转换（进掩护/出掩护） |
+| Hide | 铁律 | 进入容纳态（草丛/树洞/水/窝），vacate compose 格 |
+| Emerge | 铁律 | 从容纳态退出，重新占有 compose 格 |
 
 ### 9.2 无配方原则
 
