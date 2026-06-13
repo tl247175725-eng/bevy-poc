@@ -389,6 +389,44 @@ sense:touch(r=1)
 | Hide | 铁律 | 进入容纳态（草丛/树洞/水/窝），vacate compose 格 |
 | Emerge | 铁律 | 从容纳态退出，重新占有 compose 格 |
 
+### 9.4 信息层元动作
+
+**物理层之上存在信息层。信号不只是物理波动——它携带语义内容。**
+
+| 元动作 | 状态 | 定义 |
+|---|---|---|
+| Signal | 铁律 | 发送有语义内容的信息（狼嚎=宣示领地, 羊叫=警报, 人说话=句子） |
+| Receive | 铁律 | 解码并理解语义内容（听到嚎叫≠听到声音——是"知道有狼在宣示"） |
+
+### 9.5 生物层元动作
+
+**生物现象不可归约为物理元动作 + 标签。**
+
+| 元动作 | 状态 | 定义 |
+|---|---|---|
+| Reproduce | 铁律 | 产出新实体。两源实体 + 继承规则 → 新 entity |
+| Inherit | 铁律 | 父→子传递标签。Reproduce 的子过程——标签不是随机是继承 |
+
+**以下不是元动作——是 Pause + 标签分化：**
+- Grow = Pause + growth:标签（等待中属性渐变）
+- Store = Pause(think) + memory:标签（思考的结果就是记住）
+- Decay = Pause + decay:标签（等待中属性衰减）
+
+### 9.5 层的叠加
+
+世界不是平的。物理、信息、生物三层叠加：
+
+```
+Signal(狼嚎, claim_territory) 
+  → 物理层: Strike(sound) — 发出声波
+  → 信息层: Signal(claim_territory, r=16) — 声波携带语义
+
+Receive(羊, 狼嚎)
+  → 物理层: perceive(hearing) — 检测到声波
+  → 信息层: Receive(claim_territory) — 解码为"有狼"
+  → 需求层: safety 急迫度上升 → 行为激活
+```
+
 ### 9.2 无配方原则
 
 **铁律：Combine 不做 a+b=c。不做配方表。**
