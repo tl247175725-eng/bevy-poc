@@ -29,7 +29,7 @@ jobs:
       - name: Rust cache (deps + target)
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: bevy-poc
+          shared-key: bevy-poc-v2
           cache-on-failure: true
 
       - name: Run unit tests
