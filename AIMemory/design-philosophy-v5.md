@@ -320,19 +320,18 @@ Poincaré-Bendixson 定理：二维动力系统的极限集只能是不动点或
 
 > 2026-06-13 深度讨论确认。同构 + 卡牌媒介兼容。
 
+### 8.0 元数值分层
+
+元数值 ≠ 派生值。元数值是不可推导的测量基元——派生值由元数值组合而成。
+
+| 层 | 含义 | 示例 |
+|---|---|---|
+| A 必须 | 世界无法闭环 | tick/cell/mass/temperature |
+| B 强推荐 | 涌现依赖 | hp/stress/trust/reputation |
+| C 可选 | 看后期 | 电磁/超自然 |
+| D 派生 | 别放进元数值表 | speed/damage/price/morale |
+
 ### 8.1 时间
-
-```
-1 day    = 420 tick（铁律）
-1 phase  = 60 tick（清晨/早晨/上午/中午/下午/傍晚/深夜）
-1 season = 28 day
-1 year   = 4 season = 112 day
-
-无 second/minute/hour 中间层。
-所有速度、衰减、冷却用"每 tick"或"每天"表达。
-```
-
-### 8.2 感官
 
 **四通道：** 视觉(Vision)、听觉(Hearing)、嗅觉(Smell)、触觉(Touch)
 
