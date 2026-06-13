@@ -301,6 +301,15 @@ pub fn tag_zh(token: &str) -> String {
     if token.starts_with("height:") {
         return "高度".to_string();
     }
+    if token.starts_with("species:") {
+        return "物种".to_string();
+    }
+    if token.starts_with("decay:") {
+        return "腐烂".to_string();
+    }
+    if token == "sessile_aquatic" {
+        return "水生固着".to_string();
+    }
     if token.starts_with("soil:") || token.starts_with("fertility:") || token == "shaded" {
         return "土壤".to_string();
     }
