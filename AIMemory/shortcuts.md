@@ -20,6 +20,10 @@
 
 持久知识记入 memory/FACT.md，一次性事件记入 memory/JOURNAL.jsonl。
 
+每次只改 1-2 个文件。一个 handoff 只做一件事，CI 绿了再推下一个。禁止一次改 3 个以上文件。
+
+改标签前先 Grep 该标签字符串在 src/ + tests/ 中的所有引用，确认全部已知后再改。避免漏改关联函数。
+
 Push 前必须执行自查：Grep 查所有被删函数/标签的残留引用（src/ + tests/），检查 card_audit.rs 和 tag_zh.rs 是否注册了新标签。确保零遗漏再 push。不改已通过的代码。
 
 Push 后 GitHub Actions 自动运行 cargo test + smoke test，不绿不继续下一步。Push 后主动用 GitHub Token 查 CI 结果并报告用户。Handoff 写完后明确告诉用户执行指令。
