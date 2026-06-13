@@ -20,11 +20,13 @@
 
 持久知识记入 memory/FACT.md，一次性事件记入 memory/JOURNAL.jsonl。
 
+Push 前必须执行自查：Grep 查所有被删函数/标签的残留引用（src/ + tests/），检查 card_audit.rs 和 tag_zh.rs 是否注册了新标签。确保零遗漏再 push。不改已通过的代码。
+
 Push 后 GitHub Actions 自动运行 cargo test + smoke test，不绿不继续下一步。Push 后主动用 GitHub Token 查 CI 结果并报告用户。Handoff 写完后明确告诉用户执行指令。
 
 每次任务或讨论结束后，检查现有设计文档是否需要更新以保持一致。
 
-意图对齐后，写 handoff、改代码、push、查 CI——全部自主执行，不需要逐项请示。用户只负责跑游戏看效果。
+意图对齐后，写 handoff、改代码、自查、push、查 CI——全部自主执行，不需要逐项请示。用户只负责跑游戏看效果。
 ```
 
 ---
