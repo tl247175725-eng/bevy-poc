@@ -374,17 +374,42 @@ sense:touch(r=1)
 **超自然 ≠ 规则豁免。超自然 = 极端物理参数 + 公理覆盖 + 灵魂层状态。**
 90% 的超自然概念是标签组合——不需要改框架。
 
-## 九、元动作体系（当前状态）
+## 九、元动作体系
 
-| 元动作 | 状态 | 说明 |
+### 9.1 世界层元动作
+
+| 元动作 | 状态 | 定义 |
 |---|---|---|
-| Move | 已定 | 曼哈顿单步，compose+traverse 验证 |
-| Strike | 已定 | 1单位打击，damage_entity_hp |
-| Consume | 已定 | 走 AxiomEngine::transform |
-| Combine | 待讨论 | 两物合并为新物 |
+| Move | 铁律 | 曼哈顿单步，compose+traverse 验证 |
+| Strike | 铁律 | 唯一的冲击元动作。战斗/加工/分解同源，分歧来自参数（force/angle/intent）和材质属性 |
+| Consume | 铁律 | 走 AxiomEngine::transform，能量转化 |
+| Combine | 铁律 | 属性代数合并，不查配方表。产物由输入材质决定 |
 | Release | 待讨论 | 放置携带物到世界 |
-| Wait → Rest/Think/Observe/Appreciate/Examine | 已定 | pause标签分化 |
-| Hide/Emerge | 待讨论 | 掩护/出掩护 |
+| Pause | 铁律 | Wait → Rest/Think/Observe/Appreciate/Examine（pause:标签分化） |
+| Hide/Emerge | 待讨论 | 空间态转换（进掩护/出掩护） |
+
+### 9.2 无配方原则
+
+**铁律：Combine 不做 a+b=c。不做配方表。**
+产物由输入的材质属性代数合并决定。合并后的物品功能（能不能砍/砸/切）由属性集合推导，不由配方判定。
+引擎不认识"刀"——只认识 {hard≥4, shape:blade, edge:present}。
+任何"带把的硬片"都可以当刀。好不好用由物理算，不由配方判。
+
+### 9.3 交互层 vs 世界层
+
+**玩家只有两个万能操作：**
+- **Act（砸/Smash）** = 拖拽卡 A 到卡 B 上释放
+- **Arrange（叠/Stack）** = 右键操作
+
+这两个不是元动作——是上帝之手。结果由引擎根据 A 和 B 的标签+材质自动推断：
+```
+石刀 + 狼 → Strike(harm)
+石刀 + 燧石 → Strike(shape)
+树枝 + 树枝 → Combine
+石刀 + 鹿尸 → Strike(cut) + Consume
+```
+
+**玩家的每一个操作都有物理反馈——不存在"砸了 500 下没结果"。** 硬度差决定物理必然性。
 
 ### 防振荡法则（已定）
 
