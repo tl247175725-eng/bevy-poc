@@ -1,13 +1,15 @@
-# Current Handoff
-- file: AIMemory/handoff_purification-phase4-meta-actions-impl.md
-- mode: Standard
-- status: executing
+# 提纯状态
 
-## 架构计划
-新建 `src/meta_actions_exec.rs` — 8 个元动作的执行函数。exec_move/exec_strike/exec_consume 有完整实现 + 测试，其余暂返回 Invalid。lib.rs 注册新模块。
+## 已完成
+- Phase 1: 元数值定义 + 元动作枚举（空壳）
+- Phase 2: 激活 RuleIndex
+- Phase 3: 纯标签化 + 删除 legacy（-190 行）
+- Phase 5: 消灭 4 系统的 type_name 硬编码
 
-## 架构反馈
-2 个文件改动（1 新建 + 1 编辑）。Combine/Release/Wait/Hide/Emerge 骨架留后续填充。
+## 当前状态
+框架审计和初步清理完成。元数值和元动作基础已定义但未填充——**等待深度设计讨论**。
 
-## 智能验收
-cargo check + cargo test 全 PASS
+## 下一步
+1. 元动作与元数值深度讨论 → 你拍板后我再动
+2. 需求匹配引擎设计 — 你还需要多问我几个问题
+3. Phase 4 已回滚——在没有共识之前不定义任何东西
