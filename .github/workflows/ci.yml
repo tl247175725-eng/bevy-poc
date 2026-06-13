@@ -26,11 +26,11 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y pkg-config libudev-dev libasound2-dev
 
-      - name: Rust cache (deps + target)
+      - name: Rust cache (deps)
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: bevy-poc-v2
-          cache-on-failure: true
+          shared-key: bevy-poc-v3
+          cache-targets: false
 
       - name: Quick audit (tags/chinese)
         run: cargo test audit_03 audit_06 2>&1
