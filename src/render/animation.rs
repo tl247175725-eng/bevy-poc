@@ -118,10 +118,10 @@ pub fn spawn_emoji(commands: &mut Commands, pos: Vec3, emoji: &str, font: &UiFon
 pub fn animation_system(
     time: Res<Time>,
     mut commands: Commands,
-    mut attack_q: Query<(Entity, &mut Transform, &mut AttackAnimation)>,
-    mut move_q: Query<(Entity, &mut Transform, &mut MoveAnimation)>,
-    mut eat_q: Query<(&mut Transform, &mut EatAnimation)>,
-    mut emoji_q: Query<(Entity, &mut Transform, &mut EmojiLabel, &mut TextColor)>,
+    mut attack_q: Query<(Entity, &mut Transform, &mut AttackAnimation), (Without<MoveAnimation>, Without<EatAnimation>, Without<EmojiLabel>)>,
+    mut move_q: Query<(Entity, &mut Transform, &mut MoveAnimation), (Without<AttackAnimation>, Without<EatAnimation>, Without<EmojiLabel>)>,
+    mut eat_q: Query<(&mut Transform, &mut EatAnimation), (Without<AttackAnimation>, Without<MoveAnimation>, Without<EmojiLabel>)>,
+    mut emoji_q: Query<(Entity, &mut Transform, &mut EmojiLabel, &mut TextColor), (Without<AttackAnimation>, Without<MoveAnimation>, Without<EatAnimation>)>,
 ) {
     let dt = time.delta_secs();
     let one_shot_duration = 0.6_f32;
