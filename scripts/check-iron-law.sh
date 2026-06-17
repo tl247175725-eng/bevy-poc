@@ -117,9 +117,56 @@ else
     echo "$DECAY_BARE" | while read line; do echo "       $line"; done
 fi
 
-# ── 规则 7: 禁止 unwrap() / expect() ──
+# ── 规则 7: 核心标签注册检查 ──
 echo ""
-echo "【规则7】禁止 unwrap() / expect()"
+echo "【规则7】核心标签是否注册"
+
+MISSING_CORE=""
+for tag in "animal" "plant" "terrain" "tree" "fish" "state:dead" "diet:carnivore" "diet:herbivore" "body_plan:quadruped" "habitat:aquatic"; do
+    if ! grep -q "\"$tag\"" src/tags.rs 2>/dev/null; then
+        MISSING_CORE="$MISSING_CORE $tag"
+    fi
+done
+
+if [ -z "$MISSING_CORE" ]; then
+    check_pass "核心标签已注册"
+else
+    check_fail "核心标签未在 tags.rs 注册:$MISSING_CORE"
+fi
+
+# ── 规则 8: FACT.md 三柱断点表是否过期 ──
+echo ""
+echo "【规则8】FACT.md 三柱断点表是否过期"
+
+# 检查是否有全 ❌ 行（表示有已知断点未修）
+BROKEN=$(grep -c "❌.*❌.*❌.*❌" memory/FACT.md 2>/dev/null || true)
+BROKEN="${BROKEN:-0}"
+if [ "${BROKEN// /}" = "0" ]; then
+    check_pass "FACT.md 三柱断点表无全❌行"
+else
+    check_warn "FACT.md 三柱表有 ${BROKEN// /} 行全❌——是否遗忘更新？"
+fi
+
+# ── 规则 9: handoff 模板合规 ──
+echo ""
+echo "【规则9】handoff 文件合规"
+
+# 检查最近新增的 handoff 是否有三柱声明段
+RECENT_HANDOFFS=$(find AIMemory/handoffs/ -name "*.md" ! -name "_TEMPLATE.md" -newer AIMemory/handoffs/_TEMPLATE.md 2>/dev/null)
+if [ -n "$RECENT_HANDOFFS" ]; then
+    while IFS= read -r hf; do
+        if ! grep -q "三柱强制检查\|三柱对照\|三柱归属" "$hf" 2>/dev/null; then
+            check_warn "$hf 缺少三柱声明段"
+        fi
+    done <<< "$RECENT_HANDOFFS"
+    check_pass "handoff 三柱声明检查完成"
+else
+    check_pass "无新增 handoff 文件"
+fi
+
+# ── 规则 10: 禁止 unwrap() / expect() ──
+echo ""
+echo "【规则10】禁止 unwrap() / expect()"
 
 UNWRAP_COUNT=$(grep -rn "\.unwrap()" "$SRC_DIR/" --include="*.rs" | grep -v "cfg(test)" | wc -l)
 EXPECT_COUNT=$(grep -rn "\.expect(" "$SRC_DIR/" --include="*.rs" | grep -v "cfg(test)" | wc -l)

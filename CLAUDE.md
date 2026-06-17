@@ -26,9 +26,11 @@ Bevy 0.15 标签驱动卡牌生态模拟。模拟在 WorldState 内自主运行�
 
 ### 工作流
 - 设计→对齐→handoff(三段)→Agent 执行→验证
+- handoff 模板: `AIMemory/handoffs/_TEMPLATE.md`（必须含三柱声明）
 - 每次只改 1-3 个文件
 - `cargo check + cargo test` 全 PASS 才能 commit
 - push 前自动运行 `scripts/check-iron-law.sh`
+- 新机器: `bash scripts/setup.sh`
 
 ### 关键常量
 - Bevy 0.15（不是 0.16/0.17）
