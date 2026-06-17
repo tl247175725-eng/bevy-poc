@@ -36,6 +36,6 @@ Bevy 0.15 标签驱动卡牌生态模拟。模拟在 WorldState 内自主运行�
 
 ### 关键常量
 - Bevy 0.15（不是 0.16/0.17）
-- TICKS_PER_DAY = 420（定义在 meta_values.rs）
+- TICKS_PER_DAY = 2100（定义在 meta_values.rs，约 17.5 分钟一天）
 - GRID: 32×32
 - 1 tick = 0.5s 渲染帧
