@@ -168,10 +168,10 @@ pub fn filter_by_feasibility(
 
 // ===== 辅助 =====
 
-fn count_prerequisites_met(_prereq: &[PropertyRequirement]) -> usize {
-    // 检查功能前提中哪些已被环境满足
-    // 当前 stub：后续对接感知数据
-    0
+fn count_prerequisites_met(prereq: &[PropertyRequirement]) -> usize {
+    // 当前策略：Decide 阶段乐观假设所有属性前提可满足
+    // 实际验证在执行阶段的 execute_acquire_step 中进行
+    prereq.len()
 }
 
 // ===== 测试 =====
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[test]
-    fn count_prerequisites_met_returns_zero() {
+    fn count_prerequisites_met_returns_count() {
         let prereqs = vec![PropertyRequirement {
             property: "flammability".into(),
             operator: CompareOp::Present,
@@ -338,6 +338,6 @@ mod tests {
             quantity_needed: 1.0,
             tag_value: None,
         }];
-        assert_eq!(count_prerequisites_met(&prereqs), 0);
+        assert_eq!(count_prerequisites_met(&prereqs), 1);
     }
 }

@@ -9,7 +9,7 @@ use crate::need_match::data::{
     CompareOp, DecompositionStep, EffectDescriptor, KnowledgeEntry, KnowledgeGraph, KnowledgeId,
     KnowledgeSource, NeedKind, NeedState, PropertyRequirement,
 };
-use crate::tags::{tag, TagQuery};
+use crate::tags::TagQuery;
 use crate::world_rules::{card_has_tag, is_animal, GRID_HEIGHT, GRID_WIDTH};
 use crate::world_state::WorldState;
 
@@ -130,21 +130,21 @@ pub fn init_animal_knowledge_public(def: &CardDef) -> KnowledgeGraph {
 fn diet_to_edible_tags(tags: &impl TagQuery, registry: &crate::tags::TagRegistry) -> Vec<String> {
     let mut edible = Vec::new();
     // carnivore → 可吃 animal
-    if tags.has_descendant_of(registry, tag::DIET_CARNIVORE.bit) { edible.push("animal".into()); }
+    if tags.has_tag(registry, "diet:carnivore") { edible.push("animal".into()); }
     // herbivore → 可吃 plant
-    if tags.has_descendant_of(registry, tag::DIET_HERBIVORE.bit) { edible.push("plant".into()); }
+    if tags.has_tag(registry, "diet:herbivore") { edible.push("plant".into()); }
     // piscivore → 可吃 body_plan:fish
-    if tags.has_descendant_of(registry, tag::DIET_PISCIVORE.bit) { edible.push("body_plan:fish".into()); }
+    if tags.has_tag(registry, "diet:piscivore") { edible.push("body_plan:fish".into()); }
     // insectivore → 可吃 body_plan:insectoid
-    if tags.has_descendant_of(registry, tag::DIET_INSECTIVORE.bit) { edible.push("body_plan:insectoid".into()); }
+    if tags.has_tag(registry, "diet:insectivore") { edible.push("body_plan:insectoid".into()); }
     // frugivore → 可吃 plant（果实尚未作为独立卡牌类型存在）
-    if tags.has_descendant_of(registry, tag::DIET_FRUGIVORE.bit) { edible.push("plant".into()); }
+    if tags.has_tag(registry, "diet:frugivore") { edible.push("plant".into()); }
     // omnivore → 可吃 animal + plant
-    if tags.has_descendant_of(registry, tag::DIET_OMNIVORE.bit) { edible.push("animal".into()); edible.push("plant".into()); }
+    if tags.has_tag(registry, "diet:omnivore") { edible.push("animal".into()); edible.push("plant".into()); }
     // detritivore/scavenger → 尸体通过 is_corpse 判断，不走 has_tag
     // 暂时保留 "animal" 作为标记——后续 handoff 改 MaterialProperties.satisfies() 支持 is_corpse
-    if tags.has_descendant_of(registry, tag::DIET_SCAVENGER.bit)
-        || tags.has_descendant_of(registry, tag::DIET_DETRITIVORE.bit) { edible.push("animal".into()); } // 先吃尸体=死动物
+    if tags.has_tag(registry, "diet:scavenger")
+        || tags.has_tag(registry, "diet:detritivore") { edible.push("animal".into()); } // 先吃尸体=死动物
     edible
 }
 
