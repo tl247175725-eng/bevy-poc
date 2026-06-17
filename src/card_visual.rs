@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::card_def::CardDef;
+use crate::tags::TagBits;
 use crate::card_style::card_style;
 use crate::coords::card_world_pos;
 use crate::grid_render::SimWorld;
@@ -119,7 +120,7 @@ pub fn sync_card_visuals(
         // Z-layer: structures above terrain, creatures above structures
         let def = sim.0.card_defs.get(&entity.type_name);
         if let Some(d) = def {
-            if d.type_name == "mountain" || d.type_name == "stone" {
+            if crate::world_rules::card_has_tag(d, "material:stone") || crate::world_rules::card_has_tag(d, "habitat:mountain") {
                 pos.z += 1.0; // structures on top of terrain
             }
             if crate::world_rules::card_has_tag(d, "being") {
@@ -215,9 +216,11 @@ fn fallback_def() -> CardDef {
         display_name: "?".into(),
         icon: "?".into(),
         tags: vec![],
+        tag_bits: TagBits::new(),
         color: (200, 200, 200, 255),
         hp: 1,
         is_rooted: false,
+        quantity: 1,
     }
 }
 
