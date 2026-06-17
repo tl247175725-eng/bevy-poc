@@ -306,7 +306,7 @@ fn apply_meta_action(world: &mut WorldState, entity_id: EntityId, action: MetaAc
         MetaAction::Strike { target } => {
             // 伤害计算 — 后续 handoff 补充完整公式
             if let Some(target_entity) = world.entities.get_mut(&target) {
-                target_entity.hp = target_entity.hp.saturating_sub(1);
+                target_entity.hp = target_entity.hp.saturating_sub(crate::meta_values::STRIKE_BASE_DAMAGE);
             }
         }
         MetaAction::Pause { .. } => {

@@ -15,6 +15,11 @@ use smallvec::SmallVec;
 
 const NONE_ID: EntityId = EntityId(0);
 
+/// 默认需求衰减率（旧公理系统——后续将被 meta_values 替代）
+const PROFILE_DECAY_DEFAULT: f32 = 0.5;
+const PROFILE_DECAY_HIGH: f32 = 1.0;
+const PROFILE_DECAY_LOW: f32 = 0.2;
+
 use super::laws::TransformAction;
 
 pub type Medium = String;
@@ -308,7 +313,7 @@ pub fn parse_needs(tags: &[String]) -> SmallVec<[NeedState; 4]> {
             Some((k, p)) => (k, p.trim_end_matches(')')),
             None => (rest, ""),
         };
-        let decay_rate = parse_tag_f32_param(params, "rate").unwrap_or(0.5);
+        let decay_rate = parse_tag_f32_param(params, "rate").unwrap_or(PROFILE_DECAY_DEFAULT);
         let curve = parse_tag_str_param(params, "curve")
             .map(|c| parse_need_curve(&c))
             .unwrap_or(NeedCurve::Steep);
@@ -333,25 +338,25 @@ pub fn default_needs_for_drives(drives: &[DriveDef]) -> SmallVec<[NeedState; 4]>
             "eat" if !needs_contain(&out, "eat") => out.push(NeedState {
                 kind: "eat".into(),
                 current: 0.0,
-                decay_rate: 0.5,
+                decay_rate: PROFILE_DECAY_DEFAULT,
                 curve: NeedCurve::Steep,
             }),
             "safety" if !needs_contain(&out, "safety") => out.push(NeedState {
                 kind: "safety".into(),
                 current: 0.0,
-                decay_rate: 1.0,
+                decay_rate: PROFILE_DECAY_HIGH,
                 curve: NeedCurve::Sharp,
             }),
             "social" if !needs_contain(&out, "social") => out.push(NeedState {
                 kind: "social".into(),
                 current: 0.0,
-                decay_rate: 0.2,
+                decay_rate: PROFILE_DECAY_LOW,
                 curve: NeedCurve::Flat,
             }),
             "rest" if !needs_contain(&out, "rest") => out.push(NeedState {
                 kind: "rest".into(),
                 current: 0.0,
-                decay_rate: 0.2,
+                decay_rate: PROFILE_DECAY_LOW,
                 curve: NeedCurve::Flat,
             }),
             _ => {}
@@ -679,13 +684,13 @@ mod need_tests {
         let low = NeedState {
             kind: "eat".into(),
             current: 30.0,
-            decay_rate: 0.5,
+            decay_rate: PROFILE_DECAY_DEFAULT,
             curve: NeedCurve::Steep,
         };
         let high = NeedState {
             kind: "eat".into(),
             current: 90.0,
-            decay_rate: 0.5,
+            decay_rate: PROFILE_DECAY_DEFAULT,
             curve: NeedCurve::Steep,
         };
         assert!(need_curve_value(&high) > need_curve_value(&low) * 5.0);
@@ -696,7 +701,7 @@ mod need_tests {
         let tags = vec!["need:eat(rate=0.5,curve=steep)".to_string()];
         let needs = parse_needs(&tags);
         assert_eq!(needs[0].kind, "eat");
-        assert!((needs[0].decay_rate - 0.5).abs() < f32::EPSILON);
+        assert!((needs[0].decay_rate - PROFILE_DECAY_DEFAULT).abs() < f32::EPSILON);
         assert_eq!(needs[0].curve, NeedCurve::Steep);
     }
 
