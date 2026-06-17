@@ -189,5 +189,5 @@ pub fn card_matches_tag(def: &CardDef, pattern: &str) -> bool {
         let base = &pattern[..pattern.len() - 5];
         return def.tags.iter().any(|t| t.contains(base));
     }
-    def.tags.iter().any(|t| t == pattern) || def.type_name == pattern
+    def.tags.iter().any(|t| t == pattern)
 }

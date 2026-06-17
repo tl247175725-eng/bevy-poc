@@ -39,8 +39,7 @@ pub fn cover_at_cell(
             if e.is_corpse || e.hp <= 0 {
                 return false;
             }
-            e.type_name == tag
-                || world
+            world
                     .card_defs
                     .get(&e.type_name)
                     .is_some_and(|d| card_has_tag(d, tag))
