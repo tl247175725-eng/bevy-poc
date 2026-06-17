@@ -1,0 +1,17 @@
+#!/bin/bash
+# ============================================================
+# Pre-commit: 提交前运行铁律检查
+# ============================================================
+set -e
+
+echo "🔍 运行铁律检查..."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"
+
+echo ""
+echo "🔨 cargo check..."
+cargo check 2>&1 | tail -3
+
+echo ""
+echo "✅ 检查通过"

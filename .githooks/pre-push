@@ -1,7 +1,15 @@
 #!/bin/bash
-# 每次 push 前强制检查：最多改 2 个 .rs 文件
-# 超过 2 个 → 拒绝 push。拆成小 commit 再推。
+# ============================================================
+# Pre-push: push 前强制检查
+# 1. 最多改 2 个 .rs 文件
+# 2. 铁律强制检查
+# 3. cargo test 全 PASS
+# ============================================================
+set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# ── 1. 文件数 ──
 CHANGED=$(git diff --cached --name-only --diff-filter=M | grep "\.rs$" | wc -l)
 NEW=$(git diff --cached --name-only --diff-filter=A | grep "\.rs$" | wc -l)
 TOTAL=$((CHANGED + NEW))
@@ -12,6 +20,15 @@ if [ "$TOTAL" -gt 2 ]; then
     echo "   git reset HEAD~1 → 分批 add → 分批 commit"
     exit 1
 fi
-
 echo "✅ 文件数检查通过 ($TOTAL 个 .rs)"
-exit 0
+
+# ── 2. 铁律检查 ──
+bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"
+
+# ── 3. cargo test ──
+echo ""
+echo "🧪 cargo test..."
+cargo test 2>&1 | tail -3
+
+echo ""
+echo "✅ Pre-push 全部通过"

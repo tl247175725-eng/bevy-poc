@@ -1,0 +1,344 @@
+// 桃花源标签定义 — 唯一真相来源
+// build.rs 编译期生成 src/generated_tags.rs
+// 手写 Rust 标签代码 = 违反铁律
+TagsConfig(
+    // ═══════════════════════════════════════════
+    // 维度 1: 栖息地 (Habitat) — 7 标签
+    // 来源: PanTHERIA Habitat Layer
+    // ═══════════════════════════════════════════
+    habitat: {
+        "aquatic":           { desc: "水生——全生命周期依赖水体" },
+        "wetland":           { desc: "湿地——季节性淹水区域" },
+        "grassland":         { desc: "草原——开阔草本植被" },
+        "forest":            { desc: "森林——乔木主导" },
+        "mountain":          { desc: "山地——高海拔坡地" },
+        "subterranean":      { desc: "地下——洞穴/土壤内部" },
+        "aerial":            { desc: "空中——飞行生活为主" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 2: 营养 (Trophic) — 22 标签
+    // 来源: EltonTraits Diet + Foraging
+    // ═══════════════════════════════════════════
+    diet: {
+        "carnivore":         { desc: "食肉——捕食其他动物" },
+        "herbivore":         { desc: "食草——以植物为食" },
+        "omnivore":          { desc: "杂食——动植物均食" },
+        "piscivore":         { desc: "食鱼——主要捕鱼" },
+        "insectivore":       { desc: "食虫——以昆虫为主食" },
+        "frugivore":         { desc: "食果——以果实为主食" },
+        "granivore":         { desc: "食种子——以种子/谷物为主食" },
+        "detritivore":       { desc: "食碎屑——以腐败有机物为食" },
+        "scavenger":         { desc: "食腐——以尸体为食" },
+        "nectar_feeder":     { desc: "食蜜——以花蜜为食" },
+        "filter_feeder":     { desc: "滤食——过滤水体中有机物" },
+        "wood_eater":        { desc: "食木——以木材为食" },
+        "sanguivore":        { desc: "吸血——以血液为食" },
+    },
+
+    foraging: {
+        "ambush":            { desc: "伏击——隐蔽等待猎物" },
+        "pursuit":           { desc: "追猎——主动追击猎物" },
+        "graze":             { desc: "啃草——持续采食地表草本" },
+        "browse":            { desc: "采叶——选择性采食树叶/嫩枝" },
+        "scavenge":          { desc: "寻腐——搜寻尸体" },
+        "filter":            { desc: "滤食——过滤水体" },
+        "drill":             { desc: "钻食——钻入木材/土壤取食" },
+        "trap":              { desc: "陷阱——构建陷阱捕获猎物" },
+        "cooperative_hunt":  { desc: "合作狩猎——群猎行为" },
+    },
+
+    foraging_stratum: {
+        "ground":            { desc: "地面层采食" },
+        "understory":        { desc: "林下层采食" },
+        "canopy":            { desc: "林冠层采食" },
+        "aerial":            { desc: "空中采食" },
+        "aquatic_surface":   { desc: "水面采食" },
+        "aquatic_submerged": { desc: "水下采食" },
+        "bark":              { desc: "树皮/树干采食" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 3: 防御 (Defense) — 9 标签
+    // 来源: Winemiller 2015 防御维度
+    // ═══════════════════════════════════════════
+    defense: {
+        "flee":              { desc: "逃跑——高速脱离威胁" },
+        "hide":              { desc: "躲藏——利用掩体隐蔽" },
+        "fight":             { desc: "反击——主动对抗威胁" },
+        "armor":             { desc: "装甲——厚皮/甲壳/鳞片" },
+        "venom":             { desc: "毒液——叮咬/刺蛰注入毒素" },
+        "camoflage":         { desc: "伪装——体色融入环境" },
+        "mimicry":           { desc: "拟态——模仿其他危险物种" },
+        "chemical_spray":    { desc: "化学喷射——喷洒刺激物" },
+        "autotomy":          { desc: "自切——主动断肢逃生" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 4: 代谢 (Metabolic) — 6 标签
+    // 来源: PanTHERIA Metabolic Rate
+    // ═══════════════════════════════════════════
+    thermo: {
+        "endotherm":         { desc: "恒温——内温性（哺乳类/鸟类）" },
+        "ectotherm":         { desc: "变温——外温性（爬行/两栖/鱼类）" },
+    },
+
+    metab: {
+        "high":              { desc: "高代谢率——需频繁进食" },
+        "medium":            { desc: "中等代谢率" },
+        "low":               { desc: "低代谢率——耐饥" },
+        "torpor":            { desc: "蛰伏——可进入低代谢状态冬眠/夏眠" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 5: 生活史 (Life History) — 12 标签
+    // 来源: PanTHERIA repro traits + COMBINE
+    // ═══════════════════════════════════════════
+    repro: {
+        "few_offspring":     { desc: "少仔——K策略，每胎 1-2" },
+        "many_offspring":    { desc: "多仔——r策略，每胎多只" },
+        "parental_care":     { desc: "亲代抚育——育幼行为" },
+        "no_parental_care":  { desc: "无亲代抚育——产卵/产仔后即离" },
+        "egg_layer":         { desc: "卵生" },
+        "live_birth":        { desc: "胎生" },
+        "semelparous":       { desc: "单次繁殖——一生繁殖一次即死" },
+        "iteroparous":       { desc: "多次繁殖——一生繁殖多次" },
+    },
+
+    growth: {
+        "fast":              { desc: "快速生长——短期内达成熟" },
+        "medium":            { desc: "中等生长速度" },
+        "slow":              { desc: "缓慢生长——多年达成熟" },
+        "metamorphosis":     { desc: "变态发育——幼体→成体形态剧变" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 6: 社会 (Social) — 8 标签
+    // 来源: PanTHERIA Group Composition & Size
+    // ═══════════════════════════════════════════
+    social: {
+        "solitary":          { desc: "独居——除繁殖期外独立生活" },
+        "pair":              { desc: "成对——一夫一妻长期配对" },
+        "pack":              { desc: "小群——3-20只合作群体" },
+        "herd":              { desc: "大群——20+只聚集无等级" },
+        "colony":            { desc: "巢群——共享巢穴/巢区" },
+        "territorial":       { desc: "领地性——防御固定领地" },
+        "hierarchical":      { desc: "等级制——群体内有支配序位" },
+        "eusocial":          { desc: "真社会性——分工繁殖（蚁/蜂）" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 7: 活动节律 (Activity) — 9 标签
+    // 来源: PanTHERIA Activity Cycle
+    // ═══════════════════════════════════════════
+    activity: {
+        "diurnal":           { desc: "昼行——白天活动" },
+        "nocturnal":         { desc: "夜行——夜间活动" },
+        "crepuscular":       { desc: "晨昏行——黎明/黄昏活动" },
+        "cathemeral":        { desc: "间歇行——昼夜均有活动" },
+        "arrhythmic":        { desc: "无节律——无固定活动模式" },
+    },
+
+    movement: {
+        "sedentary":         { desc: "定居——不进行长距离移动" },
+        "nomadic":           { desc: "游走——随资源移动无固定路线" },
+        "migratory":         { desc: "迁徙——季节性定向长距离移动" },
+        "territorial_patrol":{ desc: "领地巡游——定期巡视领地边界" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 8: 栖息地专化度 — 2 标签
+    // 来源: COMBINE 54 traits
+    // ═══════════════════════════════════════════
+    habitat_range: {
+        "specialist":        { desc: "专化种——依赖特定栖息地/食物" },
+        "generalist":        { desc: "广适种——适应多种栖息地/食物" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 9: 身体体型 — 5 标签
+    // 来源: PanTHERIA Body Mass (连续→分类)
+    // ═══════════════════════════════════════════
+    body_size: {
+        "tiny":              { desc: "微型——质量 < 5kg" },
+        "small":             { desc: "小型——5-30kg" },
+        "medium":            { desc: "中型——30-200kg" },
+        "large":             { desc: "大型——200-1000kg" },
+        "huge":              { desc: "巨型——> 1000kg" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 10: 身体结构 — 8 标签
+    // 来源: 形态学（DF级深度）
+    // ═══════════════════════════════════════════
+    body_plan: {
+        "biped":             { desc: "双足——两足直立" },
+        "quadruped":         { desc: "四足——四足行走" },
+        "serpentine":        { desc: "蛇形——无肢蜿蜒" },
+        "avian":             { desc: "鸟类——双足+双翼" },
+        "fish":              { desc: "鱼形——流线型鳍肢" },
+        "insectoid":         { desc: "虫形——六足+外骨骼" },
+        "plant":             { desc: "植物型——根+茎+叶" },
+        "amorphous":         { desc: "不定形——无固定形态" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 11: 能力 — 15 标签
+    // 来源: 功能性状效应维度
+    // ═══════════════════════════════════════════
+    capability: {
+        "fly":               { desc: "飞行——主动空中移动" },
+        "swim":              { desc: "游泳——水中移动" },
+        "climb":             { desc: "攀爬——垂直面移动" },
+        "burrow":            { desc: "掘洞——地下隧道挖掘" },
+        "dig":               { desc: "挖土——翻动土壤" },
+        "run":               { desc: "奔跑——高速陆地移动" },
+        "jump":              { desc: "跳跃——爆发式腾空" },
+        "glide":             { desc: "滑翔——被动空中滑行" },
+        "dive":              { desc: "潜水——水下深度活动" },
+        "grasp":             { desc: "抓握——手/爪操作物体" },
+        "bite":              { desc: "咬合——口部攻击/取食" },
+        "constrict":         { desc: "绞杀——缠绕致死" },
+        "echolocate":        { desc: "回声定位——超声波导航" },
+        "regenerate":        { desc: "再生——身体部位再生能力" },
+        "tool_use":          { desc: "使用工具——操控外部物体" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 12: 认知 — 5 标签
+    // 来源: 游戏专属（PanTHERIA/EltonTraits 无此维度）
+    // ═══════════════════════════════════════════
+    cognition: {
+        "instinct_only":     { desc: "纯本能——无学习能力" },
+        "basic_learning":    { desc: "基础学习——简单条件反射+试错" },
+        "tool_use":          { desc: "工具使用——能操控物体解决问题" },
+        "complex_reasoning": { desc: "复杂推理——多步规划+类比" },
+        "cultural_transmission": { desc: "文化传递——代际传授+社会学习" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 13: 感知 — 8 标签
+    // 来源: 感官生物学
+    // ═══════════════════════════════════════════
+    sense: {
+        "vision":            { desc: "视觉——光线感知" },
+        "hearing":           { desc: "听觉——声波感知" },
+        "smell":             { desc: "嗅觉——化学分子感知" },
+        "touch":             { desc: "触觉——物理接触感知" },
+        "echolocation":      { desc: "回声定位——主动声呐" },
+        "infrared":          { desc: "红外感知——热辐射感应" },
+        "electrosense":      { desc: "电感知——电场感应" },
+        "magnetosense":      { desc: "磁感知——地磁场感应" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 14: 植物营养 (Plant Nutrition) — 5 标签
+    // 来源: Díaz et al. 全球植物性状数据集 (92,159 种)
+    // ═══════════════════════════════════════════
+    nutrition: {
+        "autotroph":         { desc: "光合自养——阳光+水+CO2" },
+        "hemiparasitic":     { desc: "半寄生——部分依赖寄主" },
+        "holoparasitic":     { desc: "全寄生——完全依赖寄主" },
+        "carnivorous":       { desc: "食虫——诱捕昆虫补充氮" },
+        "detritivorous":     { desc: "食碎屑——从腐败有机物获取营养" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 15: 植物胁迫响应 (Plant Stress) — 12 标签
+    // 来源: Pérez-Harguindeguy et al. 2013 植物性状手册
+    // ═══════════════════════════════════════════
+    fire_response: {
+        "killed":            { desc: "火烧致死——无法重生" },
+        "resprouting":       { desc: "萌蘖再生——火后从根/干萌发" },
+        "fire_dependent":    { desc: "依赖火烧——种子需火触发萌发" },
+    },
+
+    drought_tolerance: {
+        "low":               { desc: "低耐旱——需持续水分" },
+        "medium":            { desc: "中耐旱——可耐受短期干旱" },
+        "high":              { desc: "高耐旱——深根系/肉质储水" },
+    },
+
+    flooding_tolerance: {
+        "low":               { desc: "不耐淹——根系需氧" },
+        "medium":            { desc: "中耐淹——短期水淹可存活" },
+        "high":              { desc: "高耐淹——湿地/水生专化" },
+    },
+
+    shade_tolerance: {
+        "low":               { desc: "不耐阴——需全日照" },
+        "medium":            { desc: "中耐阴——林隙/边缘" },
+        "high":              { desc: "高耐阴——林下专化" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 16: 植物形态 (Plant Form) — 17 标签
+    // 来源: Weiher et al. 1999 核心植物性状 + Díaz et al. 2016
+    // ═══════════════════════════════════════════
+    dispersal: {
+        "wind":              { desc: "风媒传播——轻种子/翅果" },
+        "animal":            { desc: "动物传播——果实被吃/附着" },
+        "water":             { desc: "水媒传播——漂浮种子" },
+        "explosive":         { desc: "弹射传播——豆荚爆裂" },
+        "gravity":           { desc: "重力传播——种子落地" },
+    },
+
+    growth_form: {
+        "tree":              { desc: "乔木——单一主干" },
+        "shrub":             { desc: "灌木——多茎低矮" },
+        "grass":             { desc: "草本——禾本科" },
+        "vine":              { desc: "藤本——攀援/缠绕" },
+        "aquatic":           { desc: "水生——沉水/浮水" },
+        "epiphyte":          { desc: "附生——附生于其他植物" },
+    },
+
+    woodiness: {
+        "woody":             { desc: "木质——多年生茎干增粗" },
+        "herbaceous":        { desc: "草质——一年生/多年生柔软茎" },
+    },
+
+    lifespan: {
+        "annual":            { desc: "一年生——完成生命周期即死" },
+        "perennial":         { desc: "多年生——存活多年" },
+        "long_lived":        { desc: "长寿——存活数十年至数百年" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 17: 状态 — 运行时标签
+    // ═══════════════════════════════════════════
+    state: {
+        "healthy":           { desc: "健康——正常状态" },
+        "injured":           { desc: "受伤——身体组织损伤" },
+        "sick":              { desc: "患病——感染/疾病" },
+        "starving":          { desc: "饥饿——严重营养不良" },
+        "exhausted":         { desc: "疲惫——极度疲劳" },
+        "pregnant":          { desc: "怀孕——妊娠期" },
+        "growing":           { desc: "生长中——未达成熟" },
+        "dying":             { desc: "濒死——生命体征衰竭" },
+        "dead":              { desc: "死亡——生命终止" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 维度 15: 损伤 — 运行时标签
+    // ═══════════════════════════════════════════
+    injury: {
+        "bruised":           { desc: "淤伤——软组织挫伤" },
+        "fractured":         { desc: "骨折——骨骼断裂" },
+        "severed":           { desc: "断裂——完全分离" },
+        "bleeding":          { desc: "出血——血管破损" },
+        "infected":          { desc: "感染——病原侵入" },
+        "scarred":           { desc: "疤痕——永久愈合痕迹" },
+        "missing":           { desc: "缺失——部位完全丧失" },
+    },
+
+    // ═══════════════════════════════════════════
+    // 人格 — 5 标签
+    // ═══════════════════════════════════════════
+    personality: {
+        "bold":              { desc: "大胆——低风险规避" },
+        "cautious":          { desc: "谨慎——高风险规避" },
+        "curious":           { desc: "好奇——高探索倾向" },
+        "aggressive":        { desc: "攻击性——高敌对倾向" },
+        "social":            { desc: "社交性——高亲和需求" },
+    },
+)

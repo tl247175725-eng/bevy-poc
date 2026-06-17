@@ -8,6 +8,7 @@ on:
       - 'tests/**'
       - 'assets/**'
       - 'Cargo.*'
+      - 'scripts/**'
       - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'tests/**'
       - 'assets/**'
       - 'Cargo.*'
+      - 'scripts/**'
       - '.github/workflows/ci.yml'
 
 env:
@@ -24,8 +26,16 @@ env:
   CARGO_HTTP_TIMEOUT: 180
 
 jobs:
+  iron-law:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 铁律强制检查
+        run: bash scripts/check-iron-law.sh --strict
+
   test:
     runs-on: ubuntu-latest-4-cores
+    needs: iron-law
     steps:
       - uses: actions/checkout@v4
 
