@@ -279,7 +279,38 @@ axioms:
 
 ---
 
-## 关键关联映射
+## 待实现的运行时维度（策划已确认重要）
+
+```yaml
+planned_runtime_dimensions:
+  - id: ambient_temperature
+    type: 运行时（每格每 tick 变化）
+    source: "季节 + 海拔 + 水深 + 昼夜"
+    affects_everything:
+      - ectotherm_metabolism: "Q10=2.5: 温度每降10°C代谢减半"
+      - endotherm_energy_cost: "越冷→维持体温越费能量→饿得更快"
+      - movement_speed: "变温动物冷了动不了"
+      - hibernation_trigger: "温度降到阈值→metab:torpor动物进入冬眠"
+      - plant_growth: "冬天停止生长→食物减少"
+      - water_freeze: "鱼活动空间缩小"
+    formula: "B_actual = B₀ × Q10^((T - T_ref) / 10)"
+    tags_involved: [thermo:endotherm/ectotherm, metab:torpor, habitat:aquatic]
+    status: "❌ 未实现——优先级高，影响所有变温动物行为和季节循环"
+
+  - id: body_condition
+    type: 运行时（每个实体，随进食/消耗变化）
+    source: "进食量 - 代谢消耗 的累积"
+    affects_everything:
+      - fasting_endurance: "胖动物比瘦动物多活80%（Trondrud 2021 实测）"
+      - hibernation_ability: "脂肪不够→不敢冬眠→冬天饿死"
+      - reproduction: "体况太差→不繁殖"
+      - combat_power: "饥饿动物战力下降"
+      - movement_speed: "太瘦跑不动，太胖也慢——有最优区间"
+      - offspring_survival: "母亲体况差→奶水不足→幼崽死亡率高"
+    formula: "body_condition = fat_reserve / lean_mass（0.0=极瘦, 1.0=极胖）"
+    tags_involved: [body_size, metab, repro]
+    status: "❌ 未实现——优先级高，连接'吃了多少'和'能做什么'"
+```
 
 ```yaml
 cross_references:

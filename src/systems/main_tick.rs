@@ -6,7 +6,7 @@ use crate::perception::{perceive_smell, perceive_vision};
 use crate::spatial_index::EntityId;
 use crate::systems::batch_uniform::{batch_uniform_entity_updates, flush_corpse_decay};
 use crate::systems::tick_reactive::{flush_reactive_tick, mark_baseline_reactive_tick, tick_reactive};
-use crate::tags::TagBits;
+use crate::tags::{TagBits, tag};
 use crate::world_state::WorldState;
 
 /// Maximum Chebyshev distance any entity can sense across.
@@ -113,6 +113,50 @@ pub fn main_tick(world: &mut WorldState, delta: f32) {
             crate::need_match::activation::tick_need(need, delta);
         }
         crate::memory::tick_memory_decay(&mut entity.memory, world.tick_count);
+    }
+
+    // ===== Phase 2.5: 饥饿致死检查 =====
+    let starvation_deaths: Vec<EntityId> = world.entities.iter()
+        .filter_map(|(&id, entity)| {
+            // 只检查有 Nutrition 需求的活实体
+            if entity.is_corpse { return None; }
+            let nutrition = entity.needs.iter()
+                .find(|n| matches!(n.kind, NeedKind::Nutrition))?;
+            if nutrition.current < 1.0 { return None; } // 还没饿到极限
+
+            // 查标签
+            let def = world.card_defs.get(&entity.type_name)?;
+            let tags = &def.tag_bits;
+            let mass = crate::axioms::consume::estimate_mass_from_tags(tags);
+            let is_ecto = tags.has(tag::THERMO_ECTOTHERM.bit);
+            let can_torpor = tags.has(tag::METAB_TORPOR.bit);
+            let limit = crate::meta_values::fasting_endurance_ticks(mass, is_ecto, can_torpor);
+
+            if entity.starve_days as u64 >= limit {
+                Some(id)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for id in starvation_deaths {
+        if let Some(entity) = world.entities.get_mut(&id) {
+            entity.is_corpse = true;
+            entity.hp = 0;
+        }
+    }
+
+    // starve_days 递增/重置逻辑
+    for entity in world.entities.values_mut() {
+        if entity.is_corpse { continue; }
+        let starving = entity.needs.iter()
+            .any(|n| matches!(n.kind, NeedKind::Nutrition) && n.current >= 1.0);
+        if starving {
+            entity.starve_days += 1;
+        } else {
+            entity.starve_days = 0;
+        }
     }
 
     // ===== Phase 3: Safety block（安全阻断非安全需求） =====

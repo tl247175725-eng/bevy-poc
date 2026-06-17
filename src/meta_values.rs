@@ -119,6 +119,24 @@ pub const STRIKE_BASE_DAMAGE: i32 = 1;
 // === 补水基线比例 ===
 pub const HYDRATION_BASELINE_RATIO: f32 = 0.03;
 
+// === 饥饿致死（同构热力学公式） ===
+
+/// 饥饿致死系数（同构：匹配真实数据）
+pub const FASTING_COEFFICIENT: f32 = 100.0;
+
+/// 恒温动物代谢缩放指数
+pub const METABOLIC_EXPONENT_ENDOTHERM: f32 = 0.75;
+/// 变温动物代谢缩放指数
+pub const METABOLIC_EXPONENT_ECTOTHERM: f32 = 0.84;
+
+/// 恒温动物基础代谢常数
+pub const BMR_CONSTANT_ENDOTHERM: f32 = 10.0;
+/// 变温动物基础代谢常数
+pub const BMR_CONSTANT_ECTOTHERM: f32 = 1.0;
+
+/// 休眠耐饿倍数
+pub const TORPOR_FASTING_MULTIPLIER: f32 = 3.0;
+
 // ===== 手牌 =====
 
 /// 玩家手牌上限
@@ -161,6 +179,19 @@ pub fn impact_force(mass_kg: f32, velocity: f32, contact_area: f32, hardness_rat
 /// baseline_energy = mass × metabolism_rate
 pub fn baseline_energy(mass_kg: f32, metabolism_rate: f32) -> f32 {
     mass_kg * metabolism_rate
+}
+
+/// 从标签计算饥饿致死天数
+pub fn fasting_endurance_days(mass_kg: f32, is_ectotherm: bool, can_torpor: bool) -> f32 {
+    let beta = if is_ectotherm { METABOLIC_EXPONENT_ECTOTHERM } else { METABOLIC_EXPONENT_ENDOTHERM };
+    let b0 = if is_ectotherm { BMR_CONSTANT_ECTOTHERM } else { BMR_CONSTANT_ENDOTHERM };
+    let torpor = if can_torpor { TORPOR_FASTING_MULTIPLIER } else { 1.0 };
+    FASTING_COEFFICIENT * mass_kg.powf(1.0 - beta) / b0 * torpor
+}
+
+/// 从标签计算饥饿致死 tick 数
+pub fn fasting_endurance_ticks(mass_kg: f32, is_ectotherm: bool, can_torpor: bool) -> u64 {
+    (fasting_endurance_days(mass_kg, is_ectotherm, can_torpor) * TICKS_PER_DAY as f32) as u64
 }
 
 // ===== 测试 =====
@@ -206,5 +237,26 @@ mod tests {
         for mass in [1.0, 10.0, 50.0, 100.0, 500.0] {
             assert!(speed_from_mass(mass) > 0.0);
         }
+    }
+
+    #[test]
+    fn fasting_endurance_deer_about_30_days() {
+        // 鹿: 80kg 恒温 无休眠 → ~30天
+        let days = fasting_endurance_days(80.0, false, false);
+        assert!((days - 30.0).abs() < 2.0, "deer fasting days = {days}, expected ~30");
+    }
+
+    #[test]
+    fn fasting_endurance_carp_about_119_days() {
+        // 鲤鱼: 3kg 变温 无休眠 → ~119天
+        let days = fasting_endurance_days(3.0, true, false);
+        assert!((days - 119.0).abs() < 5.0, "carp fasting days = {days}, expected ~119");
+    }
+
+    #[test]
+    fn fasting_endurance_bear_with_torpor_about_113_days() {
+        // 熊: 200kg 恒温 冬眠 → ~113天
+        let days = fasting_endurance_days(200.0, false, true);
+        assert!((days - 113.0).abs() < 5.0, "bear fasting days = {days}, expected ~113");
     }
 }
