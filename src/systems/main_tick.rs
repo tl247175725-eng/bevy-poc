@@ -432,6 +432,11 @@ fn apply_meta_action(world: &mut WorldState, entity_id: EntityId, action: MetaAc
     }
 }
 
+/// 公开包装——供 fast_tick 等外部模块调用 apply_meta_action
+pub fn apply_meta_action_public(world: &mut WorldState, entity_id: EntityId, action: MetaAction) {
+    apply_meta_action(world, entity_id, action);
+}
+
 // ===== 兼容别名 =====
 
 pub fn mark_baseline_herbivore_tick(world: &mut WorldState) {

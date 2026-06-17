@@ -1,4 +1,5 @@
 pub mod batch_uniform;
+pub mod fast_tick;
 pub mod grass_regen;
 pub mod main_tick;
 pub mod tick_starvation;

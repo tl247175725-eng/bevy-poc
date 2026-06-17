@@ -119,6 +119,11 @@ pub const STRIKE_BASE_DAMAGE: i32 = 1;
 // === 补水基线比例 ===
 pub const HYDRATION_BASELINE_RATIO: f32 = 0.03;
 
+// ===== 手牌 =====
+
+/// 玩家手牌上限
+pub const HAND_SIZE_MAX: usize = 5;
+
 // ===== 辅助常量 =====
 
 pub const GRAVITY: f32 = 9.8;

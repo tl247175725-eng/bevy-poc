@@ -9,6 +9,7 @@ pub mod card_visual;
 pub mod coords;
 pub mod ecology_log;
 pub mod game_constants;
+pub mod hand_cards;
 pub mod game_ui_panel;
 pub mod grid_render;
 pub mod initial_spawn;
