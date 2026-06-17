@@ -4,12 +4,16 @@ use crate::axioms::{
 };
 use crate::bulletin::BulletinBoard;
 use crate::card_def::{card_defs_map, load_card_defs, CardDef};
-use crate::game_constants::TICK_SECONDS;
+use crate::meta_values::TICK_SECONDS;
 use crate::player::PlayerMind;
 use crate::spatial_index::{EntityId, IndexedEntity, SpatialIndex};
 use crate::terrain_ecology::MapEcology;
 use crate::world_rules::card_has_capability;
 use std::collections::{HashMap, HashSet};
+
+use crate::memory::MemoryStore;
+use crate::need_match::data::{KnowledgeGraph, NeedState};
+use crate::need_match::execution::ExecutionState;
 use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +42,8 @@ pub struct Entity {
     pub type_name: String,
     pub x: u8,
     pub y: u8,
+    /// 垂直层：负=地下, 0=地表, 正=空中。默认 0。
+    pub z: i16,
     pub hp: i32,
     pub fed: bool,
     pub is_corpse: bool,
@@ -81,6 +87,10 @@ pub struct Entity {
     pub last_utility_drive: Option<(crate::axioms::DriveBehavior, String)>,
     /// Precomputed axiom profile (tags parsed once at spawn / refresh).
     pub profile: crate::axioms::EntityProfile,
+    pub memory: MemoryStore,         // 流动记忆
+    pub needs: Vec<NeedState>,       // 需求状态
+    pub knowledge: KnowledgeGraph,   // 个人知识图
+    pub execution: ExecutionState,   // 当前执行计划
 }
 
 impl Entity {
@@ -130,6 +140,8 @@ pub struct WorldState {
     pub sim_observer_depth: u8,
     /// Spawn-time ecology deferred to end of tick (assert co-spawn before first tick).
     pub pending_spawn_ecology: Vec<EntityId>,
+    /// Phase 6 Apply — 元动作队列，tick 末尾统一生效
+    pub pending_actions: Vec<(EntityId, crate::meta_actions::MetaAction)>,
     /// Reused each tick to avoid allocations in patrol / aquatic scans.
     pub tick_scratch: Vec<EntityId>,
     /// Phase 5 player AI minds — one entry per player entity.
@@ -166,11 +178,12 @@ impl WorldState {
             riparian_timer: 0.0,
             tick_count: 0,
             elapsed: 0.0,
-            tick_delta: crate::game_constants::TICK_SECONDS,
+            tick_delta: crate::meta_values::TICK_SECONDS,
             pending_events: Vec::new(),
             pending_move_anims: Vec::new(),
             sim_observer_depth: 0,
             pending_spawn_ecology: Vec::new(),
+            pending_actions: Vec::new(),
             tick_scratch: Vec::new(),
             player_minds: HashMap::new(),
             cell_composition: CellComposition::empty(),
@@ -266,7 +279,8 @@ impl WorldState {
         let id = EntityId(self.next_id);
         self.next_id += 1;
 
-        let mut profile = AxiomEngine::build_profile(id, type_name, &def.tags, def.hp, self, x, y);
+        let is_corpse = type_name.ends_with("Corpse");
+        let mut profile = AxiomEngine::build_profile(id, is_corpse, &def.tags, def.hp, self, x, y);
         // Spawn: if cell blocked (water, occupied, terrain), find nearby valid cell
         let terrain = crate::terrain::terrain_at(self, x, y);
         let water_terrain =
@@ -294,9 +308,10 @@ impl WorldState {
             type_name: type_name.to_string(),
             x,
             y,
+            z: 0,
             hp: def.hp,
             fed: false,
-            is_corpse: type_name.ends_with("Corpse"),
+            is_corpse,
             ecology_state: EcologyState::Idle,
             consumed: false,
             sex,
@@ -305,17 +320,11 @@ impl WorldState {
             fed_today: false,
             starve_days: 0,
             in_den: false,
-            in_tree: type_name == "oak" || type_name == "pine" || type_name == "bamboo",
-            in_pool: type_name == "algae"
-                || type_name == "waterBug"
-                || type_name == "fish"
-                || type_name == "shellfish"
-                || type_name == "waterCaltrop"
-                || type_name == "lotus",
-            in_ground: matches!(
-                type_name,
-                "wildYam" | "landBug" | "burrowTuber" | "dungBeetle" | "earthworm"
-            ),
+            in_tree: crate::world_rules::card_has_tag(&def, "growth_form:tree") || crate::world_rules::card_has_tag(&def, "tree"),
+            in_pool: crate::world_rules::card_has_tag(&def, "habitat:aquatic")
+                || crate::world_rules::card_has_tag(&def, "foraging_stratum:aquatic_submerged")
+                || crate::world_rules::card_has_tag(&def, "foraging_stratum:aquatic_surface"),
+            in_ground: crate::world_rules::card_has_tag(&def, "habitat:subterranean"),
             in_burrow: false,
             carrying: None,
             stunned: false,
@@ -339,8 +348,15 @@ impl WorldState {
             sleep_until_tick: 0,
             last_utility_drive: None,
             profile,
+            memory: MemoryStore::new(50),
+            needs: Vec::new(),
+            knowledge: KnowledgeGraph {
+                entries: HashMap::new(),
+                next_id: 0,
+            },
+            execution: ExecutionState::new(),
         };
-        if type_name == "bush" {
+        if crate::world_rules::card_has_tag(&def, "growth_form:shrub") {
             self.bush_microfauna.insert((x, y), crate::game_constants::BUSH_INITIAL_MICROFAUNA);
         }
         self.cell_composition.occupy_entity(x, y, &entity);
@@ -420,12 +436,15 @@ impl WorldState {
         if entity.is_corpse {
             tags.push("corpse".to_string());
         }
-        self.spatial_index.insert(&IndexedEntity {
-            id: entity.id,
-            x: entity.x,
-            y: entity.y,
-            tags,
-        });
+        self.spatial_index.insert_at_z(
+            &IndexedEntity {
+                id: entity.id,
+                x: entity.x,
+                y: entity.y,
+                tags,
+            },
+            entity.z,
+        );
     }
 
     pub fn reindex_entity(&mut self, id: EntityId) {
