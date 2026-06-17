@@ -47,7 +47,10 @@ pub fn display_player_mind(
         .0
         .entities
         .values()
-        .find(|e| e.type_name == "player")
+        .find(|e| {
+            sim.0.card_defs.get(&e.type_name)
+                .is_some_and(|def| crate::world_rules::card_has_tag(def, "role:player"))
+        })
         .map(|e| e.id);
     let Some(pid) = player_id else {
         return;
@@ -75,7 +78,10 @@ pub fn tick_player_in_sim(
         .0
         .entities
         .values()
-        .filter(|e| e.type_name == "player" && !e.is_corpse)
+        .filter(|e| {
+            !e.is_corpse && sim.0.card_defs.get(&e.type_name)
+                .is_some_and(|def| crate::world_rules::card_has_tag(def, "role:player"))
+        })
         .map(|e| e.id)
         .collect();
     for id in ids {
@@ -87,6 +93,9 @@ pub fn find_player_id(world: &crate::world_state::WorldState) -> Option<EntityId
     world
         .entities
         .values()
-        .find(|e| e.type_name == "player")
+        .find(|e| {
+            world.card_defs.get(&e.type_name)
+                .is_some_and(|def| crate::world_rules::card_has_tag(def, "role:player"))
+        })
         .map(|e| e.id)
 }

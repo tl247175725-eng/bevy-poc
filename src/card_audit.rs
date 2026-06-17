@@ -2,6 +2,7 @@
 
 use crate::capabilities::{all_capability_cards, card_capabilities};
 use crate::card_def::{load_card_defs, CardDef};
+use crate::world_rules::card_has_tag;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::LazyLock;
@@ -163,7 +164,7 @@ pub fn audit_defs(defs: &[CardDef]) -> Vec<String> {
     }
     for name in all_capability_cards() {
         let caps = card_capabilities(name);
-        if name == "humus" {
+        if defs.iter().any(|d| d.type_name == name && card_has_tag(d, "humus")) {
             continue;
         }
         if caps.is_empty() {
@@ -176,7 +177,7 @@ pub fn audit_defs(defs: &[CardDef]) -> Vec<String> {
         }
     }
     for def in defs {
-        if def.type_name == "humus" {
+        if card_has_tag(def, "humus") {
             continue;
         }
         let caps = card_capabilities(&def.type_name);
