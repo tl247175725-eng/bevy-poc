@@ -15,6 +15,19 @@ use crate::systems::tick_reactive::{
 use crate::world_rules::{chebyshev_distance, card_has_tag};
 use crate::world_state::{EcologyState, WorldState};
 
+fn is_predator(def: &CardDef) -> bool {
+    crate::world_rules::card_has_tag(def, "diet:carnivore")
+        && (crate::world_rules::card_has_tag(def, "body_size:medium")
+            || crate::world_rules::card_has_tag(def, "body_size:large")
+            || crate::world_rules::card_has_tag(def, "body_size:huge"))
+}
+
+fn is_mesopredator(def: &CardDef) -> bool {
+    crate::world_rules::card_has_tag(def, "diet:carnivore")
+        && (crate::world_rules::card_has_tag(def, "body_size:small")
+            || crate::world_rules::card_has_tag(def, "body_size:tiny"))
+}
+
 #[derive(Resource, Default)]
 pub struct EventRegistry {
     pub dispatch_count: u64,
@@ -46,11 +59,11 @@ impl EventRegistry {
         let Some(def) = world.card_defs.get(&entity.type_name).cloned() else {
             return;
         };
-        if card_has_tag(&def, "player") {
+        if card_has_tag(&def, "role:player") {
             return;
         }
 
-        if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
+        if is_predator(&def) || is_mesopredator(&def) {
             notify_prey_near_predator(world, id, (entity.x, entity.y), (entity.x, entity.y));
             return;
         }
@@ -82,7 +95,7 @@ impl EventRegistry {
             {
                 continue;
             }
-            if card_has_tag(&def, "predator") || card_has_tag(&def, "mesopredator") {
+            if is_predator(&def) || is_mesopredator(&def) {
                 continue;
             }
             Self::tick_non_predator_ecology(world, id, &def, delta);
@@ -107,14 +120,14 @@ impl EventRegistry {
                 mark_predators_near_prey_needs_patrol(world, id, to.0, to.1);
             }
             if is_hunt_prey(def)
-                || card_has_tag(def, "predator")
-                || card_has_tag(def, "mesopredator")
+                || is_predator(def)
+                || is_mesopredator(def)
             {
                 wake_autonomous_near(world, to.0, to.1, WAKE_ACTIVITY_RANGE);
             }
-            if card_has_tag(def, "predator") || card_has_tag(def, "mesopredator") {
+            if is_predator(def) || is_mesopredator(def) {
                 notify_prey_near_predator(world, id, from, to);
-            } else if !card_has_tag(def, "player")
+            } else if !card_has_tag(def, "role:player")
                 && !(def.tags.iter().any(|t| t == "aquatic")
                     && mover
                         .as_ref()
@@ -163,7 +176,7 @@ fn spawn_ecology_priority(world: &WorldState, id: EntityId) -> u8 {
     let Some(def) = world.card_defs.get(&entity.type_name) else {
         return 1;
     };
-    if card_has_tag(def, "predator") || card_has_tag(def, "mesopredator") {
+    if is_predator(def) || is_mesopredator(def) {
         return 0;
     }
     if card_has_tag(def, "aquatic") && entity.profile.native_medium == "water" {

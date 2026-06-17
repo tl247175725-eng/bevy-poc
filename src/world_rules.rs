@@ -1,17 +1,21 @@
+use std::sync::OnceLock;
+
 use crate::capabilities::card_capabilities;
 use crate::card_def::CardDef;
+use crate::game_constants::{POPULATION_REPRO_CYCLE_SECONDS, PROLIFIC_REPRO_CYCLE_SECONDS};
+use crate::spatial_index::EntityId;
+use crate::tags::TagRegistry;
 
-pub const GRID_WIDTH: u8 = 36;
-pub const GRID_HEIGHT: u8 = 24;
+const NONE_ID: EntityId = EntityId(0);
+
+pub const GRID_WIDTH: u8 = 32;
+pub const GRID_HEIGHT: u8 = 32;
 pub const HUNT_RANGE: u8 = 5;
 pub const FEAR_RANGE: u8 = 4;
 pub const PACK_MIN_STRENGTH: usize = 2;
 pub const FLOCKING_REPRO_MIN: usize = 3;
 pub const GRASS_REGEN_INTERVAL: u64 = 10;
 pub const REPRO_COOLDOWN_TICKS: u64 = 50;
-pub const POPULATION_REPRO_CYCLE: f32 = 12.0;
-pub const PROLIFIC_REPRO_CYCLE: f32 = 3.0;
-
 pub const HUNT_PROFILE_PACK: &str = "pack_predator";
 pub const HUNT_PROFILE_MESO: &str = "mesopredator";
 pub const HUNT_PROFILE_TOOL: &str = "tool_hunter";
@@ -19,9 +23,30 @@ pub const HUNT_DIET_FOX: &str = "fox";
 
 pub const HUNT_SCORE_INF: f32 = f32::INFINITY;
 
+// --- 全局 TagRegistry 单例 ---
+
+/// TagRegistry 在 App 启动时初始化一次。初始化前所有标签查询走字符串 fallback。
+pub static TAG_REGISTRY: OnceLock<TagRegistry> = OnceLock::new();
+
+/// 在 App 启动时调用一次 — 加载 tags.ron 并填充全局 TAG_REGISTRY。
+/// 重复调用会 panic（OnceLock 约束）。
+pub fn init_tag_registry() {
+    let registry = TagRegistry::default_registry();
+    TAG_REGISTRY
+        .set(registry)
+        .expect("TagRegistry 只能初始化一次");
+}
+
 // --- tag primitives ---
 
 pub fn card_has_tag(def: &CardDef, tag: &str) -> bool {
+    // 新路径：位掩码查询（TagRegistry 就位后）
+    if let Some(ref registry) = TAG_REGISTRY.get() {
+        if let Some(&bit) = registry.name_to_bit.get(tag) {
+            return def.tag_bits.has(bit);
+        }
+    }
+    // 旧路径：字符串 fallback
     def.tags.iter().any(|t| t == tag || t.starts_with(&format!("{tag}.")))
 }
 
@@ -53,7 +78,7 @@ pub fn is_being(def: &CardDef) -> bool {
 }
 
 pub fn is_camp_fire_anchor(def: &CardDef) -> bool {
-    def.type_name == "fire" || (card_has_tag(def, "camp.anchor") && card_has_tag(def, "heat"))
+    card_has_tag(def, "camp.anchor") && card_has_tag(def, "heat")
 }
 
 pub fn is_animal(def: &CardDef) -> bool {
@@ -97,7 +122,7 @@ pub fn count_living_grasses_near_xy(
     radius: u8,
 ) -> usize {
     world
-        .query_near_filtered(x, y, "grass", radius, crate::spatial_index::EntityId(0))
+        .query_near_filtered(x, y, "grass", radius, NONE_ID)
         .iter()
         .filter(|id| world.entities.get(id).is_some_and(|e| !e.is_corpse))
         .count()
@@ -167,24 +192,26 @@ pub fn is_tough_adult_prey(def: &CardDef) -> bool {
     card_has_tag(def, "tough") && !card_has_tag(def, "juvenile")
 }
 
+const HUNT_PROFILE_RULES: &[(&[&str], &str)] = &[
+    (&["mesopredator"], HUNT_PROFILE_MESO),
+    (&["predator"], HUNT_PROFILE_PACK),
+    (&["actor"], HUNT_PROFILE_TOOL),
+];
+
 pub fn hunt_profile_for(hunter_def: &CardDef) -> &'static str {
     if !can_hunt_def(hunter_def) {
         return "";
     }
-    if card_has_tag(hunter_def, "mesopredator") {
-        return HUNT_PROFILE_MESO;
-    }
-    if card_has_tag(hunter_def, "predator") {
-        return HUNT_PROFILE_PACK;
-    }
-    if card_has_tag(hunter_def, "actor") {
-        return HUNT_PROFILE_TOOL;
+    for (tags, profile) in HUNT_PROFILE_RULES {
+        if tags.iter().any(|&t| card_has_tag(hunter_def, t)) {
+            return profile;
+        }
     }
     ""
 }
 
 fn mesopredator_diet_key(hunter_def: &CardDef) -> &'static str {
-    if hunter_def.type_name == "fox" {
+    if card_has_tag(hunter_def, "diet:carnivore") && card_has_tag(hunter_def, "body_size:small") {
         HUNT_DIET_FOX
     } else {
         ""
@@ -340,7 +367,7 @@ pub fn can_reproduce(male_def: &CardDef, female_def: &CardDef) -> bool {
 }
 
 pub fn prolific_litter_size(def: &CardDef) -> i32 {
-    if card_has_tag(def, "prolific") {
+    if card_has_tag(def, "repro:many_offspring") {
         3
     } else {
         1
@@ -348,10 +375,10 @@ pub fn prolific_litter_size(def: &CardDef) -> i32 {
 }
 
 pub fn prolific_repro_cycle(def: &CardDef) -> f32 {
-    if card_has_tag(def, "prolific") {
-        PROLIFIC_REPRO_CYCLE
+    if card_has_tag(def, "repro:many_offspring") {
+        PROLIFIC_REPRO_CYCLE_SECONDS
     } else {
-        POPULATION_REPRO_CYCLE
+        POPULATION_REPRO_CYCLE_SECONDS
     }
 }
 
@@ -393,9 +420,7 @@ pub fn herbivore_grazer_profile(def: &CardDef) -> GrazerProfile {
     if is_herbivore_grazer_juvenile(def) {
         return GrazerProfile::Juvenile;
     }
-    if (def.type_name == "pheasant" || def.type_name == "pheasantChick")
-        && card_has_tag(def, "flocking")
-        && card_has_tag(def, "omnivore.small")
+    if card_has_tag(def, "flocking") && card_has_tag(def, "diet:omnivore")
     {
         return GrazerProfile::Pheasant;
     }
@@ -482,7 +507,7 @@ pub fn predators_near(
     y: u8,
     range: u8,
 ) -> Vec<crate::spatial_index::EntityId> {
-    world.query_near_filtered(x, y, "predator", range, crate::spatial_index::EntityId(0))
+    world.query_near_filtered(x, y, "predator", range, NONE_ID)
 }
 
 pub fn wolves_near(
@@ -500,6 +525,19 @@ pub const BEHAVIOR_PREDATOR_DEN: &str = "predator_den";
 pub const BEHAVIOR_MESOPREDATOR_HUNT: &str = "mesopredator_hunt";
 pub const BEHAVIOR_HERBIVORE_GRAZER: &str = "herbivore_grazer";
 pub const BEHAVIOR_COVER_FORAGER: &str = "cover_forager";
+
+// --- product type lookup ---
+
+/// 从 CardDef 标签推导产出物类型
+pub fn product_type(def: &CardDef) -> &'static str {
+    if card_has_tag(def, "nut_producer") {
+        return "acorn";
+    }
+    if card_has_tag(def, "cone_producer") || card_has_tag(def, "forest") {
+        return "pineCone";
+    }
+    ""
+}
 
 /// 行为键查询——已掏空，所有实体均为空行为键
 pub fn ecosystem_behavior_key(_def: &CardDef, _type_name: &str) -> &'static str {
