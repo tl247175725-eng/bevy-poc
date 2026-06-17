@@ -1,10 +1,20 @@
+pub mod animation;
+pub mod card_base;
+pub mod animals;
 pub mod card_view;
 pub mod hide_visual;
 pub mod move_animation;
 pub mod overlays;
+pub mod scatter;
 pub mod smash_visual;
 pub mod sprint_visual;
+pub mod skybox;
+pub mod terrain;
 pub mod terrain_view;
+pub mod vegetation;
 
+pub use card_base::*;
 pub use overlays::*;
+pub use scatter::*;
+pub use terrain::*;
 pub use terrain_view::*;

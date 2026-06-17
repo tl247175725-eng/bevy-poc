@@ -122,6 +122,9 @@ impl Plugin for RenderPlugin {
                 setup_cameras,
                 setup_grid,
                 setup_fx_layer,
+                crate::render::terrain::spawn_terrain_chunks,
+                crate::render::scatter::setup_vegetation_meshes,
+                crate::render::scatter::scatter_vegetation,
             )
                 .chain(),
         )
@@ -140,12 +143,21 @@ impl Plugin for RenderPlugin {
                 crate::render::terrain_view::sync_terrain_visuals,
                 crate::render::card_view::sync_card_overlays,
                 crate::render::smash_visual::sync_smash_badges,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            (
                 sync_selection_border,
                 sync_hover_ring,
                 sync_ghost_preview,
                 sync_rain_overlay,
                 sync_world_fx,
                 crate::render::move_animation::check_move_anim_completion,
+                crate::render::animation::animation_system,
+                crate::render::animation::remove_completed_animations,
+                crate::render::skybox::skybox_system,
             )
                 .chain(),
         );
