@@ -94,6 +94,33 @@ pub fn grid_round_trip(x: u8, y: u8) -> Option<(u8, u8)> {
     world_to_grid(center)
 }
 
+// ── Z 轴辅助 ──
+
+/// Z 层 → 视觉偏移（用于渲染分层）。
+/// 约定：每 Z 层 ±16px 偏移。负=下方（地下），正=上方（空中）。
+pub fn z_visual_offset(z: i16) -> f32 {
+    z as f32 * 16.0
+}
+
+/// 细胞中心 + Z 层偏移 → 3D 世界坐标。
+pub fn cell_center_z(x: u8, y: u8, z: i16) -> Vec3 {
+    let base = cell_center(x, y);
+    Vec3::new(base.x, base.y + z_visual_offset(z), z as f32)
+}
+
+/// 3D 曼哈顿距离 (dx + dy + |dz|)。
+pub fn manhattan_distance_3d(x1: u8, y1: u8, z1: i16, x2: u8, y2: u8, z2: i16) -> u32 {
+    x1.abs_diff(x2) as u32 + y1.abs_diff(y2) as u32 + z1.abs_diff(z2) as u32
+}
+
+/// 3D Chebyshev 距离 max(dx, dy, |dz|)。
+pub fn chebyshev_distance_3d(x1: u8, y1: u8, z1: i16, x2: u8, y2: u8, z2: i16) -> u32 {
+    let dx = x1.abs_diff(x2) as u32;
+    let dy = y1.abs_diff(y2) as u32;
+    let dz = z1.abs_diff(z2) as u32;
+    dx.max(dy).max(dz)
+}
+
 /// Zoom anchor invariant: world point under cursor stays fixed after zoom.
 pub fn zoom_anchor_invariant(
     view: &mut WorldView,
