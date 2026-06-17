@@ -3,6 +3,7 @@ pub mod composition;
 pub mod laws;
 pub mod consume;
 pub mod profile;
+pub mod strike;
 
 use std::collections::HashMap;
 
@@ -12,7 +13,8 @@ pub use laws::{
     compose, perceive, transform, traverse, Composition, Perception, TransformAction,
     Transformation, Traversal,
 };
-pub use consume::can_digest;
+pub use consume::{can_digest, estimate_mass_from_tags};
+pub use strike::strike_force;
 pub use profile::{
     ChannelDef, DriveBehavior, DriveDef, EntityProfile, Height, Medium, NeedCurve, NeedState,
     SocialStructure,

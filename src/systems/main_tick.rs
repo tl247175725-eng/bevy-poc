@@ -304,9 +304,28 @@ fn apply_meta_action(world: &mut WorldState, entity_id: EntityId, action: MetaAc
             }
         }
         MetaAction::Strike { target } => {
-            // 伤害计算 — 后续 handoff 补充完整公式
-            if let Some(target_entity) = world.entities.get_mut(&target) {
-                target_entity.hp = target_entity.hp.saturating_sub(crate::meta_values::STRIKE_BASE_DAMAGE);
+            // 同构 Strike 伤害计算 — strike 公理
+            // 在块作用域内完成所有不可变借用，再释放借用后执行可变操作
+            let damage: i32;
+            {
+                let Some(attacker_entity) = world.entities.get(&entity_id) else { return };
+                let Some(target_entity) = world.entities.get(&target) else { return };
+
+                let Some(attacker_def) = world.card_defs.get(&attacker_entity.type_name) else { return };
+                let attacker_tags = &attacker_def.tag_bits;
+                let mass = crate::axioms::consume::estimate_mass_from_tags(attacker_tags);
+
+                let Some(target_def) = world.card_defs.get(&target_entity.type_name) else { return };
+                let target_tags = &target_def.tag_bits;
+
+                let force = crate::axioms::strike::strike_force(attacker_tags, mass, target_tags);
+
+                // 伤害 = 力 / 1000 (N→伤害单位, 经验换算)
+                damage = (force / 1000.0).ceil() as i32;
+            }
+
+            if let Some(target_e) = world.entities.get_mut(&target) {
+                target_e.hp = target_e.hp.saturating_sub(damage.max(1));
             }
         }
         MetaAction::Pause { .. } => {

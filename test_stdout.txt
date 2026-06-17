@@ -1,0 +1,118 @@
+
+running 101 tests
+test axioms::laws::compose_tests::flat_on_flat_denied ... ok
+test axioms::laws::compose_tests::incorporeal_always_allowed ... ok
+test axioms::laws::compose_tests::low_over_flat_allowed ... ok
+test event_registry::tests::registry_ticks_sheep_without_panic ... ignored
+test event_registry::tests::wolf_gets_predator_den_key ... ignored
+test axioms::laws::compose_tests::flat_on_flat_still_denied ... ok
+test axioms::laws::compose_tests::medium_on_medium_denied ... ok
+test axioms::laws::compose_tests::medium_over_flat_allowed ... ok
+test axioms::profile::need_tests::drive_need_kind_maps_flee_to_safety ... ok
+test axioms::profile::need_tests::parse_need_tags ... ok
+test axioms::profile::need_tests::steep_curve_rises_with_urgency ... ok
+test memory::store::tests::capacity_evicts_least_important ... ok
+test memory::store::tests::recall_by_keyword_finds_matches ... ok
+test memory::store::tests::recall_returns_empty_when_no_match ... ok
+test memory::store::tests::store_heard_fidelity_decays_with_hops ... ok
+test card_def::tests::carddef_tagbits_empty_by_default ... ok
+test memory::store::tests::store_read_fidelity_slower_decay ... ok
+test memory::store::tests::store_witnessed_has_full_fidelity ... ok
+test card_def::tests::carddef_tagbits_from_registry ... FAILED
+test memory::transmit::tests::decay_reduces_importance ... ok
+test memory::transmit::tests::decay_removes_zero_importance ... ok
+test memory::transmit::tests::inscribe_copies_memory_to_object ... ok
+test memory::transmit::tests::reinforce_restores_importance ... ok
+test memory::transmit::tests::reinforce_skips_below_threshold ... ok
+test memory::transmit::tests::transmit_chains_hops ... ok
+test memory::transmit::tests::transmit_creates_heard_memory_with_incremented_hops ... ok
+test meta_values::tests::all_constants_positive ... ok
+test meta_values::tests::all_speeds_are_positive ... ok
+test meta_values::tests::impact_force_increases_with_mass ... ok
+test meta_values::tests::speed_decreases_with_heavier_mass ... ok
+test meta_values::tests::ticks_per_day_is_420 ... ok
+test meta_values::tests::ticks_per_phase_is_60 ... ok
+test meta_values::tests::weight_derives_from_mass_and_gravity ... ok
+test need_match::activation::tests::decay_rate_differs_by_kind ... ok
+test need_match::activation::tests::safety_block_blocks_non_safety ... ok
+test need_match::activation::tests::safety_block_releases_when_safe ... ok
+test need_match::activation::tests::sigmoid_high_at_deficit ... ok
+test need_match::activation::tests::sigmoid_low_when_satisfied ... ok
+test need_match::activation::tests::sigmoid_mid_at_threshold ... ok
+test need_match::activation::tests::tick_clamps_current_at_one ... ok
+test need_match::activation::tests::tick_decays_current_toward_one ... ok
+test need_match::engine::tests::tick_need_engine_returns_pause_when_no_candidates ... ok
+test need_match::engine::tests::tick_need_engine_builds_plan_and_ticks ... ok
+test need_match::execution::tests::execute_acquire_step_finds_matching_object ... ok
+test need_match::execution::tests::execute_acquire_step_returns_error_when_no_match ... ok
+test need_match::execution::tests::execute_acquire_step_skips_already_acquired ... ok
+test need_match::execution::tests::is_plan_complete_when_all_steps_done ... ok
+test need_match::execution::tests::material_satisfies_present_check ... ok
+test need_match::execution::tests::retry_exhaustion_fails_plan ... ok
+test need_match::execution::tests::verify_prerequisites_detects_changed_object ... ok
+test need_match::search::tests::arbitrate_picks_highest_score ... ok
+test need_match::search::tests::arbitrate_rejects_below_threshold ... ok
+test need_match::search::tests::count_prerequisites_met_returns_zero ... ok
+test need_match::search::tests::search_by_needs_excludes_blocked_needs ... ok
+test need_match::search::tests::search_by_needs_finds_candidates_for_activated_needs ... ok
+test need_match::search::tests::search_by_needs_returns_empty_when_no_activated_needs ... ok
+test need_match::social::tests::find_expert_returns_empty_when_no_match ... ok
+test need_match::social::tests::find_expert_skips_unknown_entities ... ok
+test need_match::social::tests::learn_and_find_expert ... ok
+test need_match::social::tests::request_help_creates_signal ... ok
+test perception::senses::tests::hearing_drowned_by_noise_returns_none ... ok
+test perception::senses::tests::smell_against_wind_attenuates ... ok
+test perception::senses::tests::vision_out_of_range_returns_none ... ok
+test perception::senses::tests::vision_returns_curiosity_for_novel_target ... ok
+test pathfinding::tests::path_adjacent ... ok
+test pathfinding::tests::path_same_cell_empty ... ok
+test perception::senses::tests::vision_target_hidden_returns_none ... ok
+test selection_info::tests::pool_panel_shows_occupant_counts ... ignored
+test selection_info::tests::resolve_selection_skips_entities_in_cover ... ignored
+test sim_clock::season_tests::deep_pool_gains_elevation_warmth ... ok
+test sim_clock::season_tests::winter_at_day_270 ... ok
+test spatial_index::tests::default_layer_is_zero ... ok
+test spatial_index::tests::grid_buckets_track_move_and_remove ... ok
+test spatial_index::tests::layers_isolate_z ... ok
+test spatial_index::tests::position_3d_returns_z ... ok
+test spatial_index::tests::move_entity_3d_switches_layer ... ok
+test selection_info::tests::cell_panel_includes_cover_and_water_stress ... ok
+test spatial_index::tests::query_near_scans_local_bucket_only ... ok
+test tags::tests::behavior_tags_exist ... ok
+test tags::tests::body_descendants_contain_finger ... ok
+test tags::tests::body_descendants_contain_head ... ok
+test tags::tests::bone_descendant_of_skeletal ... ok
+test tags::tests::brain_bit_in_positional_range ... ok
+test tags::tests::default_registry_name_to_bit_non_empty ... ok
+test tags::tests::from_tag_names_maps_correctly ... ok
+test tags::tests::head_descendants_contain_skull ... ok
+test tags::tests::registry_allocate_bits ... ok
+test tags::tests::systemic_nodes_have_bits ... ok
+test tags::tests::tagbits_multiple_words ... ok
+test tags::tests::tagbits_set_and_has ... ok
+test tags::tests::tagbits_union ... ok
+test terrain_ecology::tests::dark_river_source_elevation ... ok
+test terrain_ecology::tests::elevation_higher_in_north ... ok
+test terrain_ecology::tests::no_surface_river_columns ... ok
+test terrain_ecology::tests::outer_pool_ring_elevation_minus_one ... ok
+test terrain_ecology::tests::pool_cells_at_least_ten ... ok
+test terrain_ecology::tests::pool_source_bottom_center ... ok
+test terrain_ecology::tests::soil_tags_differ_near_pool_vs_far ... ok
+test world_state::tests::demo_world_entity_count_after_1000_ticks ... ignored
+test terrain_ecology::tests::wetland_cells_have_deep_soil ... ok
+test spatial_index::tests::query_near_is_faster_than_full_tag_scan_at_scale ... ok
+
+failures:
+
+---- card_def::tests::carddef_tagbits_from_registry stdout ----
+
+thread 'card_def::tests::carddef_tagbits_from_registry' (4060) panicked at src\card_def.rs:113:68:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    card_def::tests::carddef_tagbits_from_registry
+
+test result: FAILED. 95 passed; 1 failed; 5 ignored; 0 measured; 0 filtered out; finished in 0.03s
+

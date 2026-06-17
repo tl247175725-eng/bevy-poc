@@ -1,0 +1,116 @@
+cargo build: 1 errors, 44 warnings (1 crates)
+═══════════════════════════════════════
+warning: unused import: `crate::world_rules::card_has_tag`
+   --> src\pathfinding.rs:128:9
+    |
+128 |     use crate::world_rules::card_has_tag;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary parentheses around block return value
+  --> src\sim_clock.rs:54:9
+   |
+54 |         (-elevation as f32 / 100.0)
+   |         ^                         ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+54 -         (-elevation as f32 / 100.0)
+54 +         -elevation as f32 / 100.0 
+   |
+
+warning: unused import: `crate::need_match::search::MaterialProperties`
+ --> src\systems\main_tick.rs:4:5
+  |
+4 | use crate::need_match::search::MaterialProperties;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `find_path`
+ --> src\systems\movement.rs:3:26
+  |
+3 | use crate::pathfinding::{find_path, is_blocked_for};
+  |                          ^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\card_visual.rs:247:17
+    |
+247 |                 SpatialBundle {
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:259:30
+    |
+259 |                 parent.spawn(SpriteBundle {
+    |                              ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:268:30
+    |
+268 |                 parent.spawn(SpriteBundle {
+    |                              ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\grid_render.rs:41:34
+   |
+41 |     let entity = commands.spawn((SpatialBundle::default(), WorldRoot)).id();
+   |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\grid_render.rs:57:21
+   |
+57 |             .spawn((SpatialBundle::default(), GridMesh))
+   |                     ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:80:13
+   |
+80 |             SpriteBundle {
+   |             ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:98:28
+   |
+98 |                 cell.spawn(SpriteBundle {
+   |                            ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\grid_render.rs:154:17
+    |
+154 |                 SpatialBundle {
+    |                 ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:167:34
+    |
+167 |                     parent.spawn(SpriteBundle {
+    |                                  ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\card_view.rs:80:13
+   |
+80 |             SpriteBundle {
+   |             ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\render\overlays.rs:34:13
+   |
+34 |             SpatialBundle {
+   |             ^^^^^^^^^^^^^
+
+
+... +30 more issues
+[full output: ~/AppData\Local\rtk\tee\1781671589_cargo_check.log]

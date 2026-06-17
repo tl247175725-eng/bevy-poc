@@ -261,10 +261,10 @@ axioms:
     validates: [Move]
     status: ❌ 已定义但未在apply_meta_action调用
 
-  - id: impact_force
-    file: src/meta_values.rs
+  - id: impact_force / strike_force
+    file: src/axioms/strike.rs
     validates: [Strike]
-    status: ❌ 已定义但Strike仍用hp-=1
+    status: ✅ 已贯通（035）——body_plan×body_size×capability→两条物理公式
 
   - id: compose
     file: src/axioms/laws.rs

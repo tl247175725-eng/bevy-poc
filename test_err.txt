@@ -1,0 +1,582 @@
+warning: unused import: `crate::world_rules::card_has_tag`
+   --> src\pathfinding.rs:128:9
+    |
+128 |     use crate::world_rules::card_has_tag;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary parentheses around block return value
+  --> src\sim_clock.rs:51:9
+   |
+51 |         (-elevation as f32 / 100.0)
+   |         ^                         ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+51 -         (-elevation as f32 / 100.0)
+51 +         -elevation as f32 / 100.0 
+   |
+
+warning: unused import: `find_path`
+ --> src\systems\movement.rs:3:26
+  |
+3 | use crate::pathfinding::{find_path, is_blocked_for};
+  |                          ^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\card_visual.rs:247:17
+    |
+247 |                 SpatialBundle {
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:259:30
+    |
+259 |                 parent.spawn(SpriteBundle {
+    |                              ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:268:30
+    |
+268 |                 parent.spawn(SpriteBundle {
+    |                              ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\grid_render.rs:41:34
+   |
+41 |     let entity = commands.spawn((SpatialBundle::default(), WorldRoot)).id();
+   |                                  ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\grid_render.rs:57:21
+   |
+57 |             .spawn((SpatialBundle::default(), GridMesh))
+   |                     ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:80:13
+   |
+80 |             SpriteBundle {
+   |             ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:98:28
+   |
+98 |                 cell.spawn(SpriteBundle {
+   |                            ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\grid_render.rs:154:17
+    |
+154 |                 SpatialBundle {
+    |                 ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:167:34
+    |
+167 |                     parent.spawn(SpriteBundle {
+    |                                  ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\card_view.rs:80:13
+   |
+80 |             SpriteBundle {
+   |             ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\render\overlays.rs:34:13
+   |
+34 |             SpatialBundle {
+   |             ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\overlays.rs:64:34
+   |
+64 |                     parent.spawn(SpriteBundle {
+   |                                  ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpatialBundle`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\render\overlays.rs:181:17
+    |
+181 |                 SpatialBundle {
+    |                 ^^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\render\overlays.rs:194:34
+    |
+194 |                     parent.spawn(SpriteBundle {
+    |                                  ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::SpriteBundle`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\smash_visual.rs:86:17
+   |
+86 |                 SpriteBundle {
+   |                 ^^^^^^^^^^^^
+
+warning: use of deprecated struct `bevy::prelude::Camera2dBundle`: Use the `Camera2d` component instead. Inserting it will now also insert the other components required by it automatically.
+   --> src\viewport_layout.rs:116:9
+    |
+116 |         Camera2dBundle {
+    |         ^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpatialBundle::transform`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\card_visual.rs:248:21
+    |
+248 |                     transform: Transform::from_translation(pos),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:260:21
+    |
+260 | /                     sprite: Sprite {
+261 | |                         color: style.border,
+262 | |                         custom_size: Some(Vec2::splat(border_size)),
+263 | |                         ..default()
+264 | |                     },
+    | |_____________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:265:21
+    |
+265 |                     transform: Transform::from_xyz(0.0, 0.0, 0.0),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:269:21
+    |
+269 | /                     sprite: Sprite {
+270 | |                         color: style.bg,
+271 | |                         custom_size: Some(Vec2::splat(CARD_SIZE)),
+272 | |                         ..default()
+273 | |                     },
+    | |_____________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\card_visual.rs:274:21
+    |
+274 |                     transform: Transform::from_xyz(0.0, 0.0, 0.01),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:81:17
+   |
+81 | /                 sprite: Sprite {
+82 | |                     color: Color::srgba(r, g, b, a),
+83 | |                     custom_size: Some(Vec2::splat(CELL_SIZE)),
+84 | |                     ..default()
+85 | |                 },
+   | |_________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\grid_render.rs:86:17
+   |
+86 |                 transform: Transform::from_translation(center),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:99:21
+    |
+ 99 | /                     sprite: Sprite {
+100 | |                         color: GRID_LINE,
+101 | |                         custom_size: Some(size),
+102 | |                         ..default()
+103 | |                     },
+    | |_____________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:104:21
+    |
+104 |                     transform: Transform::from_translation(offset.extend(0.05)),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpatialBundle::transform`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\grid_render.rs:155:21
+    |
+155 |                     transform: Transform::from_translation(Vec3::new(center.x, center.y, 20.0)),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:168:25
+    |
+168 | /                         sprite: Sprite {
+169 | |                             color,
+170 | |                             custom_size: Some(sz),
+171 | |                             ..default()
+172 | |                         },
+    | |_________________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\grid_render.rs:173:25
+    |
+173 |                         transform: Transform::from_translation(offset.extend(0.0)),
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\card_view.rs:81:17
+   |
+81 | /                 sprite: Sprite {
+82 | |                     color,
+83 | |                     custom_size: Some(Vec2::splat(size)),
+84 | |                     ..default()
+85 | |                 },
+   | |_________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\card_view.rs:86:17
+   |
+86 |                 transform: Transform::from_xyz(0.0, 0.0, -0.02),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpatialBundle::transform`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+  --> src\render\overlays.rs:35:17
+   |
+35 |                 transform: Transform::from_xyz(0.0, 0.0, 50.0),
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\overlays.rs:65:25
+   |
+65 | /                         sprite: Sprite {
+66 | |                             color: Color::srgba(0.4, 0.55, 0.75, 0.35),
+67 | |                             custom_size: Some(Vec2::new(1.5, 8.0)),
+68 | |                             ..default()
+69 | |                         },
+   | |_________________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\overlays.rs:70:25
+   |
+70 |                         transform: Transform::from_xyz(x, y, 0.0),
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpatialBundle::transform`: Use the `Transform` and `Visibility` components instead.
+                 Inserting `Transform` will now also insert a `GlobalTransform` automatically.
+                 Inserting 'Visibility' will now also insert `InheritedVisibility` and `ViewVisibility` automatically.
+   --> src\render\overlays.rs:182:21
+    |
+182 |                     transform: Transform::from_translation(Vec3::new(center.x, center.y, 25.0)),
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\render\overlays.rs:195:25
+    |
+195 | /                         sprite: Sprite {
+196 | |                             color,
+197 | |                             custom_size: Some(sz),
+198 | |                             ..default()
+199 | |                         },
+    | |_________________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+   --> src\render\overlays.rs:200:25
+    |
+200 |                         transform: Transform::from_translation(offset.extend(0.0)),
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::sprite`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\smash_visual.rs:87:21
+   |
+87 | /                     sprite: Sprite {
+88 | |                         color: Color::srgba(0.85, 0.15, 0.12, 0.92),
+89 | |                         custom_size: Some(Vec2::splat(22.0)),
+90 | |                         ..default()
+91 | |                     },
+   | |_____________________^
+
+warning: use of deprecated field `bevy::prelude::SpriteBundle::transform`: Use the `Sprite` component instead. Inserting it will now also insert `Transform` and `Visibility` automatically.
+  --> src\render\smash_visual.rs:92:21
+   |
+92 |                     transform: Transform::from_xyz(hw - 6.0, hw - 6.0, 0.5),
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of deprecated field `bevy::prelude::Camera2dBundle::camera`: Use the `Camera2d` component instead. Inserting it will now also insert the other components required by it automatically.
+   --> src\viewport_layout.rs:117:13
+    |
+117 | /             camera: Camera {
+118 | |                 order: 0,
+119 | |                 clear_color: ClearColorConfig::Custom(bg),
+120 | |                 ..default()
+121 | |             },
+    | |_____________^
+
+warning: use of deprecated field `bevy::prelude::Camera2dBundle::projection`: Use the `Camera2d` component instead. Inserting it will now also insert the other components required by it automatically.
+   --> src\viewport_layout.rs:122:13
+    |
+122 | /             projection: OrthographicProjection {
+123 | |                 near: -1000.0,
+124 | |                 far: 1000.0,
+125 | |                 ..OrthographicProjection::default_2d()
+126 | |             },
+    | |_____________^
+
+warning: unused variable: `type_name`
+   --> src\axioms\profile.rs:504:36
+    |
+504 | pub fn parse_size(tags: &[String], type_name: &str) -> u8 {
+    |                                    ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_type_name`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `type_name`
+   --> src\axioms\profile.rs:524:45
+    |
+524 | pub fn parse_native_medium(tags: &[String], type_name: &str) -> Medium {
+    |                                             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_type_name`
+
+warning: unused variable: `type_name`
+   --> src\axioms\profile.rs:536:39
+    |
+536 | pub fn parse_bridges(tags: &[String], type_name: &str) -> SmallVec<[(Medium, Medium); 4]> {
+    |                                       ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_type_name`
+
+warning: unused variable: `type_name`
+   --> src\axioms\profile.rs:561:40
+    |
+561 | pub fn parse_channels(tags: &[String], type_name: &str) -> SmallVec<[ChannelDef; 4]> {
+    |                                        ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_type_name`
+
+warning: unused variable: `observer_tags`
+  --> src\perception\senses.rs:30:5
+   |
+30 |     observer_tags: &TagBits, // 是否有 keen_eyed 等
+   |     ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_observer_tags`
+
+warning: unused variable: `mind`
+  --> src\player\behavior.rs:36:29
+   |
+36 | pub fn should_abort_current(mind: &PlayerMind, threat_level: u8) -> bool {
+   |                             ^^^^ help: if this is intentional, prefix it with an underscore: `_mind`
+
+warning: unused variable: `root`
+  --> src\render\overlays.rs:44:5
+   |
+44 |     root: Res<WorldRootEntity>,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_root`
+
+warning: unused variable: `w`
+   --> src\render\terrain.rs:156:9
+    |
+156 |     let w = (chunk.x_end - chunk.x_start) as f32 * TILE_SIZE;
+    |         ^ help: if this is intentional, prefix it with an underscore: `_w`
+
+warning: unused variable: `h`
+   --> src\render\terrain.rs:157:9
+    |
+157 |     let h = (chunk.y_end - chunk.y_start) as f32 * TILE_SIZE;
+    |         ^ help: if this is intentional, prefix it with an underscore: `_h`
+
+warning: unused variable: `playback`
+   --> src\sim_clock.rs:211:5
+    |
+211 |     playback: Res<crate::sim_events::MoveAnimPlayback>,
+    |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_playback`
+
+warning: unused variable: `world`
+  --> src\sim_observer.rs:36:19
+   |
+36 | pub fn on_despawn(world: &mut WorldState, _type_name: &str, _x: u8, _y: u8) {}
+   |                   ^^^^^ help: if this is intentional, prefix it with an underscore: `_world`
+
+warning: function `should_abort_current` is never used
+  --> src\player\behavior.rs:36:8
+   |
+36 | pub fn should_abort_current(mind: &PlayerMind, threat_level: u8) -> bool {
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `owns_tool_type` is never used
+  --> src\player\brain_tags.rs:10:8
+   |
+10 | pub fn owns_tool_type(_mind: &PlayerMind, _type_name: &str) -> bool { false }
+   |        ^^^^^^^^^^^^^^
+
+warning: function `card_has_material_tag` is never used
+  --> src\player\brain_tags.rs:11:8
+   |
+11 | pub fn card_has_material_tag(_def: &crate::card_def::CardDef, _tag: &str) -> bool { false }
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `nearest_entity_of_type` is never used
+ --> src\player\brain_world.rs:9:8
+  |
+9 | pub fn nearest_entity_of_type(_world: &WorldState, _px: u8, _py: u8, _type_name: &str) -> Option<(EntityId, u8, u8)> { None }
+  |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `sorted_by_distance` is never used
+  --> src\player\brain_world.rs:11:8
+   |
+11 | pub fn sorted_by_distance(_world: &WorldState, _px: u8, _py: u8, _type_name: &str) -> Vec<EntityId> { Vec::new() }
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `card_def_has_tag` is never used
+  --> src\player\brain_world.rs:12:8
+   |
+12 | pub fn card_def_has_tag(_def: &crate::card_def::CardDef, _tag: &str) -> bool { false }
+   |        ^^^^^^^^^^^^^^^^
+
+warning: function `top_desire_key` is never used
+  --> src\player\intention.rs:98:8
+   |
+98 | pub fn top_desire_key(mind: &PlayerMind) -> &str {
+   |        ^^^^^^^^^^^^^^
+
+warning: function `desire_from_affordance` is never used
+   --> src\player\intention.rs:111:8
+    |
+111 | pub fn desire_from_affordance(aff: &AffordanceEntry, mind: &PlayerMind) -> Desire {
+    |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `lowest_need_value` is never used
+   --> src\player\needs.rs:124:8
+    |
+124 | pub fn lowest_need_value(needs: &SdtNeeds) -> i32 {
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: function `evaluate_needs_for_test` is never used
+   --> src\player\needs.rs:128:8
+    |
+128 | pub fn evaluate_needs_for_test(mind: &mut PlayerMind, fire_exists: bool) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `sync_predator_tag_from_world` is never used
+   --> src\player\needs.rs:147:8
+    |
+147 | pub fn sync_predator_tag_from_world(world: &WorldState, player_id: EntityId, mind: &mut PlayerMind) {
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `neighbor_materials` is never used
+  --> src\player\shelter_tasks.rs:13:8
+   |
+13 | pub fn neighbor_materials(_world: &WorldState, _player_id: EntityId) -> bool { false }
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `set_task_cooldown` is never used
+   --> src\player\state.rs:151:8
+    |
+151 | pub fn set_task_cooldown(mind: &mut PlayerMind, task_type: &str, secs: f32) {
+    |        ^^^^^^^^^^^^^^^^^
+
+warning: constant `CENTER_X` is never used
+  --> src\render\terrain.rs:23:7
+   |
+23 | const CENTER_X: f32 = GRID_WIDTH as f32 * TILE_SIZE * 0.5;
+   |       ^^^^^^^^
+
+warning: constant `CENTER_Y` is never used
+  --> src\render\terrain.rs:24:7
+   |
+24 | const CENTER_Y: f32 = GRID_HEIGHT as f32 * TILE_SIZE * 0.5;
+   |       ^^^^^^^^
+
+warning: field `node_by_condition` is never read
+  --> src\rule_index.rs:40:5
+   |
+36 | pub struct RuleIndex {
+   |            --------- field in this struct
+...
+40 |     node_by_condition: HashMap<SharedCondition, u32>,
+   |     ^^^^^^^^^^^^^^^^^
+
+warning: function `manhattan_step` is never used
+ --> src\systems\movement.rs:8:4
+  |
+8 | fn manhattan_step(dx: i16, dy: i16, pick_x: bool) -> (i16, i16) {
+  |    ^^^^^^^^^^^^^^
+
+warning: field `prolific` is never read
+ --> src\systems\tick_reproduction.rs:7:5
+  |
+5 | struct ReproParams {
+  |        ----------- field in this struct
+6 |     offspring: String,
+7 |     prolific: bool,
+  |     ^^^^^^^^
+  |
+  = note: `ReproParams` has derived impls for the traits `Debug` and `Clone`, but these are intentionally ignored during dead code analysis
+
+warning: method `find_spawn_cell` is never used
+   --> src\world_state.rs:385:8
+    |
+161 | impl WorldState {
+    | --------------- method in this implementation
+...
+385 |     fn find_spawn_cell(&self, x: u8, y: u8, profile: &crate::axioms::EntityProfile) -> Option<(u8, u8)> {
+    |        ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+   --> src\event_registry.rs:232:9
+    |
+232 |     use super::*;
+    |         ^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `BEHAVIOR_PREDATOR_DEN` and `ecosystem_behavior_key`
+   --> src\event_registry.rs:233:30
+    |
+233 |     use crate::world_rules::{ecosystem_behavior_key, BEHAVIOR_PREDATOR_DEN};
+    |                              ^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::world_rules::card_has_tag`
+   --> src\pathfinding.rs:128:9
+    |
+128 |     use crate::world_rules::card_has_tag;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused variable: `sx`
+   --> src\terrain_ecology.rs:309:14
+    |
+309 |         let (sx, sy) = eco.pool_source;
+    |              ^^ help: if this is intentional, prefix it with an underscore: `_sx`
+
+warning: unused variable: `sy`
+   --> src\terrain_ecology.rs:309:18
+    |
+309 |         let (sx, sy) = eco.pool_source;
+    |                  ^^ help: if this is intentional, prefix it with an underscore: `_sy`
+
+warning: `bevy-poc` (lib) generated 73 warnings (run `cargo fix --lib -p bevy-poc` to apply 14 suggestions)
+warning: `bevy-poc` (lib test) generated 77 warnings (72 duplicates) (run `cargo fix --lib -p bevy-poc --tests` to apply 5 suggestions)
+    Finished `test` profile [optimized + debuginfo] target(s) in 0.48s
+     Running unittests src\lib.rs (target\debug\deps\bevy_poc-cebf009548028f74.exe)
+     Running unittests src\main.rs (target\debug\deps\bevy_poc-4a6461d0b70147bf.exe)
+     Running tests\coords_tests.rs (target\debug\deps\coords_tests-20a0e3b46ac87073.exe)
+   Doc-tests bevy_poc
+warning: unnecessary parentheses around block return value
+  --> src\sim_clock.rs:51:9
+   |
+51 |         (-elevation as f32 / 100.0)
+   |         ^                         ^
+   |
+   = note: `#[warn(unused_parens)]` (part of `#[warn(unused)]`) on by default
+help: remove these parentheses
+   |
+51 -         (-elevation as f32 / 100.0)
+51 +         -elevation as f32 / 100.0 
+   |
+
+warning: 1 warning emitted
+
