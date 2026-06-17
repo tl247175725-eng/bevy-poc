@@ -1,5 +1,5 @@
 use crate::spatial_index::EntityId;
-use crate::world_rules::card_has_tag;
+use crate::world_rules::{card_has_tag, product_type};
 use crate::world_state::WorldState;
 
 /// Player-style harvest interactions (POC: API only, no UI).
@@ -50,13 +50,10 @@ fn harvest_tree(world: &mut WorldState, x: u8, y: u8) -> Option<String> {
         let Some(def) = world.card_defs.get(&type_name) else {
             continue;
         };
-        let product = if card_has_tag(def, "nut_producer") {
-            "acorn"
-        } else if card_has_tag(def, "cone_producer") || card_has_tag(def, "forest") {
-            "pineCone"
-        } else {
+        let product = product_type(def);
+        if product.is_empty() {
             continue;
-        };
+        }
         world.spawn(product, x, y);
         return Some(product.to_string());
     }

@@ -1,5 +1,5 @@
 use crate::game_constants::{CONE_PRODUCE_INTERVAL, NUT_PRODUCE_INTERVAL, POOL_HARVEST_REGEN_SECONDS};
-use crate::world_rules::card_has_tag;
+use crate::world_rules::{card_has_tag, product_type};
 use crate::world_state::WorldState;
 
 pub fn tick_contained_producers(world: &mut WorldState, delta: f32) {
@@ -13,14 +13,17 @@ fn tick_tree_producers(world: &mut WorldState, delta: f32) {
         .values()
         .filter_map(|e| {
             let def = world.card_defs.get(&e.type_name)?;
-            let (product, interval) = if card_has_tag(def, "nut_producer") {
-                ("acorn", NUT_PRODUCE_INTERVAL)
-            } else if card_has_tag(def, "cone_producer") || card_has_tag(def, "forest") {
-                ("pineCone", CONE_PRODUCE_INTERVAL)
-            } else {
+            let prod_type = product_type(def);
+            if prod_type.is_empty() {
                 return None;
+            }
+            let interval = if card_has_tag(def, "nut_producer") {
+                NUT_PRODUCE_INTERVAL
+            } else {
+                CONE_PRODUCE_INTERVAL
             };
-            Some((e.id, product.to_string(), interval, e.x, e.y, e.produce_timer))
+            let product = prod_type.to_string();
+            Some((e.id, product, interval, e.x, e.y, e.produce_timer))
         })
         .collect();
     for (id, product, interval, x, y, mut timer) in trees {
