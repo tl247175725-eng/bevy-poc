@@ -294,13 +294,36 @@ fn apply_perception_to_needs(needs: &mut [crate::need_match::data::NeedState], c
 fn apply_meta_action(world: &mut WorldState, entity_id: EntityId, action: MetaAction) {
     match action {
         MetaAction::Move { dx, dy } => {
-            // 曼哈顿单步移动
-            if let Some(entity) = world.entities.get_mut(&entity_id) {
+            // 计算目标坐标 + 地形阻力（不可变借用块）
+            let move_info = {
+                let Some(entity) = world.entities.get(&entity_id) else { return };
                 let new_x = ((entity.x as i16) + dx).clamp(0, 255) as u8;
                 let new_y = ((entity.y as i16) + dy).clamp(0, 255) as u8;
-                entity.x = new_x;
-                entity.y = new_y;
-                world.spatial_index.move_entity(entity_id, new_x, new_y);
+                let terrain = crate::terrain::terrain_at(world, new_x, new_y);
+                let cost = world.card_defs.get(&entity.type_name)
+                    .map(|d| crate::axioms::move_check::terrain_resistance(terrain, &d.tag_bits));
+                (new_x, new_y, cost)
+            };
+            let (new_x, new_y, cost) = move_info;
+
+            match cost {
+                Some(crate::axioms::move_check::TerrainCost::Lethal) => {
+                    // 能进但掉血
+                    if let Some(e) = world.entities.get_mut(&entity_id) {
+                        e.x = new_x;
+                        e.y = new_y;
+                        e.hp = e.hp.saturating_sub(crate::axioms::move_check::lethal_terrain_damage());
+                        world.spatial_index.move_entity(entity_id, new_x, new_y);
+                    }
+                }
+                _ => {
+                    // 正常移动（无 card_def 的实体也走这条路）
+                    if let Some(e) = world.entities.get_mut(&entity_id) {
+                        e.x = new_x;
+                        e.y = new_y;
+                        world.spatial_index.move_entity(entity_id, new_x, new_y);
+                    }
+                }
             }
         }
         MetaAction::Strike { target } => {

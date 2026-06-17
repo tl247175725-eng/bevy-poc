@@ -2,6 +2,7 @@ pub mod causality;
 pub mod composition;
 pub mod laws;
 pub mod consume;
+pub mod move_check;
 pub mod profile;
 pub mod strike;
 
@@ -14,6 +15,7 @@ pub use laws::{
     Transformation, Traversal,
 };
 pub use consume::{can_digest, estimate_mass_from_tags};
+pub use move_check::terrain_resistance;
 pub use strike::strike_force;
 pub use profile::{
     ChannelDef, DriveBehavior, DriveDef, EntityProfile, Height, Medium, NeedCurve, NeedState,
