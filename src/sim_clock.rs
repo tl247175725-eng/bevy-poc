@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+/// Simulation ticks run when this much real time has accumulated (in seconds).
+const SIM_TICK_STEP: f32 = 1.0;
+
 pub const GAME_SECONDS_PER_REAL_SECOND: f32 = 60.0;
 pub const GAME_SECONDS_PER_TICK: f64 = GAME_SECONDS_PER_REAL_SECOND as f64;
 pub const DAYS_PER_YEAR: u16 = 360;
@@ -220,9 +223,9 @@ pub fn advance_sim_ticks(
     // FIX: animation completion detection broken — blocking disabled
     // if playback.in_progress { return; }
     clock.tick_accum += real_delta * clock.speed;
-    while clock.tick_accum >= crate::game_constants::TICK_SECONDS {
+    while clock.tick_accum >= SIM_TICK_STEP {
         // if playback.in_progress { break; }
-        clock.tick_accum -= crate::game_constants::TICK_SECONDS;
+        clock.tick_accum -= SIM_TICK_STEP;
         let t0 = std::time::Instant::now();
         let move_anims = sim.0.tick_once();
         let pending = sim.0.drain_pending_events();

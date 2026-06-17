@@ -181,7 +181,7 @@ pub fn apply_hunt_smash(
     };
 
     if let Some(hunter) = world.entities.get_mut(&hunter_id) {
-        hunter.hunt_cooldown = crate::game_constants::TICK_SECONDS;
+        hunter.hunt_cooldown = crate::meta_values::TICK_SECONDS;
     }
 
     if !killed {
