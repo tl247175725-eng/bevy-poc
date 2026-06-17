@@ -58,9 +58,11 @@ fn ring_for_cell(x: u8, y: u8) -> usize {
 
 /// metab: 标签 → 营养 decay rate（集中管理裸数字）。
 fn metab_decay_rate(def: &CardDef) -> f32 {
-    if card_has_tag(def, "metab:high") { return NUTRITION_DECAY_HIGH; }
-    if card_has_tag(def, "metab:low")  { return NUTRITION_DECAY_LOW; }
-    NUTRITION_DECAY_MEDIUM
+    match () {
+        _ if card_has_tag(def, "metab:high") => NUTRITION_DECAY_HIGH,
+        _ if card_has_tag(def, "metab:low")  => NUTRITION_DECAY_LOW,
+        _ => NUTRITION_DECAY_MEDIUM,
+    }
 }
 
 /// 根据 CardDef 标签生成初始 Needs。

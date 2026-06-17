@@ -113,6 +113,10 @@ pub const SAFETY_BLOCK_THRESHOLD: f32 = 0.7;
 // === 消化效率 ===
 pub const DIGESTION_EFFICIENCY: f32 = 0.5;
 
+// === 攻击基础值 ===
+/// Strike 基础伤害（后续将被 impact_force() 公式替代）
+pub const STRIKE_BASE_DAMAGE: i32 = 1;
+
 // === 补水基线比例 ===
 pub const HYDRATION_BASELINE_RATIO: f32 = 0.03;
 
