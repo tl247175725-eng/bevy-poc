@@ -26,8 +26,8 @@ Bevy 0.15 标签驱动卡牌生态模拟。模拟在 WorldState 内自主运行�
 - 公理验证动作 → `src/axioms/`
 
 ### 工作流
-- 设计→对齐→handoff(三段)→Agent 执行→验证
-- **红线：修 bug 直接修，加机制必须先讨论。** 不自作主张加游戏行为。
+- 设计→对齐→handoff(合约)→用户确认→Agent 执行→验证
+- **handoff = 合约。合约里没写的东西不能加。卡住了回来问。**
 - handoff 模板: `AIMemory/handoffs/_TEMPLATE.md`（必须含三柱声明）
 - 每次只改 1-3 个文件
 - `cargo check + cargo test` 全 PASS 才能 commit
