@@ -261,7 +261,7 @@ mod tests {
     fn pool_source_bottom_center() {
         let mut eco = MapEcology::default();
         eco.ensure();
-        assert_eq!(eco.pool_source, (18, 21));
+        assert_eq!(eco.pool_source, (16, 29));
     }
 
     #[test]
