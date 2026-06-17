@@ -7,6 +7,7 @@ use crate::systems::tick_containment::{entities_in_pool, entities_in_tree, entit
 use crate::tag_zh::{cap_zh, tag_zh, SKIP_TAGS};
 use crate::terrain::{base_terrain_at, cell_elevation, surface_label_with_stress, terrain_at, terrain_label};
 use crate::terrain_colors::river_stress_label;
+use crate::world_rules::card_has_tag;
 use crate::world_state::{EcologyState, Entity, WorldState};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,8 +106,12 @@ pub fn ui_containment_entries(
     let mut entries = Vec::new();
 
     if let Some(id) = selected_id {
-        if let Some(entity) = world.entities.get(&id) {
-            if matches!(entity.type_name.as_str(), "oak" | "pine" | "tree") {
+        let type_name = world.entities.get(&id).map(|e| e.type_name.clone());
+        if let Some(ref tn) = type_name {
+            let is_tree = world.card_defs.get(tn)
+                .map(|def| card_has_tag(def, "growth_form:tree") || card_has_tag(def, "tree"))
+                .unwrap_or(false);
+            if is_tree {
                 for cid in entities_in_tree(world, id) {
                     if cid == id {
                         continue;
@@ -175,11 +180,14 @@ pub fn build_card_panel(
         return PanelContent::default();
     };
 
-    match entity.type_name.as_str() {
-        "wolfDen" => return build_wolf_den_panel(world, entity_id, entity, def),
-        "foxDen" => return build_fox_den_panel(world, entity_id, entity, def),
-        "humus" => return build_humus_panel(world, entity, def, cell_x, cell_y),
-        _ => {}
+    if card_has_tag(def, "den:wolf") {
+        return build_wolf_den_panel(world, entity_id, entity, def);
+    }
+    if card_has_tag(def, "den:fox") {
+        return build_fox_den_panel(world, entity_id, entity, def);
+    }
+    if card_has_tag(def, "humus") {
+        return build_humus_panel(world, entity, def, cell_x, cell_y);
     }
 
     let mut lines = Vec::new();

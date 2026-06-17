@@ -1,6 +1,6 @@
 use crate::terrain_colors::pond_state_label;
 use crate::terrain_ecology::MapEcology;
-use crate::world_rules::{GRID_HEIGHT, GRID_WIDTH};
+use crate::world_rules::{card_has_tag, GRID_HEIGHT, GRID_WIDTH};
 use crate::world_state::WorldState;
 
 pub fn terrain_at(world: &WorldState, x: u8, y: u8) -> &'static str {
@@ -99,12 +99,19 @@ fn cell_overlay_label(world: &WorldState, x: u8, y: u8) -> Option<String> {
         if entity.x != x || entity.y != y {
             continue;
         }
-        match entity.type_name.as_str() {
-            "wolfDen" => return Some("狼穴".into()),
-            "foxDen" => return Some("狐窝".into()),
-            "birdNest" => return Some("鸟巢".into()),
-            "humus" => return Some("腐殖".into()),
-            _ => {}
+        if let Some(def) = world.card_defs.get(&entity.type_name) {
+            if card_has_tag(def, "den:wolf") {
+                return Some("狼穴".into());
+            }
+            if card_has_tag(def, "den:fox") {
+                return Some("狐窝".into());
+            }
+            if card_has_tag(def, "nest") {
+                return Some("鸟巢".into());
+            }
+            if card_has_tag(def, "humus") {
+                return Some("腐殖".into());
+            }
         }
     }
     None
