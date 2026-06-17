@@ -1,5 +1,19 @@
+//! EntityProfile 解析 — 标签字符串→运行时属性的翻译层
+//!
+//! ⚠️ 技术债：此文件将在标签系统（位掩码）+ 元数值体系重建后被替代。
+//! 新架构下大部分 parse_* 函数不再需要：
+//!   - parse_drives → 需求匹配引擎替代
+//!   - parse_size → density × volume 推导
+//!   - parse_height → size + posture 标签推导
+//!   - parse_needs → mass + metabolism 推导基线
+//!   - parse_energy → metabolism_rate × mass
+//! 保留理由：当前公理引擎和冒烟测试依赖此文件运行。
+//! 删除时机：标签位掩码系统 + 新 Entity 结构体 + need-match 引擎完成后。
+
 use crate::spatial_index::EntityId;
 use smallvec::SmallVec;
+
+const NONE_ID: EntityId = EntityId(0);
 
 use super::laws::TransformAction;
 
@@ -68,6 +82,7 @@ pub struct EntityProfile {
     pub size: u8,
     pub height: Height,
     pub incorporeal: bool,
+    pub is_corpse: bool,
 
     pub native_medium: Medium,
     pub bridges: SmallVec<[(Medium, Medium); 4]>,
@@ -109,11 +124,12 @@ pub struct ChannelDef {
 impl Default for EntityProfile {
     fn default() -> Self {
         Self {
-            entity_id: EntityId(0),
+            entity_id: NONE_ID,
             type_name: String::new(),
             size: 1,
             height: Height::Medium,
             incorporeal: false,
+            is_corpse: false,
             native_medium: "land".into(),
             bridges: SmallVec::new(),
             is_omnimedium: false,

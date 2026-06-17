@@ -1,6 +1,7 @@
 pub mod causality;
 pub mod composition;
 pub mod laws;
+pub mod consume;
 pub mod profile;
 
 use std::collections::HashMap;
@@ -11,6 +12,7 @@ pub use laws::{
     compose, perceive, transform, traverse, Composition, Perception, TransformAction,
     Transformation, Traversal,
 };
+pub use consume::can_digest;
 pub use profile::{
     ChannelDef, DriveBehavior, DriveDef, EntityProfile, Height, Medium, NeedCurve, NeedState,
     SocialStructure,
@@ -27,7 +29,7 @@ pub struct AxiomEngine;
 impl AxiomEngine {
     pub fn build_profile(
         entity_id: EntityId,
-        type_name: &str,
+        is_corpse: bool,
         tags: &[String],
         hp: i32,
         world: &WorldState,
@@ -36,8 +38,8 @@ impl AxiomEngine {
     ) -> EntityProfile {
         let terrain = terrain_at(world, x, y);
         let current_medium = profile::medium_for_cell(terrain);
-        let native_medium = profile::parse_native_medium(tags, type_name);
-        let mut bridges = profile::parse_bridges(tags, type_name);
+        let native_medium = profile::parse_native_medium(tags, "");
+        let mut bridges = profile::parse_bridges(tags, "");
         if tags.iter().any(|t| t == "volant") {
             if !bridges.iter().any(|(f, t)| f == "land" && t == "air") {
                 bridges.push(("land".into(), "air".into()));
@@ -53,14 +55,15 @@ impl AxiomEngine {
 
         EntityProfile {
             entity_id,
-            type_name: type_name.to_string(),
-            size: profile::parse_size(tags, type_name),
+            type_name: String::new(),
+            is_corpse,
+            size: profile::parse_size(tags, ""),
             height: profile::parse_height(tags),
             incorporeal: tags.iter().any(|t| t == "capability.incorporeal"),
             native_medium,
             bridges,
             is_omnimedium: tags.iter().any(|t| t == "bridge:omnimedium"),
-            channels: profile::parse_channels(tags, type_name),
+            channels: profile::parse_channels(tags, ""),
             cross_perception: profile::parse_cross_perception(tags),
             visibility_mod: profile::parse_visibility_mod(tags),
             keen_eyed_mod: profile::parse_keen_eyed_mod(tags),
@@ -86,7 +89,7 @@ impl AxiomEngine {
         }
         Self::build_profile(
             entity.id,
-            &entity.type_name,
+            entity.is_corpse,
             &tags,
             def.hp,
             world,
