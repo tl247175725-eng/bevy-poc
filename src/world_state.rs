@@ -3,7 +3,7 @@ use crate::axioms::{
     CellComposition, Composition, Height, Medium, Traversal,
 };
 use crate::bulletin::BulletinBoard;
-use crate::card_def::{card_defs_map, load_card_defs, CardDef};
+use crate::card_def::{card_defs_map, load_card_defs_with_tags, CardDef};
 use crate::meta_values::TICK_SECONDS;
 use crate::player::PlayerMind;
 use crate::spatial_index::{EntityId, IndexedEntity, SpatialIndex};
@@ -249,7 +249,7 @@ impl WorldState {
     }
 
     pub fn from_card_defs_file(path: impl AsRef<Path>) -> Self {
-        let defs = load_card_defs(path);
+        let defs = load_card_defs_with_tags(path);
         Self::new(card_defs_map(&defs))
     }
 

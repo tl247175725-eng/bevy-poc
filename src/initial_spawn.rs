@@ -117,6 +117,15 @@ fn init_animal_needs(def: &CardDef) -> Vec<NeedState> {
     needs
 }
 
+/// 公开包装——供集成测试使用
+pub fn init_animal_needs_public(def: &CardDef) -> Vec<NeedState> {
+    init_animal_needs(def)
+}
+/// 公开包装——供集成测试使用
+pub fn init_animal_knowledge_public(def: &CardDef) -> KnowledgeGraph {
+    init_animal_knowledge(def)
+}
+
 /// 从 diet 标签派生可食标签集（一条通用规则，不分物种）
 fn diet_to_edible_tags(tags: &impl TagQuery, registry: &crate::tags::TagRegistry) -> Vec<String> {
     let mut edible = Vec::new();

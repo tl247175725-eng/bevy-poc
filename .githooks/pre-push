@@ -5,13 +5,15 @@
 # 2. 铁律强制检查
 # 3. cargo test 全 PASS
 # ============================================================
-set -e
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # ── 1. 文件数 ──
-CHANGED=$(git diff --cached --name-only --diff-filter=M | grep "\.rs$" | wc -l)
-NEW=$(git diff --cached --name-only --diff-filter=A | grep "\.rs$" | wc -l)
+CHANGED=$(git diff --cached --name-only --diff-filter=M 2>/dev/null | { grep "\.rs$" 2>/dev/null || true; } | wc -l)
+NEW=$(git diff --cached --name-only --diff-filter=A 2>/dev/null | { grep "\.rs$" 2>/dev/null || true; } | wc -l)
+CHANGED="${CHANGED// /}"
+NEW="${NEW// /}"
 TOTAL=$((CHANGED + NEW))
 
 if [ "$TOTAL" -gt 2 ]; then
@@ -25,10 +27,14 @@ echo "✅ 文件数检查通过 ($TOTAL 个 .rs)"
 # ── 2. 铁律检查 ──
 bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"
 
-# ── 3. cargo test ──
+# ── 3. cargo test（用 trap 保证失败时 exit 1） ──
 echo ""
 echo "🧪 cargo test..."
-cargo test 2>&1 | tail -3
+if ! cargo test; then
+    echo ""
+    echo "❌ cargo test 失败 —— push 被拒"
+    exit 1
+fi
 
 echo ""
 echo "✅ Pre-push 全部通过"

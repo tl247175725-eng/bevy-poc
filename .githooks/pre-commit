@@ -1,17 +1,21 @@
 #!/bin/bash
 # ============================================================
-# Pre-commit: 提交前运行铁律检查
+# Pre-commit: 提交前运行铁律检查 + cargo check
 # ============================================================
-set -e
+set -uo pipefail
 
-echo "🔍 运行铁律检查..."
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+echo "🔍 运行铁律检查..."
 bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"
 
 echo ""
 echo "🔨 cargo check..."
-cargo check 2>&1 | tail -3
+if ! cargo check; then
+    echo ""
+    echo "❌ cargo check 失败 —— commit 被拒"
+    exit 1
+fi
 
 echo ""
 echo "✅ 检查通过"

@@ -156,6 +156,7 @@ pub fn run() {
         for f in &failures {
             println!("  - {}", f);
         }
+        std::process::exit(1);
         let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
         for e in world.entities.values() {
             *counts.entry(e.type_name.clone()).or_default() += 1;
