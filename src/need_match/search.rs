@@ -192,7 +192,7 @@ mod tests {
             baseline: 0.5,
             urgency,
             blocked,
-            decay_rate: 0.5,
+            decay_rate: crate::meta_values::NUTRITION_DECAY_MEDIUM,
         }
     }
 
