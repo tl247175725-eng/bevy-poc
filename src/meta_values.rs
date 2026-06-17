@@ -4,15 +4,17 @@
 //! 禁止在任何其他文件中出现无法追溯到此处常量的裸数字。
 //!
 //! 设计哲学 §8.1/§8.2: A 层（必须）+ B 层（强推荐）
-//! 铁律：1 day = 420 tick
+//! 铁律：1 day = 2100 tick
 //! 渲染采样率：TICK_SECONDS = 0.5（非游戏内逻辑时间）
+
+use crate::tags::{TagBits, tag};
 
 // ===== A 层·必须 =====
 
 // --- 时间 ---
 pub const TICK_SECONDS: f32 = 0.5;
-pub const TICKS_PER_DAY: u64 = 420;
-pub const TICKS_PER_PHASE: u64 = 60;
+pub const TICKS_PER_DAY: u64 = 2100;     // 17.5 分钟一天
+pub const TICKS_PER_PHASE: u64 = 300;    // 2100/7
 pub const PHASES_PER_DAY: u64 = 7;
 
 // --- 空间 ---
@@ -90,12 +92,9 @@ pub const DECISION_THRESHOLD_DEFAULT: f32 = 1.2;
 // --- 社会 ---
 pub const NORM_STRENGTH_DEFAULT: f32 = 0.5;
 
-// === 需求衰减率（per tick 基础值，将被 TICK_SECONDS 缩放） ===
-pub const NUTRITION_DECAY_HIGH: f32 = 0.7;   // metab:high
-pub const NUTRITION_DECAY_MEDIUM: f32 = 0.4; // metab:medium（默认）
-pub const NUTRITION_DECAY_LOW: f32 = 0.2;    // metab:low
-pub const SOCIAL_DECAY: f32 = 0.1;
-pub const CURIOSITY_DECAY: f32 = 0.05;
+// === 需求衰减率（同构推导，从 TICKS_PER_DAY 分母计算） ===
+pub const SOCIAL_DECAY_RATE: f32 = 0.1 / (TICKS_PER_DAY as f32 * TICK_SECONDS);
+pub const CURIOSITY_DECAY_RATE: f32 = 0.05 / (TICKS_PER_DAY as f32 * TICK_SECONDS);
 
 // === 需求基线值 ===
 pub const NUTRITION_BASELINE: f32 = 0.3;
@@ -126,6 +125,19 @@ pub const GRAVITY: f32 = 9.8;
 
 // ===== 元数值推导函数 =====
 
+/// 代谢→衰减率推导（同构：从每日能量需求算每tick衰减）
+/// 中代谢动物约1游戏天从饱到饿
+pub fn nutrition_decay_per_tick(metab_rate: f32) -> f32 {
+    metab_rate / (TICKS_PER_DAY as f32 * TICK_SECONDS)
+}
+
+/// 代谢率从 metab 标签推导
+pub fn metab_rate_from_tags(tags: &TagBits) -> f32 {
+    if tags.has(tag::METAB_HIGH.bit) { return 1.5; }
+    if tags.has(tag::METAB_LOW.bit)  { return 0.5; }
+    1.0  // medium 默认
+}
+
 /// 重量 = 质量 × 重力常数
 pub fn weight_from_mass_density(mass_kg: f32, _density: f32) -> f32 {
     mass_kg * GRAVITY
@@ -153,13 +165,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn ticks_per_day_is_420() {
-        assert_eq!(TICKS_PER_DAY, 420);
+    fn ticks_per_day_is_2100() {
+        assert_eq!(TICKS_PER_DAY, 2100);
     }
 
     #[test]
-    fn ticks_per_phase_is_60() {
-        assert_eq!(TICKS_PER_PHASE, 60);
+    fn ticks_per_phase_is_300() {
+        assert_eq!(TICKS_PER_PHASE, 300);
     }
 
     #[test]

@@ -182,7 +182,7 @@ pub fn skybox_system(
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let tick = (sim_clock.game_time_seconds / 0.5) as u64;
-    let ticks_per_day = 420u64;
+    let ticks_per_day = crate::meta_values::TICKS_PER_DAY;
     let tick_of_day = tick % ticks_per_day;
     let day_number = tick / ticks_per_day;
     let day_of_year = (day_number % 360) as f32; // 0–359

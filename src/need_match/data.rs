@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use crate::meta_values::{
-    CURIOSITY_DECAY, HYDRATION_BASELINE_RATIO, NUTRITION_DECAY_MEDIUM, SOCIAL_DECAY,
+    CURIOSITY_DECAY_RATE, HYDRATION_BASELINE_RATIO, SOCIAL_DECAY_RATE,
 };
 use crate::spatial_index::EntityId;
 
@@ -47,12 +47,12 @@ pub enum NeedKind {
 /// 按需求类型的默认衰减速率
 pub fn default_decay_rate(kind: &NeedKind) -> f32 {
     match kind {
-        NeedKind::Nutrition => NUTRITION_DECAY_MEDIUM,
-        NeedKind::Hydration => crate::meta_values::NUTRITION_DECAY_HIGH,
-        NeedKind::Safety => crate::meta_values::NUTRITION_DECAY_LOW,
+        NeedKind::Nutrition => crate::meta_values::nutrition_decay_per_tick(1.0),
+        NeedKind::Hydration => crate::meta_values::nutrition_decay_per_tick(1.5),
+        NeedKind::Safety => crate::meta_values::nutrition_decay_per_tick(0.5),
         NeedKind::Rest => 0.3,
-        NeedKind::Social => SOCIAL_DECAY,
-        NeedKind::Curiosity => CURIOSITY_DECAY,
+        NeedKind::Social => SOCIAL_DECAY_RATE,
+        NeedKind::Curiosity => CURIOSITY_DECAY_RATE,
     }
 }
 

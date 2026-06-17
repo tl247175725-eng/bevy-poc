@@ -2,8 +2,8 @@
 
 use crate::card_def::CardDef;
 use crate::meta_values::{
-    CURIOSITY_BASELINE, CURIOSITY_DECAY, NUTRITION_BASELINE, NUTRITION_DECAY_HIGH,
-    NUTRITION_DECAY_LOW, NUTRITION_DECAY_MEDIUM, SAFETY_BASELINE, SOCIAL_BASELINE, SOCIAL_DECAY,
+    CURIOSITY_BASELINE, CURIOSITY_DECAY_RATE, NUTRITION_BASELINE,
+    SAFETY_BASELINE, SOCIAL_BASELINE, SOCIAL_DECAY_RATE,
 };
 use crate::need_match::data::{
     CompareOp, DecompositionStep, EffectDescriptor, KnowledgeEntry, KnowledgeGraph, KnowledgeId,
@@ -56,13 +56,10 @@ fn ring_for_cell(x: u8, y: u8) -> usize {
 
 // ===== 动物 Need + 知识图初始化（标签驱动） =====
 
-/// metab: 标签 → 营养 decay rate（集中管理裸数字）。
+/// metab: 标签 → 营养 decay rate（同构推导）。
 fn metab_decay_rate(def: &CardDef) -> f32 {
-    match () {
-        _ if card_has_tag(def, "metab:high") => NUTRITION_DECAY_HIGH,
-        _ if card_has_tag(def, "metab:low")  => NUTRITION_DECAY_LOW,
-        _ => NUTRITION_DECAY_MEDIUM,
-    }
+    let metab = crate::meta_values::metab_rate_from_tags(&def.tag_bits);
+    crate::meta_values::nutrition_decay_per_tick(metab)
 }
 
 /// 根据 CardDef 标签生成初始 Needs。
@@ -96,7 +93,7 @@ fn init_animal_needs(def: &CardDef) -> Vec<NeedState> {
             kind: NeedKind::Social,
             current: 0.0,
             baseline: SOCIAL_BASELINE,
-            decay_rate: SOCIAL_DECAY,
+            decay_rate: SOCIAL_DECAY_RATE,
             blocked: false,
             urgency: 0.0,
         });
@@ -108,7 +105,7 @@ fn init_animal_needs(def: &CardDef) -> Vec<NeedState> {
             kind: NeedKind::Curiosity,
             current: 0.0,
             baseline: CURIOSITY_BASELINE,
-            decay_rate: CURIOSITY_DECAY,
+            decay_rate: CURIOSITY_DECAY_RATE,
             blocked: false,
             urgency: 0.0,
         });

@@ -123,7 +123,11 @@ mod tests {
 
     #[test]
     fn decay_rate_differs_by_kind() {
-        assert!((super::super::data::default_decay_rate(&NeedKind::Hydration) - 0.7).abs() < 0.001);
-        assert!((super::super::data::default_decay_rate(&NeedKind::Social) - 0.1).abs() < 0.001);
+        let hydration = super::super::data::default_decay_rate(&NeedKind::Hydration);
+        let social = super::super::data::default_decay_rate(&NeedKind::Social);
+        let expected_hydration = crate::meta_values::nutrition_decay_per_tick(1.5);
+        let expected_social = crate::meta_values::SOCIAL_DECAY_RATE;
+        assert!((hydration - expected_hydration).abs() < 1e-6);
+        assert!((social - expected_social).abs() < 1e-6);
     }
 }
