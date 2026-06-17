@@ -35,7 +35,7 @@ pub fn compose(cell: &CellSlot, incoming: &EntityProfile) -> Composition {
         return Composition::Allowed { remaining: u8::MAX };
     }
 
-    if incoming.type_name.ends_with("Corpse") {
+    if incoming.is_corpse {
         return Composition::Allowed { remaining: u8::MAX };
     }
 
