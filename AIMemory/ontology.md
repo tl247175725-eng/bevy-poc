@@ -20,6 +20,129 @@ world_setting:
   population_note: "当前捕食者/猎物比例失衡是因为物种不全，不是数字错误"
 ```
 
+## 植物系统（策划已确认）
+
+```yaml
+plant_distribution:
+  principle: "植物能不能在某格生长 = 格子环境条件 ∈ 植物耐受范围"
+  matching_tags:
+    cell_conditions: "水分(淹水/湿润/干燥) × 光照(全日照/半阴/全阴) × 海拔(低/中/高)"
+    plant_tolerance: "flooding_tolerance × drought_tolerance × shade_tolerance"
+  rule: "条件匹配→能长。不匹配→不能长。不硬编码'莲花只能在水里'"
+  initial_generation: "方案A——按地形环预设合理分布，之后传播系统自维持"
+
+plant_propagation:
+  principle: "植物怎么繁衍 = dispersal标签决定传播方式 + growth标签决定速度"
+  dispersal_methods:
+    wind: "种子随风飘散，半径3-10格，方向随机"
+    animal: "果实被吃→动物排泄→种子跟着动物路线走"
+    water: "种子顺水流漂→沿水域扩散"
+    gravity: "种子直接落脚下→只扩散到相邻格→形成密集群落"
+    explosive: "豆荚爆裂→半径1-2格"
+  growth_rate:
+    fast: "草类——几天恢复"
+    medium: "灌木——几十天"
+    slow: "乔木——几百天"
+  succession: "涌现效果：砍光森林→草先到(wind快)→灌木来(animal中)→树苗长(slow)→成熟森林"
+  player_interaction: "抽=从格子取种子卡。叠=把种子放到新格子→条件匹配→发芽"
+
+plant_storage:
+  principle: "植物是格子上的数量卡，不是独立实体"
+  model: "cell_resources: HashMap<(x,y), HashMap<plant_type, quantity>>"
+  consume: "动物吃→quantity -= 1"
+  regrow: "传播系统→符合条件的格子→quantity += 1"
+```
+
+## 繁殖系统（策划已确认）
+
+```yaml
+reproduction:
+  prerequisites:  # 全部从标签/运行时状态推导
+    - "年龄 > 性成熟年龄（从 growth 标签推）"
+    - "body_fat > 0.3（营养不良不繁殖）"
+    - "生殖器官完好（ovary/testicle 未损伤）"
+    - "state:pregnant 不存在"
+    - "不在 state:starving"
+    - "季节匹配（部分物种季节性繁殖）"
+
+  mating:
+    action: "MetaAction::Reproduce { partner }"
+    condition: "同物种 + 异性 + 成年 + 邻格 + 双方繁殖需求激活"
+    social_variation:
+      solitary: "只在繁殖季寻找，交配后分开"
+      pair: "固定配偶长期在一起"
+      herd: "群内交配"
+      pack: "通常只有头领繁殖"
+
+  gestation:
+    principle: "用真实数据标签，不用公式（妊娠期无可靠万能公式）"
+    implementation: "每种动物在 card_defs.ron 标注 gestation_days: N"
+    during_pregnancy: "营养需求增加、移动速度降低、不能再次交配"
+    egg_layer: "先产卵（卵是一张卡）→ 孵化期 → 幼崽出壳"
+
+  birth:
+    few_offspring: "1-2只（K策略，大型动物）"
+    many_offspring: "3-8只（r策略，小型/鱼类）"
+    fish_special: "产卵数百→概率存活率→实际幼鱼少"
+
+  parental_care:
+    with_care: "幼崽跟随母亲。mammary完好+body_fat>0.2→哺乳→存活"
+    without_care: "出生即独立（鱼类、多数爬行类）"
+    mammary_damage: "乳腺损伤→不能哺乳→幼崽存活率降低"
+
+  inheritance:
+    same_as_parents: "物种标签、body_plan、diet、habitat、capability"
+    random: "personality（随机）、individual_modifier（正态分布）、sex（50/50）"
+    not_inherited: "injury（伤疤不遗传）、experience（要靠Teach传授）、body_fat（从零积累）"
+```
+
+## 捕食链循环（策划已确认）
+
+```yaml
+predation_chain:
+  principle: "需求引擎的重新规划机制天然形成捕猎循环，不需要写循环逻辑"
+  
+  carnivore_knowledge:
+    decomposition: "[Acquire(找animal), Act(Strike), Act(Consume)]"
+    vs_current: "当前只有[Acquire, Consume]——缺Strike步骤"
+  
+  consume_animal_requirement:
+    rule: "吃动物必须目标is_corpse=true（必须先杀死才能吃）"
+    vs_current: "当前can_digest允许吃活的——需修改"
+  
+  natural_loop:
+    - "虎饿了→制定计划[找猎物,Strike,Consume]"
+    - "Strike→鹿HP减少但没死→Consume失败(鹿还活着)"
+    - "计划失败→但还饿→重新制定计划→继续追同一只鹿"
+    - "重复直到：鹿死了(Consume成功) 或 鹿逃了(Acquire失败→换目标)"
+  
+  give_up_conditions:
+    - "猎物超出感知范围（跑太远）"
+    - "猎物进入不可达地形（跳进水里）"
+    - "自己stamina耗尽（跑不动了）"
+    - "猎物太强（反击造成严重injury）"
+```
+
+## 公式 vs 数据的使用原则（策划已确认）
+
+```yaml
+formula_vs_data:
+  use_formula:  # 有跨物种一致的物理/热力学规律
+    - "饥饿致死天数: 100 × M^(1-β) / B₀ × torpor_mult（热力学）"
+    - "攻击力: impact_force(mass, velocity, area, hardness)（物理）"
+    - "代谢率: baseline_energy(mass, metab_rate)（Kleiber定律）"
+    - "体型→质量: estimate_mass_from_tags（等比例缩放）"
+    - "营养衰减: metab_rate / (TICKS_PER_DAY × TICK_SECONDS)（能量守恒）"
+  
+  use_real_data:  # 物种差异太大，无万能公式
+    - "妊娠期: gestation_days 标签（查资料填）"
+    - "性成熟年龄: maturity_days 标签"
+    - "最大寿命: max_age 标签"
+    - "每胎数量: litter_size 标签"
+  
+  principle: "能用公式推的用公式（同构推导）。不能的用真实数据（同构记录）。两种都是同构。"
+```
+
 ## 标签维度（17 维，~184 标签）
 
 ```yaml
