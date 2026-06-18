@@ -166,18 +166,18 @@ fi
 
 # ── 规则 10: 本体一致性 ──
 echo ""
-echo "【规则10】本体(ontology.md)一致性"
+echo "【规则10】本体(library/)一致性"
 
-# 检查 ontology.md 是否存在
-if [ ! -f "AIMemory/ontology.md" ]; then
-    check_fail "AIMemory/ontology.md 缺失"
+# 检查设计图书馆目录是否存在
+if [ ! -f "AIMemory/library/_INDEX.md" ]; then
+    check_fail "AIMemory/library/_INDEX.md 缺失"
 else
-    check_pass "ontology.md 存在"
+    check_pass "library/_INDEX.md 存在"
 fi
 
-# 检查 tags.ron 中的维度是否列在 ontology.md 中
-if [ -f "AIMemory/ontology.md" ] && [ -f "assets/tags.ron" ]; then
-    ONTO_DIMS=$(grep -oE '[a-z_]+:' AIMemory/ontology.md | grep -vE "ontology|A层|B层|depth|labels|note|desc|derives|affects|status|file|inputs|output|validates|used_by|invariant|value|params|id:|time:|space:|materials:|thermal:|senses:|life:|mind:|social:|ecology:|派生|cross_references|tag_to|abstraction|depth_levels|change_process|invariants" | tr -d ' :' | sort -u)
+# 检查 tags.ron 中的维度是否列在 04-abstractions.md 中
+if [ -f "AIMemory/library/04-abstractions.md" ] && [ -f "assets/tags.ron" ]; then
+    ONTO_DIMS=$(grep -oE '[a-z_]+:' AIMemory/library/04-abstractions.md | grep -vE "ontology|A层|B层|depth|labels|note|desc|derives|affects|status|file|inputs|output|validates|used_by|invariant|value|params|id:|time:|space:|materials:|thermal:|senses:|life:|mind:|social:|ecology:|派生|cross_references|tag_to|abstraction|depth_levels|change_process|invariants" | tr -d ' :' | sort -u)
     TAGS_DIMS=$(grep -oE '^    [a-z_]+:' assets/tags.ron | tr -d ' :' | sort -u)
     MISSING_IN_ONTO=""
     for dim in $TAGS_DIMS; do

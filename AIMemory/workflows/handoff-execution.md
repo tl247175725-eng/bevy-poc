@@ -75,7 +75,7 @@
 - 新增数字能否追溯到 `src/meta_values.rs`？
 - 必须引用设计文档（`AIMemory/design_*`）的具体行
 - **涉及标签新增/修改 → 必须对照 `AIMemory/design-philosophy-v5.md` §13 抽象深度统一规则**（同类一致、五条纯度验证）
-- **涉及抽象组件变更（标签/元数值/元动作/公理） → 先在 `AIMemory/ontology.md` 加条目，按变更流程五步走**（design → ontology → sync → validate → commit）
+- **涉及抽象组件变更（标签/元数值/元动作/公理） → 先在 `AIMemory/library/` 对应章节加条目，按变更流程五步走**（design → ontology → sync → validate → commit）
 
 **架构讨论前强制阅读（铁律）：**
 任何涉及 ECS 架构、元动作执行模型、需求匹配引擎数据结构、性能瓶颈的讨论前，必须先读以下文件理解执行链路：

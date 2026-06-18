@@ -10,7 +10,7 @@ Bevy 0.15 标签驱动卡牌生态模拟。模拟在 WorldState 内自主运行�
 3. `memory/FACT.md` — 铁律 + 三柱断点表
 4. `AIMemory/tech-stack.md` — Bevy 0.15 API
 5. `AIMemory/workflows/handoff-execution.md` — 三柱强制检查
-6. `AIMemory/ontology.md` — 抽象组件本体（单一真相源）
+6. `AIMemory/library/_INDEX.md` — 设计图书馆目录（按需打开章节）
 
 ### 代码铁律
 - **禁止裸数字** — 所有数值引用 `src/meta_values.rs` 常量

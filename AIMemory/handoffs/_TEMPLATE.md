@@ -17,7 +17,7 @@
 
 ## 本体变更（如涉及抽象组件）
 
-- [ ] `AIMemory/ontology.md` 对应节已更新
+- [ ] `AIMemory/library/` 对应章节已更新
 - [ ] 抽象深度和同维度一致
 - [ ] cross_references 关联已更新
 
