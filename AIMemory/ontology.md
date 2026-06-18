@@ -501,13 +501,53 @@ body_simulation:
   hormone_abstraction: "不模拟激素浓度——通过need/personality/state标签代替效果"
 ```
 
-## 待实现的运行时维度（策划已确认重要）
+## 腐烂与骨骼系统（策划已确认）
+
+```yaml
+decomposition:
+  formula: "积温日 ADD = Σ max(daily_temp - 0°C, 0) / mass_factor"
+  mass_factor: "(mass_kg / 10.0)^0.25 — 大尸体腐烂更慢"
+  principle: "万能公式——温度越高腐烂越快，冰冻=不烂。完全同构"
+
+  soft_tissue_stages:
+    fresh:        { add_threshold: 0,    desc: "刚死，外观无变化" }
+    bloating:     { add_threshold: 100,  desc: "气体积累，发臭" }
+    active_decay: { add_threshold: 200,  desc: "大量质量流失，吸引食腐动物" }
+    advanced:     { add_threshold: 500,  desc: "软组织基本消失" }
+    skeleton:     { add_threshold: 1000, desc: "只剩骨骼→产生骨骼资源卡" }
+
+  bone_weathering:  # 骨骼=70%矿物质，本质是石头风化速度
+    intact:       { add_threshold: 1000,  desc: "白骨暴露" }
+    cracking:     { add_threshold: 5000,  desc: "表面裂纹" }
+    fragmenting:  { add_threshold: 15000, desc: "断裂分解" }
+    dissolved:    { add_threshold: 30000, desc: "完全融入土壤→肥力增加" }
+
+  bone_as_resource:
+    - "骨骼是资源卡，留在格子上"
+    - "玩家可'抽'出来→做骨针/骨刀/骨笛"
+    - "玩家可'砸'碎→骨粉→撒地上当肥料"
+    - "食骨动物可 Consume 骨头（补钙）"
+    - "玩家可'叠'到土里→埋入→加速分解+增加肥力"
+    - "火烧→煅烧骨（更硬的材料，不是加速分解）"
+
+  nutrient_cycle:
+    - "尸体腐烂→养分回到土壤→格子 soil_fertility 增加→植物生长加速"
+    - "碳循环闭合：植物→动物→土壤→植物"
+    
+  scavenger_interaction:
+    - "active_decay 阶段→产生嗅觉信号→Perceive:smell→食腐动物感知"
+    - "diet:scavenger 动物→Consume 尸体软组织部分"
+    - "skeleton 阶段→无软组织可吃→食腐动物不再来"
+```
+
+## 温度系统（必须实现——非可选）
 
 ```yaml
 planned_runtime_dimensions:
   - id: ambient_temperature
     type: 运行时（每格每 tick 变化）
     source: "季节 + 海拔 + 水深 + 昼夜"
+    priority: "必须实现——腐烂/代谢/冬眠/植物生长全依赖温度"
     affects_everything:
       - ectotherm_metabolism: "Q10=2.5: 温度每降10°C代谢减半"
       - endotherm_energy_cost: "越冷→维持体温越费能量→饿得更快"
@@ -515,9 +555,12 @@ planned_runtime_dimensions:
       - hibernation_trigger: "温度降到阈值→metab:torpor动物进入冬眠"
       - plant_growth: "冬天停止生长→食物减少"
       - water_freeze: "鱼活动空间缩小"
+      - decomposition: "ADD公式核心变量——温度决定腐烂速度"
+      - disease_spread: "温暖潮湿→传染病传播加速"
     formula: "B_actual = B₀ × Q10^((T - T_ref) / 10)"
+    decomposition_formula: "ADD_per_tick = max(temp - 0, 0) / TICKS_PER_DAY"
     tags_involved: [thermo:endotherm/ectotherm, metab:torpor, habitat:aquatic]
-    status: "❌ 未实现——优先级高，影响所有变温动物行为和季节循环"
+    status: "❌ 未实现——必须优先实现"
 
   - id: body_condition
     type: 运行时（每个实体，随进食/消耗变化）
