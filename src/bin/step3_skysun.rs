@@ -114,24 +114,25 @@ fn star_mesh()->Mesh{
 
 // ── 启动 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
+         asset_server:Res<AssetServer>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳球体
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,4))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(1.,0.85,0.2),emissive:Color::srgb(1.,0.7,0.1).into(),unlit:true,..default()})),Sun));
-    // 太阳光晕（大透明球）
+    // 太阳GLB模型
+    let sun_scene:Handle<Scene> = asset_server.load("sun.glb");
+    c.spawn((SceneRoot(sun_scene), Transform::from_scale(Vec3::splat(0.15)), Sun));
+    // 太阳光晕（透明球——保留代码生成）
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*2.5,3))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgba(1.,0.6,0.1,0.15),emissive:Color::srgba(1.,0.5,0.05,0.3).into(),
         alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
-    // 月亮球体
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,4))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(0.85,0.85,0.9),emissive:Color::srgb(0.3,0.3,0.5).into(),unlit:true,..default()})),Moon));
-    // 月亮光晕
+    // 月亮GLB模型
+    let moon_scene:Handle<Scene> = asset_server.load("moon.glb");
+    c.spawn((SceneRoot(moon_scene), Transform::from_scale(Vec3::splat(0.05)), Moon));
+    // 月亮光晕（透明球——保留代码生成）
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R*3.,3))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgba(0.6,0.65,0.9,0.12),emissive:Color::srgba(0.3,0.35,0.6,0.2).into(),
         alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),MoonHalo));
