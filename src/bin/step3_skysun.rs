@@ -30,7 +30,7 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, celestial_tick))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, sun_halo_move, moon_move, moon_halo_move, star_fade, sun_light))
         .run();
 }
 
@@ -146,35 +146,34 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     c.insert_resource(DayCycle{tick:800.});
 }
 
-// ── 日月位置 + 渐显渐隐 + 光照更新 ───────────────────
-fn celestial_tick(
-    day:Res<DayCycle>,
-    mut q_sun:Query<&mut Transform,With<Sun>>,mut q_moon:Query<&mut Transform,With<Moon>>,
-    mut q_sh:Query<&mut Transform,(With<SunHalo>,Without<Moon>)>,
-    mut q_mh:Query<&mut Transform,(With<MoonHalo>,Without<Sun>)>,
-    mut q_star:Query<&mut Transform,With<StarField>>,
-    mut q_light:Query<(&mut DirectionalLight,&mut Transform)>,
-    mut amb:ResMut<AmbientLight>,
-){
-    let se=sun_elev(day.tick); let me=moon_elev(day.tick);
-    let sp=sun_pos(day.tick); let mp=moon_pos(day.tick);
-    let sf=fade(se); let mf=fade(me);
+// ── 日月位置 + 渐显渐隐 ─────────────────────────────
 
-    // 太阳/光晕位置 + 渐隐
-    if let Ok(mut t)=q_sun.get_single_mut(){t.translation=sp;t.scale=Vec3::splat(sf);}
-    if let Ok(mut t)=q_sh.get_single_mut(){t.translation=sp;t.scale=Vec3::splat(sf);}
-    // 月亮/光晕
-    if let Ok(mut t)=q_moon.get_single_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
-    if let Ok(mut t)=q_mh.get_single_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
-    // 星星透明度 — 夜间可见
-    if let Ok(mut t)=q_star.get_single_mut(){t.scale=Vec3::splat(((0.15-se)/0.3).clamp(0.,1.));}
-
-    // 方向光 — 跟随太阳
-    if let Ok((mut l,mut t))=q_light.get_single_mut(){
+fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
+    let sf=fade(sun_elev(day.tick));
+    if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
+}
+fn sun_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<SunHalo>>){
+    let sf=fade(sun_elev(day.tick));
+    if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
+}
+fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
+    let mf=fade(moon_elev(day.tick));
+    if let Ok(mut t)=q.get_single_mut(){t.translation=moon_pos(day.tick);t.scale=Vec3::splat(mf);}
+}
+fn moon_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<MoonHalo>>){
+    let mf=fade(moon_elev(day.tick));
+    if let Ok(mut t)=q.get_single_mut(){t.translation=moon_pos(day.tick);t.scale=Vec3::splat(mf);}
+}
+fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Transform,With<StarField>>){
+    let se=sun_elev(day.tick); let a=((0.15-se)/0.3).clamp(0.,1.);
+    if let Ok(mut t)=q.get_single_mut(){t.scale=Vec3::splat(a);}
+}
+fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<AmbientLight>){
+    let se=sun_elev(day.tick); let sp=sun_pos(day.tick);
+    if let Ok((mut l,mut t))=q.get_single_mut(){
         let dir=(Vec3::new(WH,0.,WH)-sp).normalize();
         l.color=if se>0.{Color::srgb(1.,0.7+se*0.3,0.35+se*0.45)}else{Color::srgb(0.3,0.35,0.65)};
-        l.illuminance=if se>0.{1500.+se*6500.}else{150.};
-        t.look_to(dir,Vec3::Y);
+        l.illuminance=if se>0.{1500.+se*6500.}else{150.}; t.look_to(dir,Vec3::Y);
     }
     amb.brightness=if se>0.{150.+se*400.}else{60.};
 }
