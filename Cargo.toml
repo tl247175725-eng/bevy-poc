@@ -15,6 +15,10 @@ path = "src/main.rs"
 name = "step1_skybox"
 path = "src/bin/step1_skybox.rs"
 
+[[bin]]
+name = "step2_grid"
+path = "src/bin/step2_grid.rs"
+
 [profile.test]
 opt-level = 2
 
