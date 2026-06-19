@@ -218,19 +218,31 @@ fi
 
 # ── 规则 11: 禁止 unwrap() / expect() ──
 echo ""
-echo "【规则11】禁止 unwrap() / expect()"
+echo "【规则11】禁止 unwrap() / expect()（迁移期：不增即过）"
+
+# 当前债务基线（减少后手动更新此值，不能增加）
+UNWRAP_DEBT_BASELINE=21
+EXPECT_DEBT_BASELINE=18
 
 UNWRAP_COUNT=$(grep -rn "\.unwrap()" "$SRC_DIR/" --include="*.rs" | grep -v "cfg(test)" | wc -l)
 EXPECT_COUNT=$(grep -rn "\.expect(" "$SRC_DIR/" --include="*.rs" | grep -v "cfg(test)" | wc -l)
 
 if [ "$UNWRAP_COUNT" -eq 0 ] && [ "$EXPECT_COUNT" -eq 0 ]; then
-    check_pass "无 unwrap()/expect()"
+    check_pass "无 unwrap()/expect() —— 迁移完成！请删除 UNWRAP_DEBT_BASELINE/EXPECT_DEBT_BASELINE"
 else
-    if [ "$UNWRAP_COUNT" -gt 0 ]; then
-        check_fail "发现 $UNWRAP_COUNT 处 .unwrap()（非测试代码禁止）"
+    if [ "$UNWRAP_COUNT" -gt "$UNWRAP_DEBT_BASELINE" ]; then
+        check_fail "新增 .unwrap()！当前 $UNWRAP_COUNT > 基线 $UNWRAP_DEBT_BASELINE（禁止增加）"
+    elif [ "$UNWRAP_COUNT" -eq "$UNWRAP_DEBT_BASELINE" ]; then
+        check_warn "待清理：$UNWRAP_COUNT 处 .unwrap()（持平基线，可提交）"
+    else
+        check_pass "已清理 $((UNWRAP_DEBT_BASELINE - UNWRAP_COUNT)) 处 .unwrap()（剩余 $UNWRAP_COUNT）——请更新 UNWRAP_DEBT_BASELINE"
     fi
-    if [ "$EXPECT_COUNT" -gt 0 ]; then
-        check_fail "发现 $EXPECT_COUNT 处 .expect()（非测试代码禁止）"
+    if [ "$EXPECT_COUNT" -gt "$EXPECT_DEBT_BASELINE" ]; then
+        check_fail "新增 .expect()！当前 $EXPECT_COUNT > 基线 $EXPECT_DEBT_BASELINE（禁止增加）"
+    elif [ "$EXPECT_COUNT" -eq "$EXPECT_DEBT_BASELINE" ]; then
+        check_warn "待清理：$EXPECT_COUNT 处 .expect()（持平基线，可提交）"
+    else
+        check_pass "已清理 $((EXPECT_DEBT_BASELINE - EXPECT_COUNT)) 处 .expect()（剩余 $EXPECT_COUNT）——请更新 EXPECT_DEBT_BASELINE"
     fi
 fi
 

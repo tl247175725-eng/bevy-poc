@@ -7,7 +7,11 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "🔍 运行铁律检查..."
-bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"
+if ! bash "$SCRIPT_DIR/../scripts/check-iron-law.sh"; then
+    echo ""
+    echo "❌ 铁律检查失败 —— commit 被拒"
+    exit 1
+fi
 
 echo ""
 echo "🔨 cargo check..."
