@@ -19,18 +19,16 @@ const LAYERS: u32 = 4;
 const LAYER_HEIGHT: f32 = CELL;
 // 天空球：覆盖最深层到最高建筑，取对角线
 const MAX_DEPTH: f32 = LAYERS as f32 * LAYER_HEIGHT;
-// 天空球半径 = 世界对角线 × 0.6 ≈ √(10112² + 632²) × 0.6 ≈ 10131 × 0.6 ≈ 6080
-const SKY_RADIUS: f32 = 6100.0;
+// 天空球半径必须 > 世界对角线 → √(10112² + 10112²) ≈ 14300，取 15000 有安全余量
+const SKY_RADIUS: f32 = 15000.0;
 
 const RES: u32 = 48;       // 球面分辨率
 const DAY_TICKS: f32 = 2100.0;
 const SUN_ANGLE: f32 = TAU / DAY_TICKS;
 
 // ── 相机限制 ──────────────────────────────────────────
-const PITCH_MIN: f32 = -1.2;  // 不能翻到底部
-const PITCH_MAX: f32 = 0.1;   // 不能抬头看天顶
 const ZOOM_MIN: f32 = 300.0;
-const ZOOM_MAX: f32 = SKY_RADIUS * 0.85;
+const ZOOM_MAX: f32 = SKY_RADIUS * 0.9;
 
 fn main() {
     App::new()
@@ -238,7 +236,7 @@ fn camera_orbit(
     // ── 左键：旋转视角 ──
     if mouse.pressed(MouseButton::Left) {
         cam.yaw -= dx * 0.004;
-        cam.pitch = (cam.pitch - dy * 0.004).clamp(PITCH_MIN, PITCH_MAX);
+        cam.pitch = (cam.pitch - dy * 0.004);
         rot_changed = true;
     }
 
@@ -282,8 +280,8 @@ fn camera_orbit(
     // ── WASD：微调旋转 ──
     if keys.pressed(KeyCode::KeyA) { cam.yaw -= 0.03; rot_changed = true; }
     if keys.pressed(KeyCode::KeyD) { cam.yaw += 0.03; rot_changed = true; }
-    if keys.pressed(KeyCode::KeyW) { cam.pitch = (cam.pitch + 0.03).clamp(PITCH_MIN, PITCH_MAX); rot_changed = true; }
-    if keys.pressed(KeyCode::KeyS) { cam.pitch = (cam.pitch - 0.03).clamp(PITCH_MIN, PITCH_MAX); rot_changed = true; }
+    if keys.pressed(KeyCode::KeyW) { cam.pitch = (cam.pitch + 0.03); rot_changed = true; }
+    if keys.pressed(KeyCode::KeyS) { cam.pitch = (cam.pitch - 0.03); rot_changed = true; }
 
     // 焦点平移快捷键：方向键
     let pan_k = cam.dist * 0.01;
@@ -309,9 +307,20 @@ fn camera_orbit(
     if keys.pressed(KeyCode::ArrowRight) { day.tick = (day.tick + 4.0) % DAY_TICKS; }
     if keys.pressed(KeyCode::ArrowLeft) { day.tick = (day.tick - 4.0 + DAY_TICKS) % DAY_TICKS; }
 
-    // ── 更新相机 ──
+    // ── 更新相机 —— 确保不超出天空球 ──
+    let sky_center = Vec3::new(WORLD_HALF, 0.0, WORLD_HALF);
     let pos = cam_pos(&cam);
-    t.translation = pos;
+    let to_cam = pos - sky_center;
+    let dist_from_center = to_cam.length();
+    if dist_from_center > SKY_RADIUS * 0.95 {
+        // 相机跑出天空球了——拉回来
+        let clamped_pos = sky_center + to_cam.normalize() * (SKY_RADIUS * 0.9);
+        // 调整 dist 使下次不再出去
+        cam.dist = (clamped_pos - cam.focus).length();
+        t.translation = clamped_pos;
+    } else {
+        t.translation = pos;
+    }
     t.look_at(cam.focus, Vec3::Y);
 }
 
