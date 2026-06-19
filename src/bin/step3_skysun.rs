@@ -134,15 +134,14 @@ fn lowpoly_sphere(r:f32,_sub:u32)->Mesh{
 // ── 简单 hash 随机 ─────────────────────────────────────
 fn hash(x:f32,y:f32,z:f32)->f32{let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;h-h.floor()}
 
-// ── 星星 mesh ─────────────────────────────────────────
+// ── 星星 mesh（以天空球心为原点） ───────────────────────
 fn star_mesh()->Mesh{
     let mut v=vec![]; let mut idx=vec![];
     for i in 0..600{
         let r=SKY_R*0.98;
-        // 用 hash 生成球面随机方向（上半球偏重）
         let phi=hash(i as f32,0.,0.)*TAU;
         let theta=(hash(0.,i as f32,0.)*0.7+0.25)*FRAC_PI_2;
-        let x=r*theta.sin()*phi.cos();let y=r*theta.cos();let z=r*theta.sin()*phi.sin();
+        let x=WH + r*theta.sin()*phi.cos();let y=r*theta.cos();let z=WH + r*theta.sin()*phi.sin();
         let a=v.len()as u32;v.push([x,y,z]);idx.push(a);
     }
     let mut m=Mesh::new(PrimitiveTopology::PointList,RenderAssetUsages::default());
@@ -225,13 +224,17 @@ fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut mesh
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
         let sky=sky_shader(dir, se, sd);
-        // 程序化云层
-        let cloud=cloud_fbm(dir*3.5 + Vec3::new(t*0.02,0.,t*0.01), se);
-        // 白天有云，夜晚消散
-        let cloud_vis=smoothstep_f(-0.1,0.15,se);
+        // 云层：仅在天空上半部分（地平线以上），高度遮罩 + 平滑羽化边缘
+        let height_mask=smoothstep_f(0.15,0.5,dir.y);
+        let cloud_raw=cloud_fbm(dir*2.8+Vec3::new(t*0.015,0.,t*0.01), se);
+        // smoothstep 羽化云边缘
+        let threshold=0.35-se*0.1;
+        let cloud_smooth=smoothstep_f(threshold-0.12,threshold+0.12,cloud_raw);
+        let cloud=cloud_smooth*height_mask;
+        let cloud_vis=smoothstep_f(-0.1,0.2,se); // 夜间消散
         let c=[(sky[0]*(1.-cloud)+cloud*0.95*cloud_vis).min(1.),
-               (sky[1]*(1.-cloud)+cloud*0.9*cloud_vis).min(1.),
-               (sky[2]*(1.-cloud)+cloud*0.85*cloud_vis).min(1.),1.];
+               (sky[1]*(1.-cloud)+cloud*0.85*cloud_vis).min(1.),
+               (sky[2]*(1.-cloud)+cloud*0.7*cloud_vis).min(1.),1.];
         colors.push(c);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
