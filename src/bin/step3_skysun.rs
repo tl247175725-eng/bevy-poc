@@ -121,6 +121,7 @@ fn spherical(yaw:f32,pitch:f32,r:f32)->Vec3{Vec3::new(r*pitch.cos()*yaw.sin(),r*
 fn sun_pos(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE;Vec3::new(WH+ORBIT_R*a.cos(),ORBIT_R*a.sin().max(-ORBIT_R*0.3),WH)}
 fn moon_pos(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE+PI;Vec3::new(WH+ORBIT_R*a.cos(),ORBIT_R*a.sin().max(-ORBIT_R*0.3),WH)}
 fn sun_elev(tick:f32)->f32{(tick*TICK_TO_ANGLE).sin()}
+fn sun_dir(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE;Vec3::new(a.cos(),a.sin(),0.)}
 fn moon_elev(tick:f32)->f32{((tick*TICK_TO_ANGLE)+PI).sin()}
 
 fn fade(elev:f32)->f32{((elev-HORIZON_CUTOFF)/HORIZON_CUTOFF*2.).clamp(0.,1.)}
@@ -218,46 +219,57 @@ fn sky_mesh()->Mesh{
 fn sky_tick(day:Res<DayCycle>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Assets<Mesh>>){
     let Ok(h)=q.get_single()else{return};let Some(m)=meshes.get_mut(h)else{return};
     let Some(VertexAttributeValues::Float32x3(pos))=m.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
-    let se=sun_elev(day.tick);let mp=moon_elev(day.tick);
+    let se=sun_elev(day.tick); let sd=sun_dir(day.tick);
     let mut colors=Vec::with_capacity(pos.len());
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
-        let h=dir.y.clamp(0.,1.); // 0=地平线,1=天顶
-        // 6点颜色渐变表
-        let sky=sky_color(se,mp,h);
-        // 夜间加星星亮点（在天空球顶点色里模拟）
-        let star_bright=((0.15-se)/0.3).clamp(0.,1.);
-        let star=if star_bright>0.&&h>0.3{star_bright*0.4*(rand_frag(p[0],p[1],p[2]))}else{0.};
-        colors.push([(sky.red+star).min(1.),(sky.green+star).min(1.),(sky.blue+star*0.7).min(1.),1.]);
+        let sky=sky_shader(dir, se, sd);
+        let star_bright=((-se-0.1)/0.2).clamp(0.,1.);
+        let star=if star_bright>0.&&dir.y>0.2{star_bright*0.35*(rand_frag(p[0],p[1],p[2]))}else{0.};
+        colors.push([(sky[0]+star).min(1.),(sky[1]+star).min(1.),(sky[2]+star*0.7).min(1.),1.]);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
 }
 
 fn rand_frag(x:f32,y:f32,z:f32)->f32{
-    let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453; (h-h.floor()).powi(3)
+    let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;(h-h.floor()).powi(3)
 }
 
-fn sky_color(sun_elev:f32,_moon_elev:f32,h:f32)->Srgba{
-    // 6个关键时间点的天顶色(sky)和地平线色(horizon)
-    let(sky,hor)=if sun_elev>0.5{// 正午
-        (Srgba::new(0.25,0.45,0.95,1.),Srgba::new(0.7,0.8,1.0,1.))
-    }else if sun_elev>0.15{// 上午/下午
-        let t=(sun_elev-0.15)/0.35;
-        (Srgba::new(0.2+t*0.05,0.38+t*0.07,0.85+t*0.1,1.),Srgba::new(0.75,0.75+t*0.05,0.85+t*0.15,1.))
-    }else if sun_elev>0.0{// 日出/日落
-        let t=sun_elev/0.15;
-        (Srgba::new(0.15+t*0.05,0.2+t*0.18,0.5+t*0.35,1.),Srgba::new(0.9,0.5+t*0.25,0.3+t*0.55,1.))
-    }else if sun_elev>-0.15{// 黄昏/黎明
-        let t=(sun_elev+0.15)/0.15;
-        (Srgba::new(0.03+t*0.12,0.03+t*0.17,0.1+t*0.4,1.),Srgba::new(0.4*t,0.2*t,0.8*t,1.))
-    }else{// 深夜
-        (Srgba::new(0.02,0.02,0.08,1.),Srgba::new(0.02,0.02,0.06,1.))
-    };
-    Srgba::new(
-        sky.red*(1.-h)+hor.red*h,
-        sky.green*(1.-h)+hor.green*h,
-        sky.blue*(1.-h)+hor.blue*h,1.)
+/// GPU 级天空着色器——时间轴+空间轴双重插值
+fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
+    let view_h=view_dir.y.clamp(0.,1.); // 0=地平线,1=天顶
+    let se=sun_elev.clamp(-1.,1.);
+
+    // 三套预设颜色
+    let day_zenith=[0.05,0.2,0.6];    let day_horizon=[0.5,0.7,0.9];
+    let sunset_zenith=[0.1,0.08,0.25]; let sunset_horizon=[1.0,0.35,0.05];
+    let night_zenith=[0.0,0.0,0.02];   let night_horizon=[0.01,0.04,0.08];
+
+    // 权重：三套预设按太阳高度平滑混合
+    let sunset_w=1.0-smoothstep_f(0.0,0.2,se.abs());
+    let day_w=smoothstep_f(0.0,0.25,se);
+    let night_w=smoothstep_f(0.0,0.2,-se);
+
+    let zenith=[day_zenith[0]*day_w+sunset_zenith[0]*sunset_w+night_zenith[0]*night_w,
+                day_zenith[1]*day_w+sunset_zenith[1]*sunset_w+night_zenith[1]*night_w,
+                day_zenith[2]*day_w+sunset_zenith[2]*sunset_w+night_zenith[2]*night_w];
+    let horizon=[day_horizon[0]*day_w+sunset_horizon[0]*sunset_w+night_horizon[0]*night_w,
+                 day_horizon[1]*day_w+sunset_horizon[1]*sunset_w+night_horizon[1]*night_w,
+                 day_horizon[2]*day_w+sunset_horizon[2]*sunset_w+night_horizon[2]*night_w];
+
+    // 空间插值：天顶↔地平线 (非线性)
+    let t=view_h.powf(0.65);
+    let mut c=[zenith[0]*(1.-t)+horizon[0]*t,
+               zenith[1]*(1.-t)+horizon[1]*t,
+               zenith[2]*(1.-t)+horizon[2]*t];
+
+    // 太阳光晕
+    let sun_dot=view_dir.dot(sun_dir).max(0.);
+    let glow=sun_dot.powf(20.)*sunset_w*0.3;
+    c[0]=(c[0]+glow).min(1.);c[1]=(c[1]+glow*0.6).min(1.);c[2]=(c[2]+glow*0.2).min(1.);
+    c
 }
+fn smoothstep_f(e0:f32,e1:f32,x:f32)->f32{let t=((x-e0)/(e1-e0)).clamp(0.,1.);t*t*(3.-2.*t)}
 
 fn grid_mesh()->Mesh{
     let mut v=vec![];let mut i=vec![];let n=GRID as usize;
