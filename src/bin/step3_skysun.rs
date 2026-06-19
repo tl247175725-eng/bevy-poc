@@ -224,13 +224,11 @@ fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut mesh
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
         let sky=sky_shader(dir, se, sd);
-        // 云层：仅在天空上半部分（地平线以上），高度遮罩 + 平滑羽化边缘
-        let height_mask=smoothstep_f(0.15,0.5,dir.y);
-        let cloud_raw=cloud_fbm(dir*2.8+Vec3::new(t*0.015,0.,t*0.01), se);
-        // smoothstep 羽化云边缘
-        let threshold=0.35-se*0.1;
-        let cloud_smooth=smoothstep_f(threshold-0.12,threshold+0.12,cloud_raw);
-        let cloud=cloud_smooth*height_mask;
+        // 云层：Simplex2D噪声，仅在中高空(0.2~0.8)，随时间缓缓飘移
+        let height_mask=smoothstep_f(0.2,0.4,dir.y)*(1.-smoothstep_f(0.7,0.85,dir.y));
+        // 2D 噪声采样 (view_dir.xz 天然是连续球面坐标)
+        let cloud_raw=cloud_fbm(Vec2::new(dir.x*3.+t*0.012, dir.z*3.+t*0.008), se);
+        let cloud=cloud_raw*height_mask;
         let cloud_vis=smoothstep_f(-0.1,0.2,se); // 夜间消散
         let c=[(sky[0]*(1.-cloud)+cloud*0.95*cloud_vis).min(1.),
                (sky[1]*(1.-cloud)+cloud*0.85*cloud_vis).min(1.),
@@ -240,25 +238,29 @@ fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut mesh
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
 }
 
-// ── FBM 噪声（CPU 端） ──────────────────────────────────
-fn hash3_cpu(p:Vec3)->f32{let h=p.x*12.9898+p.y*78.233+p.z*45.164;((h.sin()*43758.5453).fract())}
-fn noise3_cpu(p:Vec3)->f32{
-    let i=p.floor();let f=p.fract();let u=f*f*(3.-2.*f);
-    let a=hash3_cpu(i);let b=hash3_cpu(i+Vec3::X);let c=hash3_cpu(i+Vec3::Y);let d=hash3_cpu(i+Vec3::new(1.,1.,0.));
-    let e=hash3_cpu(i+Vec3::Z);let f_=hash3_cpu(i+Vec3::new(1.,0.,1.));
-    let g=hash3_cpu(i+Vec3::new(0.,1.,1.));let h_=hash3_cpu(i+Vec3::ONE);
-    let a1=a+(b-a)*u.x;let a2=c+(d-c)*u.x;let b1=e+(f_-e)*u.x;let b2=g+(h_-g)*u.x;
-    a1+(a2-a1)*u.y+(b1+(b2-b1)*u.y-a1-(a2-a1)*u.y)*u.z
+// ── Simplex 2D 梯度噪声（比hash噪声平滑，适合云层） ──────
+fn hash2d(x:f32,y:f32)->f32{let h=(x*12.9898+y*78.233).sin()*43758.5453;h-h.floor()}
+fn grad(h:f32,x:f32,y:f32)->f32{let a=h*6.283185;let(s,c)=(a.sin(),a.cos());s*x+c*y}
+fn simplex2d(p:Vec2)->f32{
+    let f=0.3660254;let s=(p.x+p.y)*f;let i=(p.x+s).floor();let j=(p.y+s).floor();
+    let g=0.21132487;let t=(i+j)*g;let x0=p.x-i+t;let y0=p.y-j+t;
+    let(i1,j1)=if x0>y0{(1.,0.)}else{(0.,1.)};
+    let x1=x0-i1+g;let y1=y0-j1+g;let x2=x0-1.+2.*g;let y2=y0-1.+2.*g;
+    let n0=0.5-x0*x0-y0*y0;let n1=0.5-x1*x1-y1*y1;let n2=0.5-x2*x2-y2*y2;
+    let mut v=0.;
+    if n0>0.{let t_=n0*n0;v+=t_*t_*grad(hash2d(i,j),x0,y0);}
+    if n1>0.{let t_=n1*n1;v+=t_*t_*grad(hash2d(i+i1,j+j1),x1,y1);}
+    if n2>0.{let t_=n2*n2;v+=t_*t_*grad(hash2d(i+1.,j+1.),x2,y2);}
+    v*70.
 }
-fn fbm_cpu(p:Vec3)->f32{
-    let mut v=0.;let mut a=0.5;let mut f=1.;let mut s=Vec3::ZERO;
-    for _ in 0..4{s+=p*f;v+=a*noise3_cpu(s);f*=2.2;a*=0.45;}
+fn fbm2d(p:Vec2)->f32{
+    let mut v=0.;let mut a=0.5;let mut f=1.;
+    for _ in 0..4{v+=a*simplex2d(p*f);f*=2.3;a*=0.45;}
     v
 }
-fn cloud_fbm(p:Vec3, sun_elev:f32)->f32{
-    let n=fbm_cpu(p);
-    // 根据太阳高度调整阈值——太阳高时云更明显
-    let threshold=0.25-sun_elev*0.15;
+fn cloud_fbm(p:Vec2, sun_elev:f32)->f32{
+    let n=fbm2d(p);
+    let threshold=0.35-sun_elev*0.1;
     ((n-threshold)/(1.-threshold)).clamp(0.,1.)
 }
 
