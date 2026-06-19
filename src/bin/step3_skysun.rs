@@ -188,9 +188,13 @@ fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
     let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
     for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
 }
-fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Transform,With<StarField>>){
-    let se=sun_elev(day.tick); let a=((0.15-se)/0.3).clamp(0.,1.);
-    if let Ok(mut t)=q.get_single_mut(){t.scale=Vec3::splat(a);}
+fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Visibility,With<StarField>>){
+    let se=sun_elev(day.tick);
+    // 太阳低于地平线→星星可见，高于一定角度→隐藏
+    let visible = se < 0.1;
+    if let Ok(mut v)=q.get_single_mut(){
+        *v = if visible { Visibility::Visible } else { Visibility::Hidden };
+    }
 }
 fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<AmbientLight>){
     let se=sun_elev(day.tick); let sp=sun_pos(day.tick);
