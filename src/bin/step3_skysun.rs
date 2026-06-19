@@ -7,26 +7,36 @@ use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
 use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::render_resource::{AsBindGroup, ShaderRef};
+use bevy::render::render_resource::{AsBindGroup, ShaderRef, ShaderType};
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
 
+#[derive(ShaderType, Debug, Clone)]
+struct SunUniforms {
+    color_center: LinearRgba,
+    color_edge: LinearRgba,
+    emissive_intensity: f32,
+}
+
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 struct SunMaterial {
-    #[uniform(0)] color_center: LinearRgba,
-    #[uniform(0)] color_edge: LinearRgba,
-    #[uniform(0)] emissive_intensity: f32,
+    #[uniform(0)] uniforms: SunUniforms,
 }
 impl Material for SunMaterial {
     fn fragment_shader() -> ShaderRef { "shaders/sun_material.wgsl".into() }
 }
 
+#[derive(ShaderType, Debug, Clone)]
+struct MoonUniforms {
+    base_color: LinearRgba,
+    crater_color: LinearRgba,
+    emissive_intensity: f32,
+}
+
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 struct MoonMaterial {
-    #[uniform(0)] base_color: LinearRgba,
-    #[uniform(0)] crater_color: LinearRgba,
-    #[uniform(0)] emissive_intensity: f32,
+    #[uniform(0)] uniforms: MoonUniforms,
 }
 impl Material for MoonMaterial {
     fn fragment_shader() -> ShaderRef { "shaders/moon_material.wgsl".into() }
@@ -152,8 +162,8 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
     // 太阳：自定义 Flat Shading + 渐变材质
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(sun_mats.add(SunMaterial{
-        color_center:LinearRgba::new(1.,0.9,0.1,1.),color_edge:LinearRgba::new(0.9,0.25,0.,1.),
-        emissive_intensity:8.0,})),Sun));
+        uniforms:SunUniforms{color_center:LinearRgba::new(1.,0.9,0.1,1.),color_edge:LinearRgba::new(0.9,0.25,0.,1.),
+        emissive_intensity:8.0,}})),Sun));
     // 太阳光晕（保留双层透明球做外层辉光）
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*2.,4))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgba(1.,0.5,0.05,0.3),emissive:Color::srgba(1.,0.4,0.,0.4).into(),
@@ -163,8 +173,8 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
         alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
     // 月亮：自定义坑洼 noise shader
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(moon_mats.add(MoonMaterial{
-        base_color:LinearRgba::new(0.82,0.82,0.86,1.),crater_color:LinearRgba::new(0.55,0.55,0.6,1.),
-        emissive_intensity:1.2,})),Moon));
+        uniforms:MoonUniforms{base_color:LinearRgba::new(0.82,0.82,0.86,1.),crater_color:LinearRgba::new(0.55,0.55,0.6,1.),
+        emissive_intensity:1.2,}})),Moon));
     // 月亮光晕
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R*4.,3))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgba(0.5,0.55,0.8,0.08),emissive:Color::srgba(0.2,0.25,0.5,0.1).into(),
