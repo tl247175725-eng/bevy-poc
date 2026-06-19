@@ -68,7 +68,7 @@ fn main() {
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, sun_move, sun_halo_move, moon_move, moon_halo_move, star_fade, sun_light))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light))
         .run();
 }
 
@@ -79,8 +79,6 @@ fn main() {
 #[derive(Component)] struct Sky;
 #[derive(Component)] struct Sun;
 #[derive(Component)] struct Moon;
-#[derive(Component)] struct SunHalo;
-#[derive(Component)] struct MoonHalo;
 #[derive(Component)] struct StarField;
 
 // ── 相机（同 step2） ──────────────────────────────────
@@ -164,21 +162,10 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(sun_mats.add(SunMaterial{
         uniforms:SunUniforms{color_center:LinearRgba::new(1.,0.9,0.1,1.),color_edge:LinearRgba::new(0.9,0.25,0.,1.),
         emissive_intensity:8.0,}})),Sun));
-    // 太阳光晕（保留双层透明球做外层辉光）
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*2.,4))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgba(1.,0.5,0.05,0.3),emissive:Color::srgba(1.,0.4,0.,0.4).into(),
-        alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*4.,3))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgba(1.,0.7,0.2,0.08),emissive:Color::srgba(1.,0.5,0.1,0.1).into(),
-        alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
     // 月亮：自定义坑洼 noise shader
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(moon_mats.add(MoonMaterial{
         uniforms:MoonUniforms{base_color:LinearRgba::new(0.82,0.82,0.86,1.),crater_color:LinearRgba::new(0.55,0.55,0.6,1.),
-        emissive_intensity:1.2,}})),Moon));
-    // 月亮光晕
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R*4.,3))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgba(0.5,0.55,0.8,0.08),emissive:Color::srgba(0.2,0.25,0.5,0.1).into(),
-        alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),MoonHalo));
+        emissive_intensity:3.0,}})),Moon));
     // 星星
     c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
@@ -197,15 +184,7 @@ fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
     let sf=fade(sun_elev(day.tick));
     if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
 }
-fn sun_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<SunHalo>>){
-    let sf=fade(sun_elev(day.tick)); let sp=sun_pos(day.tick);
-    for mut t in q.iter_mut(){t.translation=sp;t.scale=Vec3::splat(sf);}
-}
 fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
-    let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
-    for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
-}
-fn moon_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<MoonHalo>>){
     let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
     for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
 }
