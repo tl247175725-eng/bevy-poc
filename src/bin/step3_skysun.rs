@@ -224,18 +224,12 @@ fn sky_tick(day:Res<DayCycle>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Asset
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
         let sky=sky_shader(dir, se, sd);
-        let star_bright=((-se-0.1)/0.2).clamp(0.,1.);
-        let star=if star_bright>0.&&dir.y>0.2{star_bright*0.35*(rand_frag(p[0],p[1],p[2]))}else{0.};
-        colors.push([(sky[0]+star).min(1.),(sky[1]+star).min(1.),(sky[2]+star*0.7).min(1.),1.]);
+        colors.push([sky[0],sky[1],sky[2],1.]);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
 }
 
-fn rand_frag(x:f32,y:f32,z:f32)->f32{
-    let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;(h-h.floor()).powi(3)
-}
-
-/// GPU 级天空着色器——时间轴+空间轴双重插值
+/// 天空着色器——时间轴+空间轴双重插值
 fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
     let view_h=view_dir.y.clamp(0.,1.); // 0=地平线,1=天顶
     let se=sun_elev.clamp(-1.,1.);
