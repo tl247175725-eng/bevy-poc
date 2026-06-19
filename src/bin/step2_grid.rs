@@ -59,8 +59,8 @@ struct Cam {
 impl Default for Cam {
     fn default() -> Self {
         Self {
-            // 3/4 等轴俯视角：从棋盘一角上方斜看下去，看到顶面和两个侧面
-            yaw: -0.65, pitch: -0.45, dist: WORLD_SIZE * 0.75,
+            // 3/4 等轴俯视角：从西南角上方看棋盘中心（pitch=正=俯视）
+            yaw: -2.3, pitch: 0.55, dist: WORLD_SIZE * 0.8,
             focus: Vec3::new(WORLD_HALF, 0.0, WORLD_HALF),
             last_mouse: Vec2::ZERO,
         }
@@ -253,24 +253,34 @@ fn camera_orbit(
         pan_changed = true;
     }
 
-    // ── 滚轮：缩放到光标位置 ──
+    // ── 滚轮：缩放以光标下方地面点为锚点 ──
     for ev in scroll.read() {
+        let old_pos = cam_pos(&cam);
         let old_dist = cam.dist;
         cam.dist = (cam.dist - ev.y * cam.dist * 0.1).clamp(ZOOM_MIN, ZOOM_MAX);
+        if (cam.dist - old_dist).abs() < 0.01 { continue; }
 
-        // 以光标位置为锚点调整 focus
-        if cam.dist != old_dist {
-            let _scale = cam.dist / old_dist;
-            // 简化锚点：光标越靠近边缘，焦点偏移越多
-            let norm = (cursor / w.size()) * 2.0 - 1.0; // -1..1
-            let pan = cam.dist * 0.0004;
-            // 屏幕中心偏右下 = 焦点平移（直觉操作）
-            let forward = (cam.focus - cam_pos(&cam)).normalize();
-            let forward_xz = Vec3::new(forward.x, 0.0, forward.z).normalize_or_zero();
-            let right = forward_xz.cross(Vec3::Y).normalize_or_zero();
-            cam.focus += right * norm.x * pan;
-            cam.focus -= forward_xz * norm.y * pan;
-        }
+        // 投射光标射线到 y=0 平面，以此为锚点缩放
+        let forward = (cam.focus - old_pos).normalize();
+        let right = forward.cross(Vec3::Y).normalize_or_zero();
+        let up = right.cross(forward);
+
+        let fov_half = 25.0_f32.to_radians().tan(); // FOV=50°, half=25°
+        let aspect = w.width() / w.height();
+        let ndc = Vec2::new(
+            (cursor.x / w.width() - 0.5) * 2.0 * aspect,
+            (cursor.y / w.height() - 0.5) * -2.0,
+        );
+        let ray = (forward + right * ndc.x * fov_half + up * ndc.y * fov_half).normalize();
+
+        // 射线与 y = focus.y 平面的交点
+        let plane_y = cam.focus.y.max(0.0);
+        let t = if ray.y.abs() > 0.001 { (plane_y - old_pos.y) / ray.y } else { cam.dist };
+        let hit = old_pos + ray * t.max(1.0);
+
+        // 缩放后保持 hit 在屏幕同一位置
+        let new_pos = cam_pos(&cam);
+        cam.focus = hit + (new_pos - old_pos) * 0.3; // 30% 锚定强度，平滑过渡
     }
 
     // ── WASD：微调旋转 ──
