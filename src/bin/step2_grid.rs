@@ -220,7 +220,7 @@ fn camera_orbit(
 ) {
     let Ok(mut t) = q.get_single_mut() else { return };
     let Ok(w) = windows.get_single() else { return };
-    let Some(cursor) = w.cursor_position() else { return };
+    let Some(_cursor) = w.cursor_position() else { return };
 
     let mut rot_changed = false;
     let mut pan_changed = false;
@@ -253,34 +253,17 @@ fn camera_orbit(
         pan_changed = true;
     }
 
-    // ── 滚轮：缩放以光标下方地面点为锚点 ──
+    // ── 滚轮：缩放 —— 保持焦点不动 ──
     for ev in scroll.read() {
-        let old_pos = cam_pos(&cam);
-        let old_dist = cam.dist;
-        cam.dist = (cam.dist - ev.y * cam.dist * 0.1).clamp(ZOOM_MIN, ZOOM_MAX);
-        if (cam.dist - old_dist).abs() < 0.01 { continue; }
-
-        // 投射光标射线到 y=0 平面，以此为锚点缩放
-        let forward = (cam.focus - old_pos).normalize();
-        let right = forward.cross(Vec3::Y).normalize_or_zero();
-        let up = right.cross(forward);
-
-        let fov_half = 25.0_f32.to_radians().tan(); // FOV=50°, half=25°
-        let aspect = w.width() / w.height();
-        let ndc = Vec2::new(
-            (cursor.x / w.width() - 0.5) * 2.0 * aspect,
-            (cursor.y / w.height() - 0.5) * -2.0,
+        let dir = Vec3::new(
+            cam.pitch.cos() * cam.yaw.sin(),
+            cam.pitch.sin(),
+            cam.pitch.cos() * cam.yaw.cos(),
         );
-        let ray = (forward + right * ndc.x * fov_half + up * ndc.y * fov_half).normalize();
-
-        // 射线与 y = focus.y 平面的交点
-        let plane_y = cam.focus.y.max(0.0);
-        let t = if ray.y.abs() > 0.001 { (plane_y - old_pos.y) / ray.y } else { cam.dist };
-        let hit = old_pos + ray * t.max(1.0);
-
-        // 缩放后保持 hit 在屏幕同一位置
-        let new_pos = cam_pos(&cam);
-        cam.focus = hit + (new_pos - old_pos) * 0.3; // 30% 锚定强度，平滑过渡
+        let old_pos = cam.focus + dir * cam.dist;
+        cam.dist = (cam.dist - ev.y * cam.dist * 0.1).clamp(ZOOM_MIN, ZOOM_MAX);
+        let new_pos = cam.focus + dir * cam.dist;
+        cam.focus += old_pos - new_pos; // 补偿相机位移，焦点不动
     }
 
     // ── WASD：微调旋转 ──
