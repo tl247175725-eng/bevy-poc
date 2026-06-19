@@ -216,17 +216,47 @@ fn sky_mesh()->Mesh{
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,c);m.insert_indices(Indices::U32(idx));m
 }
 
-fn sky_tick(day:Res<DayCycle>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Assets<Mesh>>){
+fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Assets<Mesh>>){
     let Ok(h)=q.get_single()else{return};let Some(m)=meshes.get_mut(h)else{return};
     let Some(VertexAttributeValues::Float32x3(pos))=m.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
     let se=sun_elev(day.tick); let sd=sun_dir(day.tick);
+    let t=time.elapsed_secs();
     let mut colors=Vec::with_capacity(pos.len());
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
         let sky=sky_shader(dir, se, sd);
-        colors.push([sky[0],sky[1],sky[2],1.]);
+        // 程序化云层
+        let cloud=cloud_fbm(dir*3.5 + Vec3::new(t*0.02,0.,t*0.01), se);
+        // 白天有云，夜晚消散
+        let cloud_vis=smoothstep_f(-0.1,0.15,se);
+        let c=[(sky[0]*(1.-cloud)+cloud*0.95*cloud_vis).min(1.),
+               (sky[1]*(1.-cloud)+cloud*0.9*cloud_vis).min(1.),
+               (sky[2]*(1.-cloud)+cloud*0.85*cloud_vis).min(1.),1.];
+        colors.push(c);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
+}
+
+// ── FBM 噪声（CPU 端） ──────────────────────────────────
+fn hash3_cpu(p:Vec3)->f32{let h=p.x*12.9898+p.y*78.233+p.z*45.164;((h.sin()*43758.5453).fract())}
+fn noise3_cpu(p:Vec3)->f32{
+    let i=p.floor();let f=p.fract();let u=f*f*(3.-2.*f);
+    let a=hash3_cpu(i);let b=hash3_cpu(i+Vec3::X);let c=hash3_cpu(i+Vec3::Y);let d=hash3_cpu(i+Vec3::new(1.,1.,0.));
+    let e=hash3_cpu(i+Vec3::Z);let f_=hash3_cpu(i+Vec3::new(1.,0.,1.));
+    let g=hash3_cpu(i+Vec3::new(0.,1.,1.));let h_=hash3_cpu(i+Vec3::ONE);
+    let a1=a+(b-a)*u.x;let a2=c+(d-c)*u.x;let b1=e+(f_-e)*u.x;let b2=g+(h_-g)*u.x;
+    a1+(a2-a1)*u.y+(b1+(b2-b1)*u.y-a1-(a2-a1)*u.y)*u.z
+}
+fn fbm_cpu(p:Vec3)->f32{
+    let mut v=0.;let mut a=0.5;let mut f=1.;let mut s=Vec3::ZERO;
+    for _ in 0..4{s+=p*f;v+=a*noise3_cpu(s);f*=2.2;a*=0.45;}
+    v
+}
+fn cloud_fbm(p:Vec3, sun_elev:f32)->f32{
+    let n=fbm_cpu(p);
+    // 根据太阳高度调整阈值——太阳高时云更明显
+    let threshold=0.25-sun_elev*0.15;
+    ((n-threshold)/(1.-threshold)).clamp(0.,1.)
 }
 
 /// 天空着色器——时间轴+空间轴双重插值
