@@ -9,7 +9,7 @@ struct MoonUniforms {
     emissive_intensity: f32,
 };
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: MoonUniforms;
+@group(2) @binding(0) var<uniform> material: MoonUniforms;
 
 fn hash3(p: vec3<f32>) -> f32 {
     let h = dot(p, vec3<f32>(127.1, 311.7, 74.7));

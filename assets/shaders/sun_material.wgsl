@@ -9,18 +9,16 @@ struct SunUniforms {
     emissive_intensity: f32,
 };
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: SunUniforms;
+@group(2) @binding(0) var<uniform> material: SunUniforms;
 
 @fragment
 fn fragment(
     in: VertexOutput,
 ) -> @location(0) vec4<f32> {
-    // Flat Shading
     let dx = dpdx(in.world_position.xyz);
     let dy = dpdy(in.world_position.xyz);
     let flat_normal = normalize(cross(dx, dy));
 
-    // Fresnel 渐变
     let V = normalize(view.world_position.xyz - in.world_position.xyz);
     let NdotV = abs(dot(flat_normal, V));
     let gradient_factor = smoothstep(0.15, 0.85, NdotV);
