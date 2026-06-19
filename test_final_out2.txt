@@ -1,0 +1,7 @@
+error: error in environment variable `CARGO_PROFILE_TEST`: could not load config key `profile.test`
+
+Caused by:
+  error in environment variable `CARGO_PROFILE_TEST_OPT_LEVEL`: could not load config key `profile.test.opt-level`
+
+Caused by:
+  must be `0`, `1`, `2`, `3`, `s` or `z`, but found the string: "0 "

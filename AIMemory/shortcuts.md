@@ -1,13 +1,13 @@
 # Session 启动规则
 
 ```
-每次接收任务后，第一步读取 AIMemory/current.md、AIMemory/shortcuts.md、memory/FACT.md、AIMemory/tech-stack.md。不跳过，不凭记忆。
+每次接收任务后，第一步读取 AIMemory/current.md、AIMemory/shortcuts.md、memory/FACT.md。不跳过，不凭记忆。
 
 工作流按性质分文件存放于 AIMemory/workflows/。执行对应性质的任务前，必须先读取对应工作流文件。
 
-项目代码通过 handoff → dsc (DeepSeek Code) 执行。本地验证（cargo check + cargo test，限 4 核）通过后再 push。GitHub 作为代码备份和可选 CI。
+CherryClaw 直接写代码 + cargo check + cargo test + git push，闭环验证。用户负责跑游戏看效果。
 
-设计讨论收束时向用户确认"铁律/暂定/放着"。意图对齐后自主执行，用户只负责跑游戏看效果。
+设计讨论收束时向用户确认"铁律/暂定/放着"。意图对齐后自主执行。
 ```
 
 ---
