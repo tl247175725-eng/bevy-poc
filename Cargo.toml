@@ -19,6 +19,10 @@ path = "src/bin/step1_skybox.rs"
 name = "step2_grid"
 path = "src/bin/step2_grid.rs"
 
+[[bin]]
+name = "step3_skysun"
+path = "src/bin/step3_skysun.rs"
+
 [profile.test]
 opt-level = 2
 
