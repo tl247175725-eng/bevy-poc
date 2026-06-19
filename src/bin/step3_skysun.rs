@@ -114,27 +114,39 @@ fn star_mesh()->Mesh{
 
 // ── 启动 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
-         asset_server:Res<AssetServer>){
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳GLB模型
-    let sun_scene:Handle<Scene> = asset_server.load("sun.glb");
-    c.spawn((SceneRoot(sun_scene), Transform::from_scale(Vec3::splat(0.9)), Sun));
-    // 太阳光晕（透明球——保留代码生成）
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*2.5,3))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgba(1.,0.6,0.1,0.15),emissive:Color::srgba(1.,0.5,0.05,0.3).into(),
+    // 太阳：程序化低多边球体 + 发射材质（模拟 AI 模型质感）
+    let sun_mesh = lowpoly_sphere(SUN_R, 6); // 6级细分→足够圆滑
+    c.spawn((Mesh3d(meshes.add(sun_mesh.clone())),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(1.,0.75,0.15),  // 暖黄基底
+        emissive:Color::srgb(1.0,0.55,0.05).into(),
+        perceptual_roughness:0.85,              // 粗糙质感
+        unlit:false,                            // 受光照
+        ..default()})),Sun));
+    // 太阳光晕：双层——内光晕（亮黄）+ 外光晕（大范围暖色）
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*1.8,4))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgba(1.,0.5,0.05,0.4),emissive:Color::srgba(1.,0.4,0.,0.5).into(),
         alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
-    // 月亮GLB模型
-    let moon_scene:Handle<Scene> = asset_server.load("moon.glb");
-    c.spawn((SceneRoot(moon_scene), Transform::from_scale(Vec3::splat(0.3)), Moon));
-    // 月亮光晕（透明球——保留代码生成）
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R*3.,3))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgba(0.6,0.65,0.9,0.12),emissive:Color::srgba(0.3,0.35,0.6,0.2).into(),
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*3.5,3))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgba(1.,0.7,0.2,0.1),emissive:Color::srgba(1.,0.5,0.1,0.15).into(),
+        alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),SunHalo));
+    // 月亮
+    let moon_mesh = lowpoly_sphere(MOON_R, 6);
+    c.spawn((Mesh3d(meshes.add(moon_mesh.clone())),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(0.78,0.78,0.82),  // 灰白
+        emissive:Color::srgb(0.15,0.15,0.2).into(),
+        perceptual_roughness:0.9,
+        unlit:false,
+        ..default()})),Moon));
+    // 月亮光晕
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R*4.,3))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgba(0.5,0.55,0.8,0.1),emissive:Color::srgba(0.2,0.25,0.5,0.15).into(),
         alpha_mode:AlphaMode::Blend,unlit:true,cull_mode:None,..default()})),MoonHalo));
     // 星星
     c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
