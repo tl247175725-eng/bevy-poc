@@ -183,17 +183,12 @@ fn sky_update(day: Res<DayCycle>, q: Query<&Mesh3d, With<SkyDome>>,
         } else { Srgba::new(0.03, 0.03, 0.1, 1.0) };
         let dot = dir.dot(sun).max(0.0);
         let glow = if elev > 0.0 { ((dot - 0.9).max(0.0) * 10.0).min(1.0) } else { 0.0 };
-        if dir.y >= -0.05 {
-            colors.push([
-                (sky.red * (1.0-h) + hor.red * h + glow * 0.5).min(1.0),
-                (sky.green * (1.0-h) + hor.green * h + glow * 0.3).min(1.0),
-                (sky.blue * (1.0-h) + hor.blue * h + glow * 0.1).min(1.0), 1.0,
-            ]);
-        } else {
-            // 地下：深暗色
-            let d = (-dir.y).min(1.0);
-            colors.push([0.02 * (1.0-d), 0.02 * (1.0-d), 0.06 * (1.0-d) + d * 0.02, 1.0]);
-        }
+        // 全方向统一天空色：天顶蓝渐变到地平线白
+        colors.push([
+            (sky.red * (1.0-h) + hor.red * h + glow * 0.5).min(1.0),
+            (sky.green * (1.0-h) + hor.green * h + glow * 0.3).min(1.0),
+            (sky.blue * (1.0-h) + hor.blue * h + glow * 0.1).min(1.0), 1.0,
+        ]);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
 }
@@ -307,20 +302,28 @@ fn camera_orbit(
     if keys.pressed(KeyCode::ArrowRight) { day.tick = (day.tick + 4.0) % DAY_TICKS; }
     if keys.pressed(KeyCode::ArrowLeft) { day.tick = (day.tick - 4.0 + DAY_TICKS) % DAY_TICKS; }
 
-    // ── 更新相机 —— 确保不超出天空球 ──
+    // ── 更新相机 —— 提前限制距离不超出天空球 ──
     let sky_center = Vec3::new(WORLD_HALF, 0.0, WORLD_HALF);
-    let pos = cam_pos(&cam);
-    let to_cam = pos - sky_center;
-    let dist_from_center = to_cam.length();
-    if dist_from_center > SKY_RADIUS * 0.95 {
-        // 相机跑出天空球了——拉回来
-        let clamped_pos = sky_center + to_cam.normalize() * (SKY_RADIUS * 0.9);
-        // 调整 dist 使下次不再出去
-        cam.dist = (clamped_pos - cam.focus).length();
-        t.translation = clamped_pos;
+    // 计算当前方向的最大安全距离
+    let dir = Vec3::new(
+        cam.pitch.cos() * cam.yaw.sin(),
+        cam.pitch.sin(),
+        cam.pitch.cos() * cam.yaw.cos(),
+    );
+    // 解二次方程: |focus + dir*dist - center|² = SKY_RADIUS²
+    let dc = cam.focus - sky_center; // focus → center
+    let b = dir.dot(dc);             // dir · (focus - center)
+    let c = dc.length_squared() - SKY_RADIUS * SKY_RADIUS;
+    // dist² + 2*b*dist + c = 0 → max_dist = -b + sqrt(b² - c)
+    let discriminant = b * b - c;
+    let max_safe_dist = if discriminant > 0.0 {
+        (-b + discriminant.sqrt()).max(ZOOM_MIN)
     } else {
-        t.translation = pos;
-    }
+        ZOOM_MIN
+    };
+    cam.dist = cam.dist.clamp(ZOOM_MIN, max_safe_dist);
+
+    t.translation = cam_pos(&cam);
     t.look_at(cam.focus, Vec3::Y);
 }
 
