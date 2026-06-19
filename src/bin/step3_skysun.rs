@@ -42,8 +42,8 @@ const TICK_TO_ANGLE: f32 = TAU / DAY_TICKS;
 
 // ── 日月轨道 ──────────────────────────────────────────
 const ORBIT_R: f32 = WS * 0.65; // 轨道半径，比棋盘大
-const SUN_R: f32 = 90.0;
-const MOON_R: f32 = 50.0;
+const SUN_R: f32 = 540.0;
+const MOON_R: f32 = 300.0;
 const HORIZON_CUTOFF: f32 = 0.04; // sin(elev) < 此值 → 渐隐
 
 fn main() {
@@ -153,7 +153,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 太阳：自定义 Flat Shading + 渐变材质
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(sun_mats.add(SunMaterial{
         color_center:LinearRgba::new(1.,0.9,0.1,1.),color_edge:LinearRgba::new(0.9,0.25,0.,1.),
-        emissive_intensity:3.5,})),Sun));
+        emissive_intensity:8.0,})),Sun));
     // 太阳光晕（保留双层透明球做外层辉光）
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R*2.,4))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgba(1.,0.5,0.05,0.3),emissive:Color::srgba(1.,0.4,0.,0.4).into(),
@@ -188,16 +188,16 @@ fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
     if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
 }
 fn sun_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<SunHalo>>){
-    let sf=fade(sun_elev(day.tick));
-    if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
+    let sf=fade(sun_elev(day.tick)); let sp=sun_pos(day.tick);
+    for mut t in q.iter_mut(){t.translation=sp;t.scale=Vec3::splat(sf);}
 }
 fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
-    let mf=fade(moon_elev(day.tick));
-    if let Ok(mut t)=q.get_single_mut(){t.translation=moon_pos(day.tick);t.scale=Vec3::splat(mf);}
+    let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
+    for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
 }
 fn moon_halo_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<MoonHalo>>){
-    let mf=fade(moon_elev(day.tick));
-    if let Ok(mut t)=q.get_single_mut(){t.translation=moon_pos(day.tick);t.scale=Vec3::splat(mf);}
+    let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
+    for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
 }
 fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Transform,With<StarField>>){
     let se=sun_elev(day.tick); let a=((0.15-se)/0.3).clamp(0.,1.);
