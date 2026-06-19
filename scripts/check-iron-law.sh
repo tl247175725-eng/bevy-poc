@@ -41,6 +41,18 @@ else
     echo "$ENTITYID_ZERO" | while read line; do echo "       $line"; done
 fi
 
+# ── 规则 1b: 禁止将 NONE_ID 作为动作目标 ──
+echo ""
+echo "【规则1b】禁止 Strike/Consume/Combine 以 NONE_ID 为目标"
+
+NONEID_TARGET=$(grep -rn "Strike\|Consume\|Combine" "$SRC_DIR/" --include="*.rs" -A2 | grep "target:\s*NONE_ID" | grep -v "cfg(test)" || true)
+if [ -z "$NONEID_TARGET" ]; then
+    check_pass "动作无 NONE_ID 目标"
+else
+    check_fail "发现动作以 NONE_ID 为目标（语义绕过——NONE_ID 就是 EntityId(0)）:"
+    echo "$NONEID_TARGET" | while read line; do echo "       $line"; done
+fi
+
 # ── 规则 2: 禁止 type_name 字符串硬编码 ──
 echo ""
 echo "【规则2】禁止 type_name 字符串硬编码"
@@ -48,7 +60,7 @@ echo "【规则2】禁止 type_name 字符串硬编码"
 # 排除: 测试代码、同物种判断、clone、recipes(旧配方系统-已知例外)、已知测试文件
 TYPE_NAME_RAW=$(grep -rn 'type_name\s*==\s*"' "$SRC_DIR/" --include="*.rs" \
     | grep -v "cfg(test)\|#\[test\]\|male_def.type_name == female\|\.type_name.clone()" \
-    | grep -v "card_def.rs:1[0-9][0-9]:\|interaction/recipes.rs" \
+    | grep -v "card_def.rs:1[0-9][0-9]:\|interaction/recipes.rs\|iron-law:allow" \
     || true)
 if [ -z "$TYPE_NAME_RAW" ]; then
     check_pass "无 type_name 字符串硬编码"
@@ -62,7 +74,7 @@ echo ""
 echo "【规则3】禁止按标签 if-else 链"
 
 # 检测模式: card_has_tag(...) { ... } 后紧跟 else if card_has_tag
-TAG_IFELSE=$(grep -rn "if card_has_tag.*{.*}" "$SRC_DIR/" --include="*.rs" -A1 | grep "else if card_has_tag\|if card_has_tag" | grep -v "can_digest\|consume\|cfg(test)" || true)
+TAG_IFELSE=$(grep -rn "if card_has_tag.*{.*}" "$SRC_DIR/" --include="*.rs" -A3 | grep "else if card_has_tag\|if card_has_tag" | grep -v "can_digest\|consume\|cfg(test)" || true)
 if [ -z "$TAG_IFELSE" ]; then
     check_pass "无按标签 if-else 链"
 else
@@ -147,6 +159,18 @@ else
     check_warn "FACT.md 三柱表有 ${BROKEN// /} 行全❌——是否遗忘更新？"
 fi
 
+# ── 规则 8b: 热路径禁 stub/TODO/死函数 ──
+echo ""
+echo "【规则8b】热路径禁 stub/TODO/死函数"
+
+HOT_STUBS=$(grep -rn "Vec::new();\s*//\s*TODO\|todo!()" "$SRC_DIR/systems/main_tick.rs" "$SRC_DIR/need_match/" "$SRC_DIR/execution.rs" --include="*.rs" 2>/dev/null || true)
+if [ -z "$HOT_STUBS" ]; then
+    check_pass "热路径无 stub/TODO"
+else
+    check_fail "热路径发现 stub/TODO:"
+    echo "$HOT_STUBS" | while read line; do echo "       $line"; done
+fi
+
 # ── 规则 9: handoff 模板合规 ──
 echo ""
 echo "【规则9】handoff 文件合规"
@@ -203,10 +227,10 @@ if [ "$UNWRAP_COUNT" -eq 0 ] && [ "$EXPECT_COUNT" -eq 0 ]; then
     check_pass "无 unwrap()/expect()"
 else
     if [ "$UNWRAP_COUNT" -gt 0 ]; then
-        check_warn "发现 $UNWRAP_COUNT 处 .unwrap()"
+        check_fail "发现 $UNWRAP_COUNT 处 .unwrap()（非测试代码禁止）"
     fi
     if [ "$EXPECT_COUNT" -gt 0 ]; then
-        check_warn "发现 $EXPECT_COUNT 处 .expect()"
+        check_fail "发现 $EXPECT_COUNT 处 .expect()（非测试代码禁止）"
     fi
 fi
 
