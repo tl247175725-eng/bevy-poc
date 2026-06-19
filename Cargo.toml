@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "bevy-poc"
 path = "src/main.rs"
 
+[[bin]]
+name = "step1_skybox"
+path = "src/bin/step1_skybox.rs"
+
 [profile.test]
 opt-level = 2
 
