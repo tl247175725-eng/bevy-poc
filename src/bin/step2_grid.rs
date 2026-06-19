@@ -59,7 +59,8 @@ struct Cam {
 impl Default for Cam {
     fn default() -> Self {
         Self {
-            yaw: -0.5, pitch: -0.3, dist: 12000.0,
+            // 3/4 等轴俯视角：从棋盘一角上方斜看下去，看到顶面和两个侧面
+            yaw: -0.65, pitch: -0.45, dist: WORLD_SIZE * 0.75,
             focus: Vec3::new(WORLD_HALF, 0.0, WORLD_HALF),
             last_mouse: Vec2::ZERO,
         }
@@ -231,7 +232,7 @@ fn camera_orbit(
     // ── 左键：旋转视角 ──
     if mouse.pressed(MouseButton::Left) {
         cam.yaw -= dx * 0.004;
-        cam.pitch = (cam.pitch - dy * 0.004);
+        cam.pitch = cam.pitch - dy * 0.004;
         rot_changed = true;
     }
 
@@ -275,8 +276,8 @@ fn camera_orbit(
     // ── WASD：微调旋转 ──
     if keys.pressed(KeyCode::KeyA) { cam.yaw -= 0.03; rot_changed = true; }
     if keys.pressed(KeyCode::KeyD) { cam.yaw += 0.03; rot_changed = true; }
-    if keys.pressed(KeyCode::KeyW) { cam.pitch = (cam.pitch + 0.03); rot_changed = true; }
-    if keys.pressed(KeyCode::KeyS) { cam.pitch = (cam.pitch - 0.03); rot_changed = true; }
+    if keys.pressed(KeyCode::KeyW) { cam.pitch = cam.pitch + 0.03; rot_changed = true; }
+    if keys.pressed(KeyCode::KeyS) { cam.pitch = cam.pitch - 0.03; rot_changed = true; }
 
     // 焦点平移快捷键：方向键
     let pan_k = cam.dist * 0.01;
@@ -302,28 +303,34 @@ fn camera_orbit(
     if keys.pressed(KeyCode::ArrowRight) { day.tick = (day.tick + 4.0) % DAY_TICKS; }
     if keys.pressed(KeyCode::ArrowLeft) { day.tick = (day.tick - 4.0 + DAY_TICKS) % DAY_TICKS; }
 
-    // ── 更新相机 —— 提前限制距离不超出天空球 ──
+    // ── 更新相机 —— 软刹车不超出天空球 ──
     let sky_center = Vec3::new(WORLD_HALF, 0.0, WORLD_HALF);
-    // 计算当前方向的最大安全距离
+
+    // 计算期望的相机位置
     let dir = Vec3::new(
         cam.pitch.cos() * cam.yaw.sin(),
         cam.pitch.sin(),
         cam.pitch.cos() * cam.yaw.cos(),
     );
-    // 解二次方程: |focus + dir*dist - center|² = SKY_RADIUS²
-    let dc = cam.focus - sky_center; // focus → center
-    let b = dir.dot(dc);             // dir · (focus - center)
-    let c = dc.length_squared() - SKY_RADIUS * SKY_RADIUS;
-    // dist² + 2*b*dist + c = 0 → max_dist = -b + sqrt(b² - c)
-    let discriminant = b * b - c;
-    let max_safe_dist = if discriminant > 0.0 {
-        (-b + discriminant.sqrt()).max(ZOOM_MIN)
-    } else {
-        ZOOM_MIN
-    };
-    cam.dist = cam.dist.clamp(ZOOM_MIN, max_safe_dist);
+    let desired_pos = cam.focus + dir * cam.dist;
 
-    t.translation = cam_pos(&cam);
+    // 检查是否超出天空球
+    let to_center = desired_pos - sky_center;
+    let dist_from_center = to_center.length();
+    let max_allowed = SKY_RADIUS * 0.92;
+
+    let actual_pos = if dist_from_center > max_allowed {
+        // 投影到球面上
+        let on_sphere = sky_center + to_center.normalize_or_zero() * max_allowed;
+        // 软刹车：越靠近边界减速越明显
+        let overshoot = (dist_from_center - max_allowed) / max_allowed;
+        let t_factor = (1.0 - (overshoot * 3.0).clamp(0.0, 0.95)).max(0.05);
+        desired_pos.lerp(on_sphere, 1.0 - t_factor)
+    } else {
+        desired_pos
+    };
+
+    t.translation = actual_pos;
     t.look_at(cam.focus, Vec3::Y);
 }
 
