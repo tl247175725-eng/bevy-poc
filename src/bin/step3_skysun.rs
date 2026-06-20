@@ -1,27 +1,15 @@
 //! Step 3: 天空 + 棋盘 + 太阳/月亮/星星
 //! cargo run --bin step3_skysun
 
-use bevy::color::Srgba;
-use bevy::input::mouse::MouseWheel;
 use bevy::asset::RenderAssetUsages;
+use bevy::input::mouse::MouseWheel;
 use bevy::mesh::{Indices, VertexAttributeValues};
-use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
+use bevy::render::render_resource::PrimitiveTopology;
 use bevy::window::WindowResolution;
-use bevy::render::render_resource::{AsBindGroup, PrimitiveTopology, ShaderType};
-use bevy::shader::ShaderRef;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
-
-// 最小化测试材质
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct SunMaterial {
-    #[uniform(0)] color: LinearRgba,
-}
-impl Material for SunMaterial {
-    fn fragment_shader() -> ShaderRef { "shaders/sun_material.wgsl".into() }
-}
 
 // ── 世界 ──────────────────────────────────────────────
 const GRID: u32 = 64; const CELL: f32 = 158.0;
@@ -44,7 +32,6 @@ fn main() {
             primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
         }),
-            MaterialPlugin::<SunMaterial>::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
@@ -130,20 +117,21 @@ fn star_mesh()->Mesh{
 
 // ── 启动 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
-         mut test_mats:ResMut<Assets<SunMaterial>>){
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：测试自定义材质管线
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(test_mats.add(SunMaterial{
-        color:LinearRgba::new(1.,0.8,0.2,1.)})),Sun));
+    // 太阳：StandardMaterial + 强发光（模拟 Flat Shading 视觉效果）
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,6))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(1.,0.75,0.15),emissive:Color::srgb(1.,0.5,0.05).into(),
+        perceptual_roughness:0.85,..default()})),Sun));
     // 月亮
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(0.8,0.8,0.85),emissive:Color::srgb(0.2,0.2,0.4).into(),unlit:true,..default()})),Moon));
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,6))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(0.78,0.78,0.82),emissive:Color::srgb(0.15,0.15,0.2).into(),
+        perceptual_roughness:0.9,..default()})),Moon));
     // 星星
     c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
