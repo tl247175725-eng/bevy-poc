@@ -65,8 +65,6 @@ fn main() {
             primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
         }),
-            MaterialPlugin::<SunMaterial>::default(),
-            MaterialPlugin::<MoonMaterial>::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
@@ -152,22 +150,19 @@ fn star_mesh()->Mesh{
 
 // ── 启动 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
-         mut sun_mats:ResMut<Assets<SunMaterial>>,mut moon_mats:ResMut<Assets<MoonMaterial>>){
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：自定义 Flat Shading + 渐变材质
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(sun_mats.add(SunMaterial{
-        uniforms:SunUniforms{color_center:LinearRgba::new(1.,0.9,0.1,1.),color_edge:LinearRgba::new(0.9,0.25,0.,1.),
-        emissive_intensity:8.0,}})),Sun));
-    // 月亮：自定义坑洼 noise shader
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(moon_mats.add(MoonMaterial{
-        uniforms:MoonUniforms{base_color:LinearRgba::new(0.82,0.82,0.86,1.),crater_color:LinearRgba::new(0.55,0.55,0.6,1.),
-        emissive_intensity:3.0,}})),Moon));
+    // 太阳：StandardMaterial 隔离测试
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(1.,0.8,0.2),emissive:Color::srgb(1.,0.5,0.1).into(),unlit:true,..default()})),Sun));
+    // 月亮
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(0.8,0.8,0.85),emissive:Color::srgb(0.2,0.2,0.4).into(),unlit:true,..default()})),Moon));
     // 星星
     c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
