@@ -23,10 +23,6 @@ path = "src/bin/step2_grid.rs"
 name = "step3_skysun"
 path = "src/bin/step3_skysun.rs"
 
-[[bin]]
-name = "step4_weather"
-path = "src/bin/step4_weather.rs"
-
 [profile.test]
 opt-level = 2
 
