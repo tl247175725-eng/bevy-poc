@@ -161,11 +161,13 @@ fn setup(
     mut sun_mats:ResMut<Assets<SunMaterial>>,mut moon_mats:ResMut<Assets<MoonMaterial>>,
     mut scattering_media:ResMut<Assets<ScatteringMedium>>,
 ){
-    // ★ 相机 + 物理大气（替代手写天空球）
+    // ★ 相机 + 物理大气
     let medium = scattering_media.add(ScatteringMedium::default());
-    c.spawn((Camera3d::default(),Bloom::default(),
+    c.spawn((
+        Camera3d::default(),
         Atmosphere::earthlike(medium),
-        Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
+        Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()}),
+    ));
 
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
