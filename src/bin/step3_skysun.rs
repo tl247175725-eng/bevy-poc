@@ -35,7 +35,7 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, animate_sun))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, spike_spawn, spike_lifecycle))
         .run();
 }
 
@@ -176,12 +176,11 @@ fn recompute_flat_normals(mesh:&mut Mesh){
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,normals);
 }
 
-// ── 动态太阳组件 ────────────────────────────────────────
+// ── 太阳尖刺组件 ────────────────────────────────────────
 #[derive(Component)]
-struct DynamicSun {
-    original_positions: Vec<Vec3>,
-    max_spike: f32,
-}
+struct SunSpike { birth: f32, life: f32, base_radius: f32, dir: Vec3 }
+#[derive(Resource)]
+struct SpikeTimer(f32);
 
 // ── 简单 hash 随机 ─────────────────────────────────────
 fn hash(x:f32,y:f32,z:f32)->f32{let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;h-h.floor()}
@@ -209,8 +208,8 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：动态 CPU 顶点形变 + HDR 顶点色 + Bloom
-    spawn_dynamic_sun(&mut c,&mut meshes,&mut mats);
+    // 太阳：静态球体(unlit+Fresnel)+动态尖刺系统
+    spawn_sun_body(&mut c,&mut meshes,&mut mats);
     // 月亮：CPU 平面着色 + 灰白渐变
     c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(MOON_R,3,
         [0.85,0.85,0.88,1.0], [0.55,0.55,0.60,1.0]))),
@@ -227,6 +226,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
         Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
     c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
     c.insert_resource(DayCycle{tick:800.});
+    c.insert_resource(SpikeTimer(0.));
 }
 
 // ── 日月位置 + 渐显渐隐 ─────────────────────────────
@@ -355,26 +355,26 @@ fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
 }
 fn smoothstep_f(e0:f32,e1:f32,x:f32)->f32{let t=((x-e0)/(e1-e0)).clamp(0.,1.);t*t*(3.-2.*t)}
 
-// ── 动态太阳 spawn ─────────────────────────────────────
-fn spawn_dynamic_sun(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
+// ── 静态太阳球体（Fresnel 顶点色 + unlit） ──────────────
+fn spawn_sun_body(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
     let r=SUN_R;let sub=3;
-    // 生成 icosphere 并提取原始顶点
     let Ok(base)=Sphere::new(r).mesh().ico(sub)else{return};
     let Some(VertexAttributeValues::Float32x3(base_pos))=base.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
     let Some(indices)=base.indices()else{return};
     let Indices::U32(idx)=indices else {return};
 
-    // 复制顶点实现平面着色
     let mut new_pos=vec![];let mut new_nor=vec![];let mut new_col=vec![];let mut new_idx=vec![];
-    let mut orig=vec![];
     for t in idx.chunks(3){
         if t.len()<3{continue}
         let p0=Vec3::from(base_pos[t[0]as usize]);let p1=Vec3::from(base_pos[t[1]as usize]);let p2=Vec3::from(base_pos[t[2]as usize]);
         let n=(p1-p0).cross(p2-p0).normalize();
         let bi=new_pos.len()as u32;
+        // CPU 端 Fresnel：面法线越接近视线方向(0,0,1) → 越亮（球心），越偏 → 越暗（边缘）
+        let fresnel=(1.0-n.z.abs()).powf(2.5).clamp(0.,1.);
+        let r_col=2.5-fresnel*1.8;let g=2.0-fresnel*1.8;let b_col=0.5-fresnel*0.5;
         for &vi in t{
             new_pos.push(base_pos[vi as usize]);new_nor.push([n.x,n.y,n.z]);
-            new_col.push([1.,0.8,0.2,1.]);orig.push(Vec3::from(base_pos[vi as usize]));
+            new_col.push([r_col,g,b_col,1.]);
         }
         new_idx.extend_from_slice(&[bi,bi+1,bi+2]);
     }
@@ -383,41 +383,79 @@ fn spawn_dynamic_sun(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mat
     m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,new_nor);
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
     m.insert_indices(Indices::U32(new_idx));
-
-    let mat=StandardMaterial{base_color:Color::WHITE,unlit:false,..default()};
-    commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(mat)),Sun,
-        DynamicSun{original_positions:orig,max_spike:r*0.18}));
+    commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::WHITE,unlit:true,..default()})),Sun));
 }
 
-// ── 动态太阳动画（双层噪声：高频密度 + 低频错落） ──────
-fn animate_sun(
-    time:Res<Time>,day:Res<DayCycle>,
-    q:Query<(&DynamicSun,&Mesh3d)>,
-    mut meshes:ResMut<Assets<Mesh>>,
+// ── 尖刺锥体 mesh ──────────────────────────────────────
+fn spike_mesh(height:f32,base_r:f32)->Mesh{
+    let h=height;let r=base_r;let res=3; // 三角锥
+    let mut pos=vec![];let mut nor=vec![];let mut idx=vec![];
+    // 底面中心 + 底面环 + 顶点
+    pos.push([0.,-h*0.1,0.]); // 底面中心
+    for i in 0..=res{
+        let a=i as f32/res as f32*TAU;
+        pos.push([r*a.cos(),-h*0.1,r*a.sin()]);
+    }
+    pos.push([0.,h,0.]); // 顶点
+    let apex=pos.len()as u32-1;
+    let n=pos.len()as u32;
+    for i in 1..res{idx.extend_from_slice(&[n-2,apex,i,i+1]);} // 底面到顶点
+    idx.extend_from_slice(&[n-2,apex,res as u32,n-2]); // 最后一面
+    for _ in 0..pos.len(){nor.push([0.,1.,0.]);}
+    let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
+    m.insert_attribute(Mesh::ATTRIBUTE_POSITION,pos);m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,nor);
+    m.insert_indices(Indices::U32(idx));m
+}
+
+// ── 尖刺生成 ───────────────────────────────────────────
+fn spike_spawn(
+    mut commands:Commands,time:Res<Time>,day:Res<DayCycle>,
+    mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
+    mut timer:ResMut<SpikeTimer>,
+    q_sun:Query<&Transform,With<Sun>>,q_spikes:Query<(),With<SunSpike>>,
 ){
-    let tf=time.elapsed_secs()*1.5;let ts=time.elapsed_secs()*0.5;
+    timer.0-=time.delta_secs();
     let se=sun_elev(day.tick).max(0.1);
-    for(sun,mesh_handle)in q.iter(){
-        let Some(mesh)=meshes.get_mut(&mesh_handle.0)else{continue};
-        let Some(VertexAttributeValues::Float32x3(cur_pos))=mesh.attribute(Mesh::ATTRIBUTE_POSITION)else{continue};
-        let mut new_pos=Vec::with_capacity(cur_pos.len());
-        let mut new_col=Vec::with_capacity(cur_pos.len());
-        for orig in sun.original_positions.iter(){
-            let dir=orig.normalize();
-            // 高频层——决定尖刺密集度
-            let fh=14.;let nh=((simplex3d(Vec3::new(dir.x*fh+tf,dir.y*fh,dir.z*fh-tf))+1.)*0.5).powf(12.);
-            // 低频层——决定错落感（某些区域尖刺高，某些平坦）
-            let fl=3.;let nl=(simplex3d(Vec3::new(dir.x*fl-ts,dir.y*fl+ts,dir.z*fl))+1.)*0.5;
-            let spike=nh*(nl+0.1);
-            let disp=spike*sun.max_spike*se;
-            new_pos.push((*orig+dir*disp).to_array());
-            // 色彩：深橙红基底(0.8,0.15,0)→尖刺顶端亮黄白(3.0,2.5,0.8)
-            let tc=(disp/sun.max_spike).clamp(0.,1.);
-            new_col.push([0.8+tc*2.2,0.15+tc*2.35,tc*0.8,1.]);
+    if timer.0>0.||q_spikes.iter().count()>=120{return}
+    timer.0=0.15;
+    let Ok(sun_tr)=q_sun.single()else{return};
+    let sp=sun_tr.translation;
+    let t=time.elapsed_secs()*0.08;
+    // 随机方向采样 3D 噪声 → 只在热点生尖刺
+    for _ in 0..3{ // 每次最多尝试3个方向
+        let dir=Vec3::new((t*0.7+(timer.0*10.).sin()).sin(),(t*0.5+timer.0).sin(),(t*0.6-timer.0).cos()).normalize();
+        let n=simplex3d(Vec3::new(dir.x*8.+t*0.1,dir.y*8.,dir.z*8.-t*0.1));
+        let intensity=((n+1.)*0.5).powf(6.);
+        if intensity>0.4{
+            let h=SUN_R*0.06+SUN_R*0.22*intensity*se;
+            let br=SUN_R*0.012+SUN_R*0.03*intensity;
+            commands.spawn((Mesh3d(meshes.add(spike_mesh(h,br))),
+                MeshMaterial3d(mats.add(StandardMaterial{base_color:Color::srgb(1.,0.85,0.4),
+                emissive:Color::srgb(4.,2.5,0.6).into(),unlit:true,..default()})),
+                Transform::from_translation(sp+dir*SUN_R).looking_at(sp,Vec3::Y),
+                SunSpike{birth:time.elapsed_secs(),life:6.0,base_radius:SUN_R,dir}));
         }
-        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,new_pos);
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
-        recompute_flat_normals(mesh);
+    }
+}
+
+// ── 尖刺生命周期（生长→保持→缩退→消亡） ────────────────
+fn spike_lifecycle(
+    time:Res<Time>,day:Res<DayCycle>,
+    mut q:Query<(Entity,&SunSpike,&mut Transform)>,
+    mut commands:Commands,
+    q_sun:Query<&Transform,With<Sun>>,
+){
+    let Ok(sun_tr)=q_sun.single()else{return};
+    let sp=sun_tr.translation;
+    for(e,spike,mut tr)in q.iter_mut(){
+        let age=time.elapsed_secs()-spike.birth;
+        let progress=(age/spike.life).clamp(0.,1.);
+        let scale=if progress<0.15{progress/0.15}else if progress<0.7{1.}else{1.-(progress-0.7)/0.3};
+        tr.translation=sp+spike.dir*spike.base_radius;
+        tr.look_at(sp,Vec3::Y);
+        tr.scale=Vec3::splat(scale*0.8);
+        if progress>=1.{commands.entity(e).despawn();}
     }
 }
 
