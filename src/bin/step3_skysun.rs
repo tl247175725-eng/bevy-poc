@@ -14,34 +14,13 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
 
-#[derive(ShaderType, Debug, Clone)]
-struct SunUniforms {
-    color_center: LinearRgba,
-    color_edge: LinearRgba,
-    emissive_intensity: f32,
-}
-
+// 最小化测试材质——验证自定义shader管线是否正常
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct SunMaterial {
-    #[uniform(0)] uniforms: SunUniforms,
+struct TestMaterial {
+    #[uniform(0)] color: LinearRgba,
 }
-impl Material for SunMaterial {
-    fn fragment_shader() -> ShaderRef { "shaders/sun_material.wgsl".into() }
-}
-
-#[derive(ShaderType, Debug, Clone)]
-struct MoonUniforms {
-    base_color: LinearRgba,
-    crater_color: LinearRgba,
-    emissive_intensity: f32,
-}
-
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct MoonMaterial {
-    #[uniform(0)] uniforms: MoonUniforms,
-}
-impl Material for MoonMaterial {
-    fn fragment_shader() -> ShaderRef { "shaders/moon_material.wgsl".into() }
+impl Material for TestMaterial {
+    fn fragment_shader() -> ShaderRef { ShaderRef::Default }
 }
 
 // ── 世界 ──────────────────────────────────────────────
@@ -65,6 +44,7 @@ fn main() {
             primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
         }),
+            MaterialPlugin::<TestMaterial>::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
@@ -150,16 +130,17 @@ fn star_mesh()->Mesh{
 
 // ── 启动 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
+         mut test_mats:ResMut<Assets<TestMaterial>>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：StandardMaterial 隔离测试
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(1.,0.8,0.2),emissive:Color::srgb(1.,0.5,0.1).into(),unlit:true,..default()})),Sun));
+    // 太阳：测试自定义材质管线
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(test_mats.add(TestMaterial{
+        color:LinearRgba::new(1.,0.8,0.2,1.)})),Sun));
     // 月亮
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.8,0.8,0.85),emissive:Color::srgb(0.2,0.2,0.4).into(),unlit:true,..default()})),Moon));
