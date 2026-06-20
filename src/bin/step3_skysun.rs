@@ -4,6 +4,7 @@
 use bevy::asset::RenderAssetUsages;
 use bevy::input::mouse::MouseWheel;
 use bevy::mesh::{Indices, VertexAttributeValues};
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 use bevy::render::render_resource::PrimitiveTopology;
 use bevy::window::WindowResolution;
@@ -34,7 +35,7 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, animate_sun))
         .run();
 }
 
@@ -140,6 +141,48 @@ fn flat_shaded_sphere(r:f32, sub:u32, center_color:[f32;4], edge_color:[f32;4]) 
     m
 }
 
+// ── 3D Simplex 噪声（从 2D 扩展） ──────────────────────
+fn hash3(p:Vec3)->f32{let h=(p.x*12.9898+p.y*78.233+p.z*45.164).sin()*43758.5453;h-h.floor()}
+fn grad3(h:f32,x:f32,y:f32,z:f32)->f32{let h_=h*TAU;let(s,c)=(h_.sin(),h_.cos());let t=1.0-s;s*x*t+c*y*t+(1.0-t)*z}
+fn simplex3d(p:Vec3)->f32{
+    let f=1.0/3.0;let s=(p.x+p.y+p.z)*f;let i=(p.x+s).floor();let j=(p.y+s).floor();let k=(p.z+s).floor();
+    let g=1.0/6.0;let t=(i+j+k)*g;let x0=p.x-i+t;let y0=p.y-j+t;let z0=p.z-k+t;
+    let(i1,j1,k1,i2,j2,k2)=if x0>=y0{if y0>=z0{(1.,0.,0.,1.,1.,0.)}else if x0>=z0{(1.,0.,0.,1.,0.,1.)}else{(0.,0.,1.,1.,0.,1.)}}
+        else{if y0<z0{(0.,0.,1.,0.,1.,1.)}else if x0<z0{(0.,1.,0.,0.,1.,1.)}else{(0.,1.,0.,1.,1.,0.)}};
+    let x1=x0-i1+g;let y1=y0-j1+g;let z1=z0-k1+g;let x2=x0-i2+2.*g;let y2=y0-j2+2.*g;let z2=z0-k2+2.*g;
+    let x3=x0-1.+3.*g;let y3=y0-1.+3.*g;let z3=z0-1.+3.*g;
+    let n0=0.6-x0*x0-y0*y0-z0*z0;let n1=0.6-x1*x1-y1*y1-z1*z1;
+    let n2=0.6-x2*x2-y2*y2-z2*z2;let n3=0.6-x3*x3-y3*y3-z3*z3;
+    let mut v=0.;
+    if n0>0.{let t_=n0*n0;v+=t_*t_*grad3(hash3(Vec3::new(i,j,k)),x0,y0,z0);}
+    if n1>0.{let t_=n1*n1;v+=t_*t_*grad3(hash3(Vec3::new(i+i1,j+j1,k+k1)),x1,y1,z1);}
+    if n2>0.{let t_=n2*n2;v+=t_*t_*grad3(hash3(Vec3::new(i+i2,j+j2,k+k2)),x2,y2,z2);}
+    if n3>0.{let t_=n3*n3;v+=t_*t_*grad3(hash3(Vec3::new(i+1.,j+1.,k+1.)),x3,y3,z3);}
+    v*32.
+}
+
+// ── 独立平面着色法线重算 ────────────────────────────────
+fn recompute_flat_normals(mesh:&mut Mesh){
+    let Some(VertexAttributeValues::Float32x3(pos)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return };
+    let Some(indices) = mesh.indices() else { return };
+    let Indices::U32(idx) = indices else { return };
+    let mut normals = vec![[0.0f32,0.,0.];pos.len()];
+    for t in idx.chunks(3){
+        if t.len()<3{continue}
+        let p0=Vec3::from(pos[t[0]as usize]);let p1=Vec3::from(pos[t[1]as usize]);let p2=Vec3::from(pos[t[2]as usize]);
+        let n=(p1-p0).cross(p2-p0).normalize();
+        normals[t[0]as usize]=[n.x,n.y,n.z];normals[t[1]as usize]=[n.x,n.y,n.z];normals[t[2]as usize]=[n.x,n.y,n.z];
+    }
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,normals);
+}
+
+// ── 动态太阳组件 ────────────────────────────────────────
+#[derive(Component)]
+struct DynamicSun {
+    original_positions: Vec<Vec3>,
+    max_spike: f32,
+}
+
 // ── 简单 hash 随机 ─────────────────────────────────────
 fn hash(x:f32,y:f32,z:f32)->f32{let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;h-h.floor()}
 
@@ -166,12 +209,8 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：CPU 平面着色 + 顶点色渐变
-    c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(SUN_R,3,
-        [1.0,0.9,0.1,1.0], [0.9,0.25,0.0,1.0]))),
-        MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(1.,0.75,0.15),emissive:Color::srgb(1.,0.5,0.05).into(),
-        perceptual_roughness:0.85,..default()})),Sun));
+    // 太阳：动态 CPU 顶点形变 + HDR 顶点色 + Bloom
+    spawn_dynamic_sun(&mut c,&mut meshes,&mut mats);
     // 月亮：CPU 平面着色 + 灰白渐变
     c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(MOON_R,3,
         [0.85,0.85,0.88,1.0], [0.55,0.55,0.60,1.0]))),
@@ -184,7 +223,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 方向光
     c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()},Transform::default()));
     c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
-    c.spawn((Camera3d::default(),
+    c.spawn((Camera3d::default(),Bloom::default(),
         Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
     c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
     c.insert_resource(DayCycle{tick:800.});
@@ -315,6 +354,70 @@ fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
     c
 }
 fn smoothstep_f(e0:f32,e1:f32,x:f32)->f32{let t=((x-e0)/(e1-e0)).clamp(0.,1.);t*t*(3.-2.*t)}
+
+// ── 动态太阳 spawn ─────────────────────────────────────
+fn spawn_dynamic_sun(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
+    let r=SUN_R;let sub=3;
+    // 生成 icosphere 并提取原始顶点
+    let Ok(base)=Sphere::new(r).mesh().ico(sub)else{return};
+    let Some(VertexAttributeValues::Float32x3(base_pos))=base.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
+    let Some(indices)=base.indices()else{return};
+    let Indices::U32(idx)=indices else {return};
+
+    // 复制顶点实现平面着色
+    let mut new_pos=vec![];let mut new_nor=vec![];let mut new_col=vec![];let mut new_idx=vec![];
+    let mut orig=vec![];
+    for t in idx.chunks(3){
+        if t.len()<3{continue}
+        let p0=Vec3::from(base_pos[t[0]as usize]);let p1=Vec3::from(base_pos[t[1]as usize]);let p2=Vec3::from(base_pos[t[2]as usize]);
+        let n=(p1-p0).cross(p2-p0).normalize();
+        let bi=new_pos.len()as u32;
+        for &vi in t{
+            new_pos.push(base_pos[vi as usize]);new_nor.push([n.x,n.y,n.z]);
+            new_col.push([1.,0.8,0.2,1.]);orig.push(Vec3::from(base_pos[vi as usize]));
+        }
+        new_idx.extend_from_slice(&[bi,bi+1,bi+2]);
+    }
+    let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
+    m.insert_attribute(Mesh::ATTRIBUTE_POSITION,new_pos);
+    m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,new_nor);
+    m.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
+    m.insert_indices(Indices::U32(new_idx));
+
+    let mat=StandardMaterial{base_color:Color::WHITE,unlit:false,..default()};
+    commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(mat)),Sun,
+        DynamicSun{original_positions:orig,max_spike:r*0.35}));
+}
+
+// ── 动态太阳动画（每帧 CPU 顶点形变 + HDR 顶点色） ──────
+fn animate_sun(
+    time:Res<Time>,day:Res<DayCycle>,
+    mut q:Query<(&DynamicSun,&Mesh3d)>,
+    mut meshes:ResMut<Assets<Mesh>>,
+){
+    let t=time.elapsed_secs()*0.4; // 太阳风暴游走速度
+    let se=sun_elev(day.tick);
+    for(sun,mesh_handle)in q.iter(){
+        let Some(mesh)=meshes.get_mut(&mesh_handle.0)else{continue};
+        let Some(VertexAttributeValues::Float32x3(cur_pos))=mesh.attribute(Mesh::ATTRIBUTE_POSITION)else{continue};
+        let mut new_pos=Vec::with_capacity(cur_pos.len());
+        let mut new_col=Vec::with_capacity(cur_pos.len());
+        for (i,orig)in sun.original_positions.iter().enumerate(){
+            let dir=orig.normalize();
+            // 3D Simplex 采样 → 高次幂压制 → 尖刺
+            let freq=2.5;let raw=simplex3d(Vec3::new(dir.x*freq+t,dir.y*freq+t*0.3,dir.z*freq-t*0.3));
+            let spike=((raw+1.)*0.5).powf(7.0);
+            let disp=spike*sun.max_spike*se.max(0.1); // 白天尖刺显著，夜间收缩
+            new_pos.push((*orig+dir*disp).to_array());
+            // HDR 顶点色：核心亮黄→尖刺橙红
+            let tc=(disp/sun.max_spike).clamp(0.,1.);
+            new_col.push([5.-tc*3.,4.-tc*3.5,1.-tc*1.,1.]);
+        }
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,new_pos);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
+        recompute_flat_normals(mesh);
+    }
+}
 
 fn grid_mesh()->Mesh{
     let mut v=vec![];let mut i=vec![];let n=GRID as usize;
