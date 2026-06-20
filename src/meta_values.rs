@@ -7,6 +7,7 @@
 //! 铁律：1 day = 2100 tick
 //! 渲染采样率：TICK_SECONDS = 0.5（非游戏内逻辑时间）
 
+#[cfg(feature = "legacy")]
 use crate::tags::{TagBits, tag};
 
 // ===== A 层·必须 =====
@@ -155,6 +156,7 @@ pub fn nutrition_decay_per_tick(metab_rate: f32) -> f32 {
 }
 
 /// 代谢率从 metab 标签推导
+#[cfg(feature = "legacy")]
 pub fn metab_rate_from_tags(tags: &TagBits) -> f32 {
     if tags.has(tag::METAB_HIGH.bit) { return 1.5; }
     if tags.has(tag::METAB_LOW.bit)  { return 0.5; }

@@ -3,8 +3,8 @@
 //! contiguous cells into a rectangle, rendered as a single Mesh2d.
 
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::mesh::RenderAssetUsages;
 
 use crate::grid_render::SimWorld;
 use crate::terrain::terrain_at;

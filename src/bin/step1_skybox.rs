@@ -4,8 +4,10 @@
 use bevy::color::Srgba;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::window::WindowResolution;
+use bevy::asset::RenderAssetUsages;
+use bevy::mesh::{Indices, VertexAttributeValues};
+use bevy::render::render_resource::PrimitiveTopology;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 世界尺度 ──────────────────────────────────────────
@@ -28,7 +30,7 @@ fn main() {
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Step 1 — 天空盒（昼夜）".into(),
-                resolution: (1280., 720.).into(),
+                resolution: WindowResolution::new(1280, 720),
                 ..default()
             }),
             ..default()
@@ -140,9 +142,10 @@ fn setup(
     ));
 
     // 环境光（模拟天空散射——夜晚暗、白天亮）
-    commands.insert_resource(AmbientLight {
+    commands.insert_resource(GlobalAmbientLight {
         color: Color::srgb(0.3, 0.4, 0.6),
         brightness: 800.0,
+        affects_lightmapped_meshes: false,
     });
 
     // 透视相机——看向棋盘中心
@@ -186,7 +189,7 @@ fn sun_elevation(tick: f32) -> f32 {
 fn sun_light_update(
     day: Res<DayCycle>,
     mut q_sun: Query<(&mut DirectionalLight, &mut Transform), With<SunLight>>,
-    mut ambient: ResMut<AmbientLight>,
+    mut ambient: ResMut<GlobalAmbientLight>,
 ) {
     let elev = sun_elevation(day.tick);
     let dir = sun_dir(day.tick);
@@ -204,7 +207,7 @@ fn sun_light_update(
         (0.3, 0.4, 0.7, 200.0)
     };
 
-    if let Ok((mut light, mut transform)) = q_sun.get_single_mut() {
+    if let Ok((mut light, mut transform)) = q_sun.single_mut() {
         light.color = Color::srgb(r, g, b);
         light.illuminance = bright;
         transform.look_to(-dir, Vec3::Y);
@@ -222,7 +225,7 @@ fn sky_color_update(
 ) {
     let elev = sun_elevation(day.tick);
     let sun = sun_dir(day.tick);
-    let Ok(mesh_handle) = q_sky.get_single() else { return };
+    let Ok(mesh_handle) = q_sky.single() else { return };
     let Some(mesh) = meshes.get_mut(mesh_handle) else { return };
 
     let Some(VertexAttributeValues::Float32x3(positions)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return };
@@ -269,14 +272,14 @@ fn camera_orbit(
     mut cam: ResMut<OrbitCam>,
     mut q_camera: Query<&mut Transform, With<Camera3d>>,
     mouse: Res<ButtonInput<MouseButton>>,
-    mut scroll: EventReader<MouseWheel>,
-    mut motion: EventReader<MouseMotion>,
+    mut scroll: MessageReader<MouseWheel>,
+    mut motion: MessageReader<MouseMotion>,
     windows: Query<&Window>,
     keys: Res<ButtonInput<KeyCode>>,
     mut day: ResMut<DayCycle>,
 ) {
-    let Ok(mut cam_tr) = q_camera.get_single_mut() else { return };
-    let Ok(window) = windows.get_single() else { return };
+    let Ok(mut cam_tr) = q_camera.single_mut() else { return };
+    let Ok(window) = windows.single() else { return };
 
     // 滚轮缩放
     for ev in scroll.read() {

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::mesh::RenderAssetUsages;
 
 // ── 天空盒半球 mesh ──────────────────────────────────────────
 
@@ -61,7 +61,7 @@ pub fn apply_sun(mesh: &mut Mesh, sun_dir: Vec3) {
 /// 冷白色月亮光晕，phase 0=新月 0.5=满月 1.0→新月。
 /// 使用双盘偏移模拟月相：亮盘 + 偏移阴影盘重叠产生盈亏效果。
 pub fn apply_moon(mesh: &mut Mesh, moon_dir: Vec3, phase: f32) {
-    use bevy::render::mesh::VertexAttributeValues;
+    use bevy::mesh::VertexAttributeValues;
 
     let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         Some(VertexAttributeValues::Float32x3(p)) => p.clone(),
@@ -121,7 +121,7 @@ fn apply_light_disk(
     outer_radius: f32,
     inner_radius: f32,
 ) {
-    use bevy::render::mesh::VertexAttributeValues;
+    use bevy::mesh::VertexAttributeValues;
 
     let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         Some(VertexAttributeValues::Float32x3(p)) => p.clone(),
@@ -152,7 +152,7 @@ fn apply_light_disk(
 const STAR_COUNT: usize = 200;
 
 pub fn apply_stars(mesh: &mut Mesh, seed: u64) {
-    use bevy::render::mesh::VertexAttributeValues;
+    use bevy::mesh::VertexAttributeValues;
 
     let colors = match mesh.attribute_mut(Mesh::ATTRIBUTE_COLOR) {
         Some(VertexAttributeValues::Float32x4(c)) => c,
@@ -224,7 +224,7 @@ pub fn skybox_system(
 // ── 重置为初始天空渐变 ───────────────────────────────────────
 
 fn reset_colors(mesh: &mut Mesh, turbidity: f32) {
-    use bevy::render::mesh::VertexAttributeValues;
+    use bevy::mesh::VertexAttributeValues;
 
     let positions = match mesh.attribute(Mesh::ATTRIBUTE_POSITION) {
         Some(VertexAttributeValues::Float32x3(p)) => p.clone(),

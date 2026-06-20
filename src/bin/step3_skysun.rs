@@ -2,12 +2,14 @@
 //! cargo run --bin step3_skysun
 
 use bevy::color::Srgba;
-use bevy::core_pipeline::bloom::BloomSettings;
 use bevy::input::mouse::MouseWheel;
+use bevy::asset::RenderAssetUsages;
+use bevy::mesh::{Indices, VertexAttributeValues};
+use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
-use bevy::render::render_asset::RenderAssetUsages;
-use bevy::render::render_resource::{AsBindGroup, ShaderRef, ShaderType};
+use bevy::window::WindowResolution;
+use bevy::render::render_resource::{AsBindGroup, PrimitiveTopology, ShaderType};
+use bevy::shader::ShaderRef;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
@@ -60,7 +62,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: (1280.,720.).into(), ..default() }),
+            primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
         }),
             MaterialPlugin::<SunMaterial>::default(),
@@ -85,12 +87,12 @@ fn main() {
 
 fn orbit_camera(
     mut oc: ResMut<OC>, mut qc: Query<&mut Transform, With<Camera3d>>,
-    btn: Res<ButtonInput<MouseButton>>, mut scr: EventReader<MouseWheel>,
-    mut motion: EventReader<bevy::input::mouse::MouseMotion>,
+    btn: Res<ButtonInput<MouseButton>>, mut scr: MessageReader<MouseWheel>,
+    mut motion: MessageReader<bevy::input::mouse::MouseMotion>,
     keys: Res<ButtonInput<KeyCode>>, wq: Query<&Window>, mut day: ResMut<DayCycle>,
 ) {
-    let Ok(mut t) = qc.get_single_mut() else { return };
-    let Ok(w) = wq.get_single() else { return };
+    let Ok(mut t) = qc.single_mut() else { return };
+    let Ok(w) = wq.single() else { return };
     let Some(_cursor) = w.cursor_position() else { return };
     let mut dx=0.0f32; let mut dy=0.0f32;
     for ev in motion.read() { dx+=ev.delta.x; dy+=ev.delta.y; }
@@ -171,9 +173,9 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
         base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
     // 方向光
     c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()},Transform::default()));
-    c.insert_resource(AmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.});
-    c.spawn((Camera3d::default(),Camera{hdr:true,..default()},
-        BloomSettings::default(),Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
+    c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
+    c.spawn((Camera3d::default(),Bloom::default(),
+        Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
     c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
     c.insert_resource(DayCycle{tick:800.});
 }
@@ -182,7 +184,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
 
 fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
     let sf=fade(sun_elev(day.tick));
-    if let Ok(mut t)=q.get_single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
+    if let Ok(mut t)=q.single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
 }
 fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
     let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
@@ -192,13 +194,13 @@ fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Visibility,With<StarField>>){
     let se=sun_elev(day.tick);
     // 太阳低于地平线→星星可见，高于一定角度→隐藏
     let visible = se < 0.1;
-    if let Ok(mut v)=q.get_single_mut(){
+    if let Ok(mut v)=q.single_mut(){
         *v = if visible { Visibility::Visible } else { Visibility::Hidden };
     }
 }
-fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<AmbientLight>){
+fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<GlobalAmbientLight>){
     let se=sun_elev(day.tick); let sp=sun_pos(day.tick);
-    if let Ok((mut l,mut t))=q.get_single_mut(){
+    if let Ok((mut l,mut t))=q.single_mut(){
         let dir=(Vec3::new(WH,0.,WH)-sp).normalize();
         l.color=if se>0.{Color::srgb(1.,0.7+se*0.3,0.35+se*0.45)}else{Color::srgb(0.3,0.35,0.65)};
         l.illuminance=if se>0.{1500.+se*6500.}else{150.}; t.look_to(dir,Vec3::Y);
@@ -220,7 +222,7 @@ fn sky_mesh()->Mesh{
 }
 
 fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Assets<Mesh>>){
-    let Ok(h)=q.get_single()else{return};let Some(m)=meshes.get_mut(h)else{return};
+    let Ok(h)=q.single()else{return};let Some(m)=meshes.get_mut(h)else{return};
     let Some(VertexAttributeValues::Float32x3(pos))=m.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
     let se=sun_elev(day.tick); let sd=sun_dir(day.tick);
     let t=time.elapsed_secs();

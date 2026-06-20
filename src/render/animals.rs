@@ -5,8 +5,8 @@
 //! as vertex colors so no material or texture is required.
 
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::mesh::{Indices, PrimitiveTopology};
+use bevy::mesh::RenderAssetUsages;
 
 // ═══════════════════════════════════════════════════════════════
 //  Color palette

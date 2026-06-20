@@ -23,12 +23,15 @@ path = "src/bin/step2_grid.rs"
 name = "step3_skysun"
 path = "src/bin/step3_skysun.rs"
 
+[features]
+legacy = []
+
 [profile.test]
 opt-level = 2
 
 [dependencies]
-bevy = { version = "0.15", features = ["bevy_remote"] }
-bevy_egui = "0.31"
+bevy = { version = "0.18", features = ["3d", "bevy_remote"] }
+bevy_egui = "0.39"
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 smallvec = "1.13"

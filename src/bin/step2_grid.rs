@@ -1,11 +1,13 @@
 //! Step 2: 全景天空 + 64x64x4 线框棋盘
 //! cargo run --bin step2_grid
 
+use bevy::asset::RenderAssetUsages;
 use bevy::color::Srgba;
 use bevy::input::mouse::MouseWheel;
+use bevy::mesh::{Indices, VertexAttributeValues};
 use bevy::prelude::*;
-use bevy::render::mesh::{Indices, PrimitiveTopology, VertexAttributeValues};
-use bevy::render::render_asset::RenderAssetUsages;
+use bevy::render::render_resource::PrimitiveTopology;
+use bevy::window::WindowResolution;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 世界常量 ───────────────────────────────────────────
@@ -22,7 +24,7 @@ const SUN_A: f32 = TAU / DAY_TICKS;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window { title: "Step 2 — 棋盘".into(), resolution: (1280.,720.).into(), ..default() }),
+            primary_window: Some(Window { title: "Step 2 — 棋盘".into(), resolution: WindowResolution::new(1280, 720), ..default() }),
             ..default()
         }))
         .insert_resource(ClearColor(Color::BLACK))
@@ -40,14 +42,14 @@ fn orbit_camera(
     mut oc: ResMut<OC>,
     mut qc: Query<&mut Transform, With<Camera3d>>,
     btn: Res<ButtonInput<MouseButton>>,
-    mut scr: EventReader<MouseWheel>,
-    mut motion: EventReader<bevy::input::mouse::MouseMotion>,
+    mut scr: MessageReader<MouseWheel>,
+    mut motion: MessageReader<bevy::input::mouse::MouseMotion>,
     keys: Res<ButtonInput<KeyCode>>,
     wq: Query<&Window>,
     mut day: ResMut<DayCycle>,
 ) {
-    let Ok(mut t) = qc.get_single_mut() else { return };
-    let Ok(w) = wq.get_single() else { return };
+    let Ok(mut t) = qc.single_mut() else { return };
+    let Ok(w) = wq.single() else { return };
     let Some(cursor) = w.cursor_position() else { return };
 
     // 鼠标 delta
@@ -164,7 +166,7 @@ fn setup(mut c: Commands, mut meshes: ResMut<Assets<Mesh>>, mut mats: ResMut<Ass
     c.spawn((Mesh3d(meshes.add(grid_mesh())), MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})), Transform::default()));
     c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()}, Transform::default()));
-    c.insert_resource(AmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.});
+    c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
     c.spawn((Camera3d::default(), Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
     c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WORLD_SIZE*0.8,focus:Vec3::new(WH,0.,WH)});
     c.insert_resource(DayCycle{tick:800.});
@@ -176,7 +178,7 @@ fn sun_elev(t: f32) -> f32 { (t * SUN_A).sin() }
 fn sun_dir(t: f32) -> Vec3 { let a = t * SUN_A; Vec3::new(a.cos(), a.sin(), 0.0) }
 
 fn sky_tick(day: Res<DayCycle>, q: Query<&Mesh3d,With<Sky>>, mut meshes: ResMut<Assets<Mesh>>) {
-    let Ok(h)=q.get_single() else{return}; let Some(m)=meshes.get_mut(h) else{return};
+    let Ok(h)=q.single() else{return}; let Some(m)=meshes.get_mut(h) else{return};
     let Some(VertexAttributeValues::Float32x3(pos))=m.attribute(Mesh::ATTRIBUTE_POSITION) else{return};
     let elev=sun_elev(day.tick); let sun=sun_dir(day.tick);
     let mut colors=Vec::with_capacity(pos.len());
@@ -193,9 +195,9 @@ fn sky_tick(day: Res<DayCycle>, q: Query<&Mesh3d,With<Sky>>, mut meshes: ResMut<
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
 }
 
-fn sun_tick(day: Res<DayCycle>, mut q: Query<(&mut DirectionalLight,&mut Transform)>, mut amb: ResMut<AmbientLight>) {
+fn sun_tick(day: Res<DayCycle>, mut q: Query<(&mut DirectionalLight,&mut Transform)>, mut amb: ResMut<GlobalAmbientLight>) {
     let elev=sun_elev(day.tick); let dir=sun_dir(day.tick);
-    if let Ok((mut l,mut t))=q.get_single_mut() {
+    if let Ok((mut l,mut t))=q.single_mut() {
         l.color=if elev>0.{Color::srgb(1.,0.7+elev*0.3,0.35+elev*0.45)}else{Color::srgb(0.3,0.35,0.65)};
         l.illuminance=if elev>0.{1500.+elev*6500.}else{150.}; t.look_to(-dir,Vec3::Y);
     }
