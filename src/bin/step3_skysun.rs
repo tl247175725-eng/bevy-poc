@@ -35,7 +35,7 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, spike_spawn, spike_lifecycle))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, sun_fresnel_update, spike_spawn, spike_lifecycle))
         .run();
 }
 
@@ -355,7 +355,14 @@ fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
 }
 fn smoothstep_f(e0:f32,e1:f32,x:f32)->f32{let t=((x-e0)/(e1-e0)).clamp(0.,1.);t*t*(3.-2.*t)}
 
-// ── 静态太阳球体（Fresnel 顶点色 + unlit） ──────────────
+// ── 太阳球体（每帧 CPU Fresnel 顶点色更新） ─────────────
+#[derive(Component)]
+struct SunBody{
+    face_centers: Vec<Vec3>,
+    face_normals: Vec<Vec3>,
+    vert_per_face: usize, // 每面顶点数(3)
+}
+
 fn spawn_sun_body(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
     let r=SUN_R;let sub=3;
     let Ok(base)=Sphere::new(r).mesh().ico(sub)else{return};
@@ -364,17 +371,17 @@ fn spawn_sun_body(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&
     let Indices::U32(idx)=indices else {return};
 
     let mut new_pos=vec![];let mut new_nor=vec![];let mut new_col=vec![];let mut new_idx=vec![];
+    let mut centers=vec![];let mut fnorms=vec![];
     for t in idx.chunks(3){
         if t.len()<3{continue}
         let p0=Vec3::from(base_pos[t[0]as usize]);let p1=Vec3::from(base_pos[t[1]as usize]);let p2=Vec3::from(base_pos[t[2]as usize]);
         let n=(p1-p0).cross(p2-p0).normalize();
+        let center=(p0+p1+p2)/3.0; // 面中心（局部坐标）
         let bi=new_pos.len()as u32;
-        // CPU 端 Fresnel：面法线越接近视线方向(0,0,1) → 越亮（球心），越偏 → 越暗（边缘）
-        let fresnel=(1.0-n.z.abs()).powf(2.5).clamp(0.,1.);
-        let r_col=2.5-fresnel*1.8;let g=2.0-fresnel*1.8;let b_col=0.5-fresnel*0.5;
+        centers.push(center);fnorms.push(n);
         for &vi in t{
             new_pos.push(base_pos[vi as usize]);new_nor.push([n.x,n.y,n.z]);
-            new_col.push([r_col,g,b_col,1.]);
+            new_col.push([2.5,0.4,0.,1.]); // 默认边缘色
         }
         new_idx.extend_from_slice(&[bi,bi+1,bi+2]);
     }
@@ -384,7 +391,34 @@ fn spawn_sun_body(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
     m.insert_indices(Indices::U32(new_idx));
     commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::WHITE,unlit:true,..default()})),Sun));
+        base_color:Color::WHITE,unlit:true,..default()})),Sun,
+        SunBody{face_centers:centers,face_normals:fnorms,vert_per_face:3}));
+}
+
+// ── 每帧更新太阳 Fresnel（相机位置驱动） ──────────────
+fn sun_fresnel_update(
+    q_cam:Query<&Transform,With<Camera3d>>,
+    q_sun:Query<(&SunBody,&Mesh3d,Option<&Transform>)>,
+    mut meshes:ResMut<Assets<Mesh>>,
+){
+    let Ok(cam_tr)=q_cam.single()else{return};
+    let cam_pos=cam_tr.translation;
+    for(body,mesh_handle,sun_tr)in q_sun.iter(){
+        let Some(mesh)=meshes.get_mut(&mesh_handle.0)else{continue};
+        // 太阳世界位置
+        let sun_pos=sun_tr.map(|t|t.translation).unwrap_or(Vec3::new(WH,0.,WH));
+        let mut new_col=Vec::with_capacity(body.face_centers.len()*body.vert_per_face);
+        for (center,n)in body.face_centers.iter().zip(body.face_normals.iter()){
+            let world_center=sun_pos+*center;
+            let view_dir=(cam_pos-world_center).normalize();
+            // Fresnel: 正对视点=0(亮黄), 边缘=1(暗橙红)
+            let fresnel=(1.0-view_dir.dot(*n).abs()).powf(2.5).clamp(0.,1.);
+            // 中心亮黄白 4.0,2.0,0 → 边缘深橙 2.5,0.4,0
+            let col=[4.0-fresnel*1.5,2.0-fresnel*1.6,fresnel*0.05,1.];
+            for _ in 0..body.vert_per_face{new_col.push(col);}
+        }
+        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
+    }
 }
 
 // ── 尖刺锥体 mesh ──────────────────────────────────────
