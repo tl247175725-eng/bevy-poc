@@ -1,4 +1,4 @@
-//! Step 3: 天空 + 棋盘 + 太阳/月亮/星星
+//! Step 3: 天空 + 棋盘 + 太阳(实体组合) + 月亮 + 星星
 //! cargo run --bin step3_skysun
 
 use bevy::asset::RenderAssetUsages;
@@ -10,22 +10,18 @@ use bevy::render::render_resource::PrimitiveTopology;
 use bevy::window::WindowResolution;
 use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
-// ── 自定义材质 ─────────────────────────────────────────
-
-
 // ── 世界 ──────────────────────────────────────────────
 const GRID: u32 = 64; const CELL: f32 = 158.0;
 const WS: f32 = GRID as f32 * CELL; const WH: f32 = WS * 0.5;
-const LAYERS: u32 = 4; const LH: f32 = CELL;
 const SKY_R: f32 = 15000.0;
 const DAY_TICKS: f32 = 2100.0;
 const TICK_TO_ANGLE: f32 = TAU / DAY_TICKS;
 
 // ── 日月轨道 ──────────────────────────────────────────
-const ORBIT_R: f32 = WS * 0.65; // 轨道半径，比棋盘大
+const ORBIT_R: f32 = WS * 0.65;
 const SUN_R: f32 = 540.0;
 const MOON_R: f32 = 300.0;
-const HORIZON_CUTOFF: f32 = 0.04; // sin(elev) < 此值 → 渐隐
+const HORIZON_CUTOFF: f32 = 0.04;
 
 fn main() {
     App::new()
@@ -35,7 +31,7 @@ fn main() {
         }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, sun_fresnel_update, spike_spawn, spike_lifecycle))
+        .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light, sun_spin, spike_breathe))
         .run();
 }
 
@@ -47,8 +43,10 @@ fn main() {
 #[derive(Component)] struct Sun;
 #[derive(Component)] struct Moon;
 #[derive(Component)] struct StarField;
+#[derive(Component)] struct SunSpike { phase: f32, base_scale: f32 }
+#[derive(Component)] struct SunBase;
 
-// ── 相机（同 step2） ──────────────────────────────────
+// ── 相机 ──────────────────────────────────────────────
 
 fn orbit_camera(
     mut oc: ResMut<OC>, mut qc: Query<&mut Transform, With<Camera3d>>,
@@ -57,8 +55,7 @@ fn orbit_camera(
     keys: Res<ButtonInput<KeyCode>>, wq: Query<&Window>, mut day: ResMut<DayCycle>,
 ) {
     let Ok(mut t) = qc.single_mut() else { return };
-    let Ok(w) = wq.single() else { return };
-    let Some(_cursor) = w.cursor_position() else { return };
+    let Ok(_w) = wq.single() else { return };
     let mut dx=0.0f32; let mut dy=0.0f32;
     for ev in motion.read() { dx+=ev.delta.x; dy+=ev.delta.y; }
     for ev in scr.read() { oc.radius=(oc.radius - ev.y*oc.radius*0.1).clamp(300.,SKY_R*0.85); }
@@ -73,7 +70,7 @@ fn orbit_camera(
     if keys.pressed(KeyCode::KeyW){oc.pitch=(oc.pitch+0.03).min(1.5);}
     if keys.pressed(KeyCode::KeyS){oc.pitch=(oc.pitch-0.03).max(-1.5);}
     let lk=[KeyCode::Digit1,KeyCode::Digit2,KeyCode::Digit3,KeyCode::Digit4];
-    for i in 0..4{if keys.just_pressed(lk[i]){oc.focus=Vec3::new(WH,LH*(i+1)as f32*0.5,WH);oc.pitch=0.4;oc.radius=LH*(i+1)as f32*3.;}}
+    for i in 0..4{if keys.just_pressed(lk[i]){oc.focus=Vec3::new(WH,0.,WH);oc.pitch=0.4;oc.radius=WS*0.5;}}
     if keys.just_pressed(KeyCode::KeyR){oc.yaw=-2.3;oc.pitch=0.55;oc.radius=WS*0.8;oc.focus=Vec3::new(WH,0.,WH);}
     if keys.pressed(KeyCode::ArrowRight){day.tick=(day.tick+4.)%DAY_TICKS;}
     if keys.pressed(KeyCode::ArrowLeft){day.tick=(day.tick-4.+DAY_TICKS)%DAY_TICKS;}
@@ -85,179 +82,133 @@ fn orbit_camera(
 fn spherical(yaw:f32,pitch:f32,r:f32)->Vec3{Vec3::new(r*pitch.cos()*yaw.sin(),r*pitch.sin(),r*pitch.cos()*yaw.cos())}
 
 // ── 日月轨道 ──────────────────────────────────────────
+
 fn sun_pos(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE;Vec3::new(WH+ORBIT_R*a.cos(),ORBIT_R*a.sin().max(-ORBIT_R*0.3),WH)}
 fn moon_pos(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE+PI;Vec3::new(WH+ORBIT_R*a.cos(),ORBIT_R*a.sin().max(-ORBIT_R*0.3),WH)}
 fn sun_elev(tick:f32)->f32{(tick*TICK_TO_ANGLE).sin()}
-fn sun_dir(tick:f32)->Vec3{let a=tick*TICK_TO_ANGLE;Vec3::new(a.cos(),a.sin(),0.)}
-fn moon_elev(tick:f32)->f32{((tick*TICK_TO_ANGLE)+PI).sin()}
-
 fn fade(elev:f32)->f32{((elev-HORIZON_CUTOFF)/HORIZON_CUTOFF*2.).clamp(0.,1.)}
 
-// ── CPU 平面着色球体（Flat Shading 无 shader） ──────────
-fn flat_shaded_sphere(r:f32, sub:u32, center_color:[f32;4], edge_color:[f32;4]) -> Mesh {
-    let Ok(base) = Sphere::new(r).mesh().ico(sub) else { return Sphere::new(r).mesh().build() };
-    let Some(VertexAttributeValues::Float32x3(pos)) = base.attribute(Mesh::ATTRIBUTE_POSITION) else { return base.into() };
-    let Some(indices) = base.indices() else { return base.into() };
-    let Indices::U32(idx) = indices else { return base.into() };
-
-    let mut new_pos = Vec::new();
-    let mut new_nor = Vec::new();
-    let mut new_col = Vec::new();
-    let mut new_idx = Vec::new();
-
-    // 每个三角形独立顶点 → 平面着色
-    for t in idx.chunks(3) {
-        if t.len() < 3 { continue; }
-        let p0 = Vec3::from(pos[t[0] as usize]);
-        let p1 = Vec3::from(pos[t[1] as usize]);
-        let p2 = Vec3::from(pos[t[2] as usize]);
-        let face_normal = (p1 - p0).cross(p2 - p0).normalize();
-        // 面的中心方向（用于颜色渐变）
-        let face_center = (p0 + p1 + p2) / 3.0;
-        let facing = face_center.normalize();
-        let gradient = (facing.y.abs() * 0.5 + 0.5).clamp(0.0, 1.0);
-        let col = [
-            center_color[0] * gradient + edge_color[0] * (1.0 - gradient),
-            center_color[1] * gradient + edge_color[1] * (1.0 - gradient),
-            center_color[2] * gradient + edge_color[2] * (1.0 - gradient),
-            1.0,
-        ];
-        let base_idx = new_pos.len() as u32;
-        for &vi in t {
-            new_pos.push(pos[vi as usize]);
-            new_nor.push([face_normal.x, face_normal.y, face_normal.z]);
-            new_col.push(col);
-        }
-        new_idx.push(base_idx);
-        new_idx.push(base_idx + 1);
-        new_idx.push(base_idx + 2);
+fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
+    let sf=fade(sun_elev(day.tick)); let sp=sun_pos(day.tick);
+    for mut t in q.iter_mut(){t.translation=sp;t.scale=Vec3::splat(sf);}
+}
+fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
+    let mf=fade(((day.tick*TICK_TO_ANGLE)+PI).sin()); let mp=moon_pos(day.tick);
+    for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
+}
+fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Visibility,With<StarField>>){
+    if let Ok(mut v)=q.single_mut(){*v=if sun_elev(day.tick)<0.1{Visibility::Visible}else{Visibility::Hidden};}
+}
+fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<GlobalAmbientLight>){
+    let se=sun_elev(day.tick); let sp=sun_pos(day.tick);
+    if let Ok((mut l,mut t))=q.single_mut(){
+        l.color=if se>0.{Color::srgb(1.,0.7+se*0.3,0.35+se*0.45)}else{Color::srgb(0.3,0.35,0.65)};
+        l.illuminance=if se>0.{1500.+se*6500.}else{150.};
+        t.look_to((Vec3::new(WH,0.,WH)-sp).normalize(),Vec3::Y);
     }
-
-    let mut m = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
-    m.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_pos);
-    m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, new_nor);
-    m.insert_attribute(Mesh::ATTRIBUTE_COLOR, new_col);
-    m.insert_indices(Indices::U32(new_idx));
-    m
+    amb.brightness=if se>0.{150.+se*400.}else{60.};
 }
 
-// ── 3D Simplex 噪声（从 2D 扩展） ──────────────────────
-fn hash3(p:Vec3)->f32{let h=(p.x*12.9898+p.y*78.233+p.z*45.164).sin()*43758.5453;h-h.floor()}
-fn grad3(h:f32,x:f32,y:f32,z:f32)->f32{let h_=h*TAU;let(s,c)=(h_.sin(),h_.cos());let t=1.0-s;s*x*t+c*y*t+(1.0-t)*z}
-fn simplex3d(p:Vec3)->f32{
-    let f=1.0/3.0;let s=(p.x+p.y+p.z)*f;let i=(p.x+s).floor();let j=(p.y+s).floor();let k=(p.z+s).floor();
-    let g=1.0/6.0;let t=(i+j+k)*g;let x0=p.x-i+t;let y0=p.y-j+t;let z0=p.z-k+t;
-    let(i1,j1,k1,i2,j2,k2)=if x0>=y0{if y0>=z0{(1.,0.,0.,1.,1.,0.)}else if x0>=z0{(1.,0.,0.,1.,0.,1.)}else{(0.,0.,1.,1.,0.,1.)}}
-        else{if y0<z0{(0.,0.,1.,0.,1.,1.)}else if x0<z0{(0.,1.,0.,0.,1.,1.)}else{(0.,1.,0.,1.,1.,0.)}};
-    let x1=x0-i1+g;let y1=y0-j1+g;let z1=z0-k1+g;let x2=x0-i2+2.*g;let y2=y0-j2+2.*g;let z2=z0-k2+2.*g;
-    let x3=x0-1.+3.*g;let y3=y0-1.+3.*g;let z3=z0-1.+3.*g;
-    let n0=0.6-x0*x0-y0*y0-z0*z0;let n1=0.6-x1*x1-y1*y1-z1*z1;
-    let n2=0.6-x2*x2-y2*y2-z2*z2;let n3=0.6-x3*x3-y3*y3-z3*z3;
-    let mut v=0.;
-    if n0>0.{let t_=n0*n0;v+=t_*t_*grad3(hash3(Vec3::new(i,j,k)),x0,y0,z0);}
-    if n1>0.{let t_=n1*n1;v+=t_*t_*grad3(hash3(Vec3::new(i+i1,j+j1,k+k1)),x1,y1,z1);}
-    if n2>0.{let t_=n2*n2;v+=t_*t_*grad3(hash3(Vec3::new(i+i2,j+j2,k+k2)),x2,y2,z2);}
-    if n3>0.{let t_=n3*n3;v+=t_*t_*grad3(hash3(Vec3::new(i+1.,j+1.,k+1.)),x3,y3,z3);}
-    v*32.
+// ── 太阳实体组合 ──────────────────────────────────────
+
+fn cone_mesh(h:f32,r:f32)->Mesh{
+    let mut pos=vec![];let mut nor=vec![];let mut idx=vec![];
+    let n=4; // 四面锥
+    pos.push([0.,-h*0.1,0.]); // 底面中心
+    for i in 0..=n{let a=i as f32/n as f32*TAU;pos.push([r*a.cos(),-h*0.1,r*a.sin()]);}
+    pos.push([0.,h,0.]); // 顶点
+    let ai=pos.len()as u32-1;
+    for i in 1..=n{idx.extend_from_slice(&[ai,(i-1)as u32,i as u32]);}
+    for _ in 0..pos.len(){nor.push([0.,1.,0.]);}
+    let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
+    m.insert_attribute(Mesh::ATTRIBUTE_POSITION,pos);m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,nor);
+    m.insert_indices(Indices::U32(idx));m
 }
 
-// ── 独立平面着色法线重算 ────────────────────────────────
-fn recompute_flat_normals(mesh:&mut Mesh){
-    let Some(VertexAttributeValues::Float32x3(pos)) = mesh.attribute(Mesh::ATTRIBUTE_POSITION) else { return };
-    let Some(indices) = mesh.indices() else { return };
-    let Indices::U32(idx) = indices else { return };
-    let mut normals = vec![[0.0f32,0.,0.];pos.len()];
-    for t in idx.chunks(3){
+fn spawn_sun(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
+    let r=SUN_R;
+    // icosphere 简单构造
+    let Ok(base)=Sphere::new(r).mesh().ico(4)else{return};
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
+    // 复制顶点做 flat shading
+    let Some(VertexAttributeValues::Float32x3(bp))=base.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
+    let Some(indices)=base.indices()else{return};
+    let Indices::U32(bi)=indices else {return};
+    let mut p=vec![];let mut n=vec![];let mut idx=vec![];
+    for t in bi.chunks(3){
         if t.len()<3{continue}
-        let p0=Vec3::from(pos[t[0]as usize]);let p1=Vec3::from(pos[t[1]as usize]);let p2=Vec3::from(pos[t[2]as usize]);
-        let n=(p1-p0).cross(p2-p0).normalize();
-        normals[t[0]as usize]=[n.x,n.y,n.z];normals[t[1]as usize]=[n.x,n.y,n.z];normals[t[2]as usize]=[n.x,n.y,n.z];
+        let p0=Vec3::from(bp[t[0]as usize]);let p1=Vec3::from(bp[t[1]as usize]);let p2=Vec3::from(bp[t[2]as usize]);
+        let fn_=(p1-p0).cross(p2-p0).normalize();
+        let bi_=p.len()as u32;
+        for &vi in t{p.push(bp[vi as usize]);n.push([fn_.x,fn_.y,fn_.z]);}
+        idx.extend_from_slice(&[bi_,bi_+1,bi_+2]);
     }
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,p);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL,n);
+    mesh.insert_indices(Indices::U32(idx));
+
+    // 太阳基体: 暗橙红 + unlit
+    let sun_id = commands.spawn((
+        Mesh3d(meshes.add(mesh)),
+        MeshMaterial3d(mats.add(StandardMaterial{base_color:Color::srgb(2.,0.4,0.),unlit:true,..default()})),
+        Sun, SunBase,
+    )).id();
+
+    // 60个尖刺子实体，随机分布球面
+    for i in 0..60{
+        let phi=i as f32*2.399; // 黄金角分布
+        let theta=(phi*0.5).sin().acos(); // 球面均匀
+        let dir=Vec3::new(theta.sin()*phi.cos(),theta.cos(),theta.sin()*phi.sin()).normalize();
+        let spike_h=r*0.08+((i*37+13)as f32).sin().abs()*r*0.25;
+        let spike_r=r*0.015+((i*53+7)as f32).sin().abs()*r*0.03;
+        let spike_id = commands.spawn((
+            Mesh3d(meshes.add(cone_mesh(spike_h,spike_r))),
+            MeshMaterial3d(mats.add(StandardMaterial{base_color:Color::srgb(1.,0.85,0.4),
+                emissive:Color::srgb(8.,6.,1.).into(),unlit:true,..default()})),
+            Transform::from_translation(r*dir).looking_at(Vec3::ZERO,Vec3::Y),
+            SunSpike{phase:i as f32*0.5+((i*31)as f32).sin(),base_scale:0.6+((i*17)as f32).sin().abs()*0.4},
+        )).id();
+        commands.entity(sun_id).add_child(spike_id);
+    }
 }
 
-// ── 太阳尖刺组件 ────────────────────────────────────────
-#[derive(Component)]
-struct SunSpike { birth: f32, life: f32, base_radius: f32, dir: Vec3 }
-#[derive(Resource)]
-struct SpikeTimer(f32);
+// ── 太阳自转 ──────────────────────────────────────────
+fn sun_spin(time:Res<Time>,mut q:Query<&mut Transform,With<SunBase>>){
+    for mut tr in q.iter_mut(){
+        tr.rotate_local_y(time.delta_secs()*0.03);
+    }
+}
 
-// ── 简单 hash 随机 ─────────────────────────────────────
+// ── 尖刺呼吸（sine缩放，模拟耀斑消长） ────────────────
+fn spike_breathe(time:Res<Time>,mut q:Query<(&SunSpike,&mut Transform)>){
+    let t=time.elapsed_secs();
+    for(spike,mut tr)in q.iter_mut(){
+        let breath=(t*0.6+spike.phase).sin()*0.3+0.85;
+        let s=spike.base_scale*breath;
+        tr.scale=Vec3::new(s,s,s*1.5); // Z轴拉伸=尖刺的"长度"
+    }
+}
+
+// ── 低多边形球 ────────────────────────────────────────
+fn lowpoly_sphere(r:f32,_sub:u32)->Mesh{Sphere::new(r).mesh().build()}
+
+// ── 星星 ──────────────────────────────────────────────
 fn hash(x:f32,y:f32,z:f32)->f32{let h=(x*12.9898+y*78.233+z*45.164).sin()*43758.5453;h-h.floor()}
-
-// ── 星星 mesh（以天空球心为原点） ───────────────────────
 fn star_mesh()->Mesh{
     let mut v=vec![]; let mut idx=vec![];
     for i in 0..600{
         let r=SKY_R*0.98;
         let phi=hash(i as f32,0.,0.)*TAU;
         let theta=(hash(0.,i as f32,0.)*0.7+0.25)*FRAC_PI_2;
-        let x=WH + r*theta.sin()*phi.cos();let y=r*theta.cos();let z=WH + r*theta.sin()*phi.sin();
+        let x=WH+r*theta.sin()*phi.cos();let y=r*theta.cos();let z=WH+r*theta.sin()*phi.sin();
         let a=v.len()as u32;v.push([x,y,z]);idx.push(a);
     }
     let mut m=Mesh::new(PrimitiveTopology::PointList,RenderAssetUsages::default());
     m.insert_attribute(Mesh::ATTRIBUTE_POSITION,v);m.insert_indices(Indices::U32(idx));m
 }
 
-// ── 启动 ──────────────────────────────────────────────
+// ── 天空 ──────────────────────────────────────────────
 
-fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
-    // 天空球
-    c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
-        Transform::from_xyz(WH,0.,WH),Sky));
-    // 线框棋盘
-    c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：静态球体(unlit+Fresnel)+动态尖刺系统
-    spawn_sun_body(&mut c,&mut meshes,&mut mats);
-    // 月亮：CPU 平面着色 + 灰白渐变
-    c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(MOON_R,3,
-        [0.85,0.85,0.88,1.0], [0.55,0.55,0.60,1.0]))),
-        MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(0.78,0.78,0.82),emissive:Color::srgb(0.15,0.15,0.2).into(),
-        perceptual_roughness:0.9,..default()})),Moon));
-    // 星星
-    c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
-    // 方向光
-    c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()},Transform::default()));
-    c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
-    c.spawn((Camera3d::default(),Bloom::default(),
-        Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
-    c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
-    c.insert_resource(DayCycle{tick:800.});
-    c.insert_resource(SpikeTimer(0.));
-}
-
-// ── 日月位置 + 渐显渐隐 ─────────────────────────────
-
-fn sun_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Sun>>){
-    let sf=fade(sun_elev(day.tick));
-    if let Ok(mut t)=q.single_mut(){t.translation=sun_pos(day.tick);t.scale=Vec3::splat(sf);}
-}
-fn moon_move(day:Res<DayCycle>,mut q:Query<&mut Transform,With<Moon>>){
-    let mf=fade(moon_elev(day.tick)); let mp=moon_pos(day.tick);
-    for mut t in q.iter_mut(){t.translation=mp;t.scale=Vec3::splat(mf);}
-}
-fn star_fade(day:Res<DayCycle>,mut q:Query<&mut Visibility,With<StarField>>){
-    let se=sun_elev(day.tick);
-    // 太阳低于地平线→星星可见，高于一定角度→隐藏
-    let visible = se < 0.1;
-    if let Ok(mut v)=q.single_mut(){
-        *v = if visible { Visibility::Visible } else { Visibility::Hidden };
-    }
-}
-fn sun_light(day:Res<DayCycle>,mut q:Query<(&mut DirectionalLight,&mut Transform)>,mut amb:ResMut<GlobalAmbientLight>){
-    let se=sun_elev(day.tick); let sp=sun_pos(day.tick);
-    if let Ok((mut l,mut t))=q.single_mut(){
-        let dir=(Vec3::new(WH,0.,WH)-sp).normalize();
-        l.color=if se>0.{Color::srgb(1.,0.7+se*0.3,0.35+se*0.45)}else{Color::srgb(0.3,0.35,0.65)};
-        l.illuminance=if se>0.{1500.+se*6500.}else{150.}; t.look_to(dir,Vec3::Y);
-    }
-    amb.brightness=if se>0.{150.+se*400.}else{60.};
-}
-
-// ── 天空: 6点颜色渐变 ─────────────────────────────────
 fn sky_mesh()->Mesh{
     let(res,r)=(48u32,SKY_R);let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
     let mut p=vec![];let mut n=vec![];let mut c=vec![];let mut idx=vec![];
@@ -273,233 +224,73 @@ fn sky_mesh()->Mesh{
 fn sky_tick(day:Res<DayCycle>,time:Res<Time>,q:Query<&Mesh3d,With<Sky>>,mut meshes:ResMut<Assets<Mesh>>){
     let Ok(h)=q.single()else{return};let Some(m)=meshes.get_mut(h)else{return};
     let Some(VertexAttributeValues::Float32x3(pos))=m.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
-    let se=sun_elev(day.tick); let sd=sun_dir(day.tick);
+    let se=sun_elev(day.tick); let sd=Vec3::new((day.tick*TICK_TO_ANGLE).cos(),(day.tick*TICK_TO_ANGLE).sin(),0.);
     let t=time.elapsed_secs();
     let mut colors=Vec::with_capacity(pos.len());
     for p in pos{
         let dir=Vec3::new(p[0]-WH,p[1],p[2]-WH).normalize();
         let sky=sky_shader(dir, se, sd);
-        // 云层：Simplex2D噪声，仅在中高空(0.2~0.8)，随时间缓缓飘移
-        let height_mask=smoothstep_f(0.2,0.4,dir.y)*(1.-smoothstep_f(0.7,0.85,dir.y));
-        // 2D 噪声采样 (view_dir.xz 天然是连续球面坐标)
-        let cloud_raw=cloud_fbm(Vec2::new(dir.x*3.+t*0.012, dir.z*3.+t*0.008), se);
-        let cloud=cloud_raw*height_mask;
-        let cloud_vis=smoothstep_f(-0.1,0.2,se); // 夜间消散
-        let c=[(sky[0]*(1.-cloud)+cloud*0.95*cloud_vis).min(1.),
-               (sky[1]*(1.-cloud)+cloud*0.85*cloud_vis).min(1.),
-               (sky[2]*(1.-cloud)+cloud*0.7*cloud_vis).min(1.),1.];
-        colors.push(c);
+        // 云层（可选，保持兼容）
+        let cloud=0.0f32;
+        colors.push([(sky[0]+cloud).min(1.),(sky[1]+cloud*0.85).min(1.),(sky[2]+cloud*0.7).min(1.),1.]);
     }
     m.insert_attribute(Mesh::ATTRIBUTE_COLOR,colors);
 }
 
-// ── Simplex 2D 梯度噪声（比hash噪声平滑，适合云层） ──────
-fn hash2d(x:f32,y:f32)->f32{let h=(x*12.9898+y*78.233).sin()*43758.5453;h-h.floor()}
-fn grad(h:f32,x:f32,y:f32)->f32{let a=h*6.283185;let(s,c)=(a.sin(),a.cos());s*x+c*y}
-fn simplex2d(p:Vec2)->f32{
-    let f=0.3660254;let s=(p.x+p.y)*f;let i=(p.x+s).floor();let j=(p.y+s).floor();
-    let g=0.21132487;let t=(i+j)*g;let x0=p.x-i+t;let y0=p.y-j+t;
-    let(i1,j1)=if x0>y0{(1.,0.)}else{(0.,1.)};
-    let x1=x0-i1+g;let y1=y0-j1+g;let x2=x0-1.+2.*g;let y2=y0-1.+2.*g;
-    let n0=0.5-x0*x0-y0*y0;let n1=0.5-x1*x1-y1*y1;let n2=0.5-x2*x2-y2*y2;
-    let mut v=0.;
-    if n0>0.{let t_=n0*n0;v+=t_*t_*grad(hash2d(i,j),x0,y0);}
-    if n1>0.{let t_=n1*n1;v+=t_*t_*grad(hash2d(i+i1,j+j1),x1,y1);}
-    if n2>0.{let t_=n2*n2;v+=t_*t_*grad(hash2d(i+1.,j+1.),x2,y2);}
-    v*70.
-}
-fn fbm2d(p:Vec2)->f32{
-    let mut v=0.;let mut a=0.5;let mut f=1.;
-    for _ in 0..4{v+=a*simplex2d(p*f);f*=2.3;a*=0.45;}
-    v
-}
-fn cloud_fbm(p:Vec2, sun_elev:f32)->f32{
-    let n=fbm2d(p);
-    let threshold=0.35-sun_elev*0.1;
-    ((n-threshold)/(1.-threshold)).clamp(0.,1.)
-}
-
-/// 天空着色器——时间轴+空间轴双重插值
 fn sky_shader(view_dir:Vec3, sun_elev:f32, sun_dir:Vec3)->[f32;3]{
-    let view_h=view_dir.y.clamp(0.,1.); // 0=地平线,1=天顶
-    let se=sun_elev.clamp(-1.,1.);
-
-    // 三套预设颜色
-    let day_zenith=[0.05,0.2,0.6];    let day_horizon=[0.5,0.7,0.9];
-    let sunset_zenith=[0.1,0.08,0.25]; let sunset_horizon=[1.0,0.35,0.05];
-    let night_zenith=[0.0,0.0,0.02];   let night_horizon=[0.01,0.04,0.08];
-
-    // 权重：三套预设按太阳高度平滑混合
+    let view_h=view_dir.y.clamp(0.,1.);let se=sun_elev.clamp(-1.,1.);
+    // 三套预设
+    let day_zenith=[0.05,0.2,0.6];let day_horizon=[0.5,0.7,0.9];
+    let sunset_zenith=[0.1,0.08,0.25];let sunset_horizon=[1.0,0.35,0.05];
+    let night_zenith=[0.0,0.0,0.02];let night_horizon=[0.01,0.04,0.08];
     let sunset_w=1.0-smoothstep_f(0.0,0.2,se.abs());
-    let day_w=smoothstep_f(0.0,0.25,se);
-    let night_w=smoothstep_f(0.0,0.2,-se);
-
+    let day_w=smoothstep_f(0.0,0.25,se);let night_w=smoothstep_f(0.0,0.2,-se);
     let zenith=[day_zenith[0]*day_w+sunset_zenith[0]*sunset_w+night_zenith[0]*night_w,
                 day_zenith[1]*day_w+sunset_zenith[1]*sunset_w+night_zenith[1]*night_w,
                 day_zenith[2]*day_w+sunset_zenith[2]*sunset_w+night_zenith[2]*night_w];
     let horizon=[day_horizon[0]*day_w+sunset_horizon[0]*sunset_w+night_horizon[0]*night_w,
                  day_horizon[1]*day_w+sunset_horizon[1]*sunset_w+night_horizon[1]*night_w,
                  day_horizon[2]*day_w+sunset_horizon[2]*sunset_w+night_horizon[2]*night_w];
-
-    // 空间插值：天顶↔地平线 (非线性)
     let t=view_h.powf(0.65);
-    let mut c=[zenith[0]*(1.-t)+horizon[0]*t,
-               zenith[1]*(1.-t)+horizon[1]*t,
-               zenith[2]*(1.-t)+horizon[2]*t];
-
-    // 太阳光晕
-    let sun_dot=view_dir.dot(sun_dir).max(0.);
-    let glow=sun_dot.powf(20.)*sunset_w*0.3;
+    let mut c=[zenith[0]*(1.-t)+horizon[0]*t,zenith[1]*(1.-t)+horizon[1]*t,zenith[2]*(1.-t)+horizon[2]*t];
+    let sun_dot=view_dir.dot(sun_dir).max(0.);let glow=sun_dot.powf(20.)*sunset_w*0.3;
     c[0]=(c[0]+glow).min(1.);c[1]=(c[1]+glow*0.6).min(1.);c[2]=(c[2]+glow*0.2).min(1.);
     c
 }
 fn smoothstep_f(e0:f32,e1:f32,x:f32)->f32{let t=((x-e0)/(e1-e0)).clamp(0.,1.);t*t*(3.-2.*t)}
 
-// ── 太阳球体（每帧 CPU Fresnel 顶点色更新） ─────────────
-#[derive(Component)]
-struct SunBody{
-    face_centers: Vec<Vec3>,
-    face_normals: Vec<Vec3>,
-    vert_per_face: usize, // 每面顶点数(3)
-}
-
-fn spawn_sun_body(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mats:&mut ResMut<Assets<StandardMaterial>>){
-    let r=SUN_R;let sub=3;
-    let Ok(base)=Sphere::new(r).mesh().ico(sub)else{return};
-    let Some(VertexAttributeValues::Float32x3(base_pos))=base.attribute(Mesh::ATTRIBUTE_POSITION)else{return};
-    let Some(indices)=base.indices()else{return};
-    let Indices::U32(idx)=indices else {return};
-
-    let mut new_pos=vec![];let mut new_nor=vec![];let mut new_col=vec![];let mut new_idx=vec![];
-    let mut centers=vec![];let mut fnorms=vec![];
-    for t in idx.chunks(3){
-        if t.len()<3{continue}
-        let p0=Vec3::from(base_pos[t[0]as usize]);let p1=Vec3::from(base_pos[t[1]as usize]);let p2=Vec3::from(base_pos[t[2]as usize]);
-        let n=(p1-p0).cross(p2-p0).normalize();
-        let center=(p0+p1+p2)/3.0; // 面中心（局部坐标）
-        let bi=new_pos.len()as u32;
-        centers.push(center);fnorms.push(n);
-        for &vi in t{
-            new_pos.push(base_pos[vi as usize]);new_nor.push([n.x,n.y,n.z]);
-            new_col.push([2.5,0.4,0.,1.]); // 默认边缘色
-        }
-        new_idx.extend_from_slice(&[bi,bi+1,bi+2]);
-    }
-    let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
-    m.insert_attribute(Mesh::ATTRIBUTE_POSITION,new_pos);
-    m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,new_nor);
-    m.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
-    m.insert_indices(Indices::U32(new_idx));
-    commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(StandardMaterial{
-        base_color:Color::WHITE,unlit:true,..default()})),Sun,
-        SunBody{face_centers:centers,face_normals:fnorms,vert_per_face:3}));
-}
-
-// ── 每帧更新太阳 Fresnel（相机位置驱动） ──────────────
-fn sun_fresnel_update(
-    q_cam:Query<&Transform,With<Camera3d>>,
-    q_sun:Query<(&SunBody,&Mesh3d,Option<&Transform>)>,
-    mut meshes:ResMut<Assets<Mesh>>,
-){
-    let Ok(cam_tr)=q_cam.single()else{return};
-    let cam_pos=cam_tr.translation;
-    for(body,mesh_handle,sun_tr)in q_sun.iter(){
-        let Some(mesh)=meshes.get_mut(&mesh_handle.0)else{continue};
-        // 太阳世界位置
-        let sun_pos=sun_tr.map(|t|t.translation).unwrap_or(Vec3::new(WH,0.,WH));
-        let mut new_col=Vec::with_capacity(body.face_centers.len()*body.vert_per_face);
-        for (center,n)in body.face_centers.iter().zip(body.face_normals.iter()){
-            let world_center=sun_pos+*center;
-            let view_dir=(cam_pos-world_center).normalize();
-            // Fresnel: 正对视点=0(亮黄), 边缘=1(暗橙红)
-            let fresnel=(1.0-view_dir.dot(*n).max(0.)).powf(2.5).clamp(0.,1.);
-            // HDR: 中心亮黄白(4.0,3.0,0.5)→边缘深橙(2.5,0.4,0)
-            let col=[4.0-fresnel*1.5,3.0-fresnel*2.6,0.5-fresnel*0.5,1.];
-            for _ in 0..body.vert_per_face{new_col.push(col);}
-        }
-        mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
-    }
-}
-
-// ── 尖刺锥体 mesh ──────────────────────────────────────
-fn spike_mesh(height:f32,base_r:f32)->Mesh{
-    let h=height;let r=base_r;let res=3; // 三角锥
-    let mut pos=vec![];let mut nor=vec![];let mut idx=vec![];
-    // 底面中心 + 底面环 + 顶点
-    pos.push([0.,-h*0.1,0.]); // 底面中心
-    for i in 0..=res{
-        let a=i as f32/res as f32*TAU;
-        pos.push([r*a.cos(),-h*0.1,r*a.sin()]);
-    }
-    pos.push([0.,h,0.]); // 顶点
-    let apex=pos.len()as u32-1;
-    let n=pos.len()as u32;
-    for i in 1..res{idx.extend_from_slice(&[n-2,apex,i,i+1]);} // 底面到顶点
-    idx.extend_from_slice(&[n-2,apex,res as u32,n-2]); // 最后一面
-    for _ in 0..pos.len(){nor.push([0.,1.,0.]);}
-    let mut m=Mesh::new(PrimitiveTopology::TriangleList,RenderAssetUsages::default());
-    m.insert_attribute(Mesh::ATTRIBUTE_POSITION,pos);m.insert_attribute(Mesh::ATTRIBUTE_NORMAL,nor);
-    m.insert_indices(Indices::U32(idx));m
-}
-
-// ── 尖刺生成 ───────────────────────────────────────────
-fn spike_spawn(
-    mut commands:Commands,time:Res<Time>,day:Res<DayCycle>,
-    mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
-    mut timer:ResMut<SpikeTimer>,
-    q_sun:Query<&Transform,With<Sun>>,q_spikes:Query<(),With<SunSpike>>,
-){
-    timer.0-=time.delta_secs();
-    let se=sun_elev(day.tick).max(0.1);
-    if timer.0>0.||q_spikes.iter().count()>=200{return}
-    timer.0=0.08; // 更密集生尖刺
-    let Ok(sun_tr)=q_sun.single()else{return};
-    let sp=sun_tr.translation;
-    let t=time.elapsed_secs()*0.08;
-    // 随机方向采样 3D 噪声 → 只在热点生尖刺
-    for _ in 0..3{ // 每次最多尝试3个方向
-        let dir=Vec3::new((t*0.7+(timer.0*10.).sin()).sin(),(t*0.5+timer.0).sin(),(t*0.6-timer.0).cos()).normalize();
-        let n=simplex3d(Vec3::new(dir.x*8.+t*0.1,dir.y*8.,dir.z*8.-t*0.1));
-        let intensity=((n+1.)*0.5).powf(6.);
-        if intensity>0.2{
-            let h=SUN_R*0.08+SUN_R*0.3*intensity*se;
-            let br=SUN_R*0.015+SUN_R*0.04*intensity;
-            commands.spawn((Mesh3d(meshes.add(spike_mesh(h,br))),
-                MeshMaterial3d(mats.add(StandardMaterial{base_color:Color::srgb(1.,0.85,0.4),
-                emissive:Color::srgb(8.,6.,1.5).into(),unlit:true,..default()})),
-                Transform::from_translation(sp+dir*SUN_R).looking_at(sp,Vec3::Y),
-                SunSpike{birth:time.elapsed_secs(),life:6.0,base_radius:SUN_R,dir}));
-        }
-    }
-}
-
-// ── 尖刺生命周期（生长→保持→缩退→消亡） ────────────────
-fn spike_lifecycle(
-    time:Res<Time>,day:Res<DayCycle>,
-    mut q:Query<(Entity,&SunSpike,&mut Transform)>,
-    mut commands:Commands,
-){
-    let sp=sun_pos(day.tick);
-    for(e,spike,mut tr)in q.iter_mut(){
-        let age=time.elapsed_secs()-spike.birth;
-        let progress=(age/spike.life).clamp(0.,1.);
-        let scale=if progress<0.15{progress/0.15}else if progress<0.7{1.}else{1.-(progress-0.7)/0.3};
-        tr.translation=sp+spike.dir*spike.base_radius;
-        tr.look_at(sp,Vec3::Y);
-        tr.scale=Vec3::splat(scale*0.8);
-        if progress>=1.{commands.entity(e).despawn();}
-    }
-}
+// ── 线框棋盘 ──────────────────────────────────────────
 
 fn grid_mesh()->Mesh{
     let mut v=vec![];let mut i=vec![];let n=GRID as usize;
-    for l in 0..=LAYERS{let y=l as f32*LH;
-        for zi in 0..=n{let z=zi as f32*CELL;let a=v.len() as u32;v.push([0.,y,z]);v.push([WS,y,z]);i.push(a);i.push(a+1);}
-        for xi in 0..=n{let x=xi as f32*CELL;let a=v.len() as u32;v.push([x,y,0.]);v.push([x,y,WS]);i.push(a);i.push(a+1);}
-    }
-    for xi in 0..=n{let x=xi as f32*CELL;
-        for zi in 0..=n{let z=zi as f32*CELL;let a=v.len() as u32;v.push([x,0.,z]);v.push([x,LAYERS as f32*LH,z]);i.push(a);i.push(a+1);}
-    }
+    for zi in 0..=n{let z=zi as f32*CELL;let a=v.len()as u32;v.push([0.,0.,z]);v.push([WS,0.,z]);i.push(a);i.push(a+1);}
+    for xi in 0..=n{let x=xi as f32*CELL;let a=v.len()as u32;v.push([x,0.,0.]);v.push([x,0.,WS]);i.push(a);i.push(a+1);}
     let mut m=Mesh::new(PrimitiveTopology::LineList,RenderAssetUsages::default());
     m.insert_attribute(Mesh::ATTRIBUTE_POSITION,v);m.insert_indices(Indices::U32(i));m
+}
+
+// ── 启动 ──────────────────────────────────────────────
+
+fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>){
+    // 天空球
+    c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
+        Transform::from_xyz(WH,0.,WH),Sky));
+    // 线框棋盘
+    c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
+    // 太阳：实体组合（基体+60尖刺子实体）
+    spawn_sun(&mut c,&mut meshes,&mut mats);
+    // 月亮
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(0.78,0.78,0.82),emissive:Color::srgb(0.15,0.15,0.2).into(),
+        perceptual_roughness:0.9,..default()})),Moon));
+    // 星星
+    c.spawn((Mesh3d(meshes.add(star_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
+        base_color:Color::srgb(1.,1.,1.),unlit:true,..default()})),StarField));
+    // 方向光 + 全局光照 + 相机 + Bloom
+    c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()},Transform::default()));
+    c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
+    c.spawn((Camera3d::default(),Bloom::default(),Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
+    c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
+    c.insert_resource(DayCycle{tick:800.});
 }
