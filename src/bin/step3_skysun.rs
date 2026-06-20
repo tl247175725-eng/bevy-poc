@@ -92,9 +92,52 @@ fn moon_elev(tick:f32)->f32{((tick*TICK_TO_ANGLE)+PI).sin()}
 
 fn fade(elev:f32)->f32{((elev-HORIZON_CUTOFF)/HORIZON_CUTOFF*2.).clamp(0.,1.)}
 
-// ── 低多边形球（Bevy 0.15 自带 Sphere） ────────────────
-fn lowpoly_sphere(r:f32,_sub:u32)->Mesh{
-    Sphere::new(r).mesh().build()
+// ── CPU 平面着色球体（Flat Shading 无 shader） ──────────
+fn flat_shaded_sphere(r:f32, sub:u32, center_color:[f32;4], edge_color:[f32;4]) -> Mesh {
+    let Ok(base) = Sphere::new(r).mesh().ico(sub) else { return Sphere::new(r).mesh().build() };
+    let Some(VertexAttributeValues::Float32x3(pos)) = base.attribute(Mesh::ATTRIBUTE_POSITION) else { return base.into() };
+    let Some(indices) = base.indices() else { return base.into() };
+    let Indices::U32(idx) = indices else { return base.into() };
+
+    let mut new_pos = Vec::new();
+    let mut new_nor = Vec::new();
+    let mut new_col = Vec::new();
+    let mut new_idx = Vec::new();
+
+    // 每个三角形独立顶点 → 平面着色
+    for t in idx.chunks(3) {
+        if t.len() < 3 { continue; }
+        let p0 = Vec3::from(pos[t[0] as usize]);
+        let p1 = Vec3::from(pos[t[1] as usize]);
+        let p2 = Vec3::from(pos[t[2] as usize]);
+        let face_normal = (p1 - p0).cross(p2 - p0).normalize();
+        // 面的中心方向（用于颜色渐变）
+        let face_center = (p0 + p1 + p2) / 3.0;
+        let facing = face_center.normalize();
+        let gradient = (facing.y.abs() * 0.5 + 0.5).clamp(0.0, 1.0);
+        let col = [
+            center_color[0] * gradient + edge_color[0] * (1.0 - gradient),
+            center_color[1] * gradient + edge_color[1] * (1.0 - gradient),
+            center_color[2] * gradient + edge_color[2] * (1.0 - gradient),
+            1.0,
+        ];
+        let base_idx = new_pos.len() as u32;
+        for &vi in t {
+            new_pos.push(pos[vi as usize]);
+            new_nor.push([face_normal.x, face_normal.y, face_normal.z]);
+            new_col.push(col);
+        }
+        new_idx.push(base_idx);
+        new_idx.push(base_idx + 1);
+        new_idx.push(base_idx + 2);
+    }
+
+    let mut m = Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::default());
+    m.insert_attribute(Mesh::ATTRIBUTE_POSITION, new_pos);
+    m.insert_attribute(Mesh::ATTRIBUTE_NORMAL, new_nor);
+    m.insert_attribute(Mesh::ATTRIBUTE_COLOR, new_col);
+    m.insert_indices(Indices::U32(new_idx));
+    m
 }
 
 // ── 简单 hash 随机 ─────────────────────────────────────
@@ -123,12 +166,16 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
+    // 太阳：CPU 平面着色 + 顶点色渐变
+    c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(SUN_R,3,
+        [1.0,0.9,0.1,1.0], [0.9,0.25,0.0,1.0]))),
+        MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(1.,0.75,0.15),emissive:Color::srgb(1.,0.5,0.05).into(),
         perceptual_roughness:0.85,..default()})),Sun));
-    // 月亮
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
+    // 月亮：CPU 平面着色 + 灰白渐变
+    c.spawn((Mesh3d(meshes.add(flat_shaded_sphere(MOON_R,3,
+        [0.85,0.85,0.88,1.0], [0.55,0.55,0.60,1.0]))),
+        MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.78,0.78,0.82),emissive:Color::srgb(0.15,0.15,0.2).into(),
         perceptual_roughness:0.9,..default()})),Moon));
     // 星星
