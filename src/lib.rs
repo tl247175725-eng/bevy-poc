@@ -1,5 +1,6 @@
 pub mod assets_util;
 pub mod axioms;
+pub mod weather;
 pub mod event_registry;
 pub mod capabilities;
 pub mod card_audit;
