@@ -386,32 +386,34 @@ fn spawn_dynamic_sun(commands:&mut Commands,meshes:&mut ResMut<Assets<Mesh>>,mat
 
     let mat=StandardMaterial{base_color:Color::WHITE,unlit:false,..default()};
     commands.spawn((Mesh3d(meshes.add(m)),MeshMaterial3d(mats.add(mat)),Sun,
-        DynamicSun{original_positions:orig,max_spike:r*0.35}));
+        DynamicSun{original_positions:orig,max_spike:r*0.18}));
 }
 
-// ── 动态太阳动画（每帧 CPU 顶点形变 + HDR 顶点色） ──────
+// ── 动态太阳动画（双层噪声：高频密度 + 低频错落） ──────
 fn animate_sun(
     time:Res<Time>,day:Res<DayCycle>,
-    mut q:Query<(&DynamicSun,&Mesh3d)>,
+    q:Query<(&DynamicSun,&Mesh3d)>,
     mut meshes:ResMut<Assets<Mesh>>,
 ){
-    let t=time.elapsed_secs()*0.4; // 太阳风暴游走速度
-    let se=sun_elev(day.tick);
+    let tf=time.elapsed_secs()*1.5;let ts=time.elapsed_secs()*0.5;
+    let se=sun_elev(day.tick).max(0.1);
     for(sun,mesh_handle)in q.iter(){
         let Some(mesh)=meshes.get_mut(&mesh_handle.0)else{continue};
         let Some(VertexAttributeValues::Float32x3(cur_pos))=mesh.attribute(Mesh::ATTRIBUTE_POSITION)else{continue};
         let mut new_pos=Vec::with_capacity(cur_pos.len());
         let mut new_col=Vec::with_capacity(cur_pos.len());
-        for (i,orig)in sun.original_positions.iter().enumerate(){
+        for orig in sun.original_positions.iter(){
             let dir=orig.normalize();
-            // 3D Simplex 采样 → 高次幂压制 → 尖刺
-            let freq=2.5;let raw=simplex3d(Vec3::new(dir.x*freq+t,dir.y*freq+t*0.3,dir.z*freq-t*0.3));
-            let spike=((raw+1.)*0.5).powf(7.0);
-            let disp=spike*sun.max_spike*se.max(0.1); // 白天尖刺显著，夜间收缩
+            // 高频层——决定尖刺密集度
+            let fh=14.;let nh=((simplex3d(Vec3::new(dir.x*fh+tf,dir.y*fh,dir.z*fh-tf))+1.)*0.5).powf(12.);
+            // 低频层——决定错落感（某些区域尖刺高，某些平坦）
+            let fl=3.;let nl=(simplex3d(Vec3::new(dir.x*fl-ts,dir.y*fl+ts,dir.z*fl))+1.)*0.5;
+            let spike=nh*(nl+0.1);
+            let disp=spike*sun.max_spike*se;
             new_pos.push((*orig+dir*disp).to_array());
-            // HDR 顶点色：核心亮黄→尖刺橙红
+            // 色彩：深橙红基底(0.8,0.15,0)→尖刺顶端亮黄白(3.0,2.5,0.8)
             let tc=(disp/sun.max_spike).clamp(0.,1.);
-            new_col.push([5.-tc*3.,4.-tc*3.5,1.-tc*1.,1.]);
+            new_col.push([0.8+tc*2.2,0.15+tc*2.35,tc*0.8,1.]);
         }
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION,new_pos);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
