@@ -14,13 +14,13 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
 
-// 最小化测试材质——验证自定义shader管线是否正常
+// 最小化测试材质
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-struct TestMaterial {
+struct SunMaterial {
     #[uniform(0)] color: LinearRgba,
 }
-impl Material for TestMaterial {
-    fn fragment_shader() -> ShaderRef { ShaderRef::Default }
+impl Material for SunMaterial {
+    fn fragment_shader() -> ShaderRef { "shaders/sun_material.wgsl".into() }
 }
 
 // ── 世界 ──────────────────────────────────────────────
@@ -44,7 +44,7 @@ fn main() {
             primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
         }),
-            MaterialPlugin::<TestMaterial>::default(),
+            MaterialPlugin::<SunMaterial>::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
@@ -131,7 +131,7 @@ fn star_mesh()->Mesh{
 // ── 启动 ──────────────────────────────────────────────
 
 fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<StandardMaterial>>,
-         mut test_mats:ResMut<Assets<TestMaterial>>){
+         mut test_mats:ResMut<Assets<SunMaterial>>){
     // 天空球
     c.spawn((Mesh3d(meshes.add(sky_mesh())),MeshMaterial3d(mats.add(StandardMaterial{unlit:true,cull_mode:None,..default()})),
         Transform::from_xyz(WH,0.,WH),Sky));
@@ -139,7 +139,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
     // 太阳：测试自定义材质管线
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(test_mats.add(TestMaterial{
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(test_mats.add(SunMaterial{
         color:LinearRgba::new(1.,0.8,0.2,1.)})),Sun));
     // 月亮
     c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
