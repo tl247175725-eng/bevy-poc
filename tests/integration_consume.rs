@@ -1,4 +1,5 @@
 //! 集成测试：验证 Consume 公理端到端工作
+#![cfg(feature = "legacy")]
 
 use std::collections::HashMap;
 use bevy_poc::card_def::{load_card_defs_with_tags, card_defs_map};

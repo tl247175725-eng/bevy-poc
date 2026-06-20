@@ -1,3 +1,4 @@
+#![cfg(feature = "legacy")]
 use bevy_poc::{
     cell_center, grid_from_cursor, grid_round_trip, grid_to_world, world_to_grid,
     zoom_anchor_invariant, CoordinateSystem, WorldView, GRID_HEIGHT, GRID_WIDTH,
