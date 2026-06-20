@@ -444,10 +444,8 @@ fn spike_lifecycle(
     time:Res<Time>,day:Res<DayCycle>,
     mut q:Query<(Entity,&SunSpike,&mut Transform)>,
     mut commands:Commands,
-    q_sun:Query<&Transform,With<Sun>>,
 ){
-    let Ok(sun_tr)=q_sun.single()else{return};
-    let sp=sun_tr.translation;
+    let sp=sun_pos(day.tick);
     for(e,spike,mut tr)in q.iter_mut(){
         let age=time.elapsed_secs()-spike.birth;
         let progress=(age/spike.life).clamp(0.,1.);
