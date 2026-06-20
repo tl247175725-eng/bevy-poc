@@ -11,6 +11,7 @@ use std::f32::consts::{FRAC_PI_2, PI, TAU};
 
 // ── 自定义材质 ─────────────────────────────────────────
 
+
 // ── 世界 ──────────────────────────────────────────────
 const GRID: u32 = 64; const CELL: f32 = 158.0;
 const WS: f32 = GRID as f32 * CELL; const WH: f32 = WS * 0.5;
@@ -27,12 +28,10 @@ const HORIZON_CUTOFF: f32 = 0.04; // sin(elev) < 此值 → 渐隐
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window { title: "Step 3 — 日月星辰".into(), resolution: WindowResolution::new(1280,720), ..default() }),
             ..default()
-        }),
-        ))
+        }))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(Update, (orbit_camera, sky_tick, sun_move, moon_move, star_fade, sun_light))
@@ -124,12 +123,12 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 线框棋盘
     c.spawn((Mesh3d(meshes.add(grid_mesh())),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.85,0.85,0.85),unlit:true,..default()})),Transform::default()));
-    // 太阳：StandardMaterial + 强发光（模拟 Flat Shading 视觉效果）
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,6))),MeshMaterial3d(mats.add(StandardMaterial{
+    // 太阳
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(SUN_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(1.,0.75,0.15),emissive:Color::srgb(1.,0.5,0.05).into(),
         perceptual_roughness:0.85,..default()})),Sun));
     // 月亮
-    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,6))),MeshMaterial3d(mats.add(StandardMaterial{
+    c.spawn((Mesh3d(meshes.add(lowpoly_sphere(MOON_R,5))),MeshMaterial3d(mats.add(StandardMaterial{
         base_color:Color::srgb(0.78,0.78,0.82),emissive:Color::srgb(0.15,0.15,0.2).into(),
         perceptual_roughness:0.9,..default()})),Moon));
     // 星星
