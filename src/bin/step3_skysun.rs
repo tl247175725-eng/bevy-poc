@@ -412,9 +412,9 @@ fn sun_fresnel_update(
             let world_center=sun_pos+*center;
             let view_dir=(cam_pos-world_center).normalize();
             // Fresnel: 正对视点=0(亮黄), 边缘=1(暗橙红)
-            let fresnel=(1.0-view_dir.dot(*n).abs()).powf(2.5).clamp(0.,1.);
-            // 中心亮黄白 4.0,2.0,0 → 边缘深橙 2.5,0.4,0
-            let col=[4.0-fresnel*1.5,2.0-fresnel*1.6,fresnel*0.05,1.];
+            let fresnel=(1.0-view_dir.dot(*n).max(0.)).powf(2.5).clamp(0.,1.);
+            // HDR: 中心亮黄白(4.0,3.0,0.5)→边缘深橙(2.5,0.4,0)
+            let col=[4.0-fresnel*1.5,3.0-fresnel*2.6,0.5-fresnel*0.5,1.];
             for _ in 0..body.vert_per_face{new_col.push(col);}
         }
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR,new_col);
@@ -451,8 +451,8 @@ fn spike_spawn(
 ){
     timer.0-=time.delta_secs();
     let se=sun_elev(day.tick).max(0.1);
-    if timer.0>0.||q_spikes.iter().count()>=120{return}
-    timer.0=0.15;
+    if timer.0>0.||q_spikes.iter().count()>=200{return}
+    timer.0=0.08; // 更密集生尖刺
     let Ok(sun_tr)=q_sun.single()else{return};
     let sp=sun_tr.translation;
     let t=time.elapsed_secs()*0.08;
@@ -461,12 +461,12 @@ fn spike_spawn(
         let dir=Vec3::new((t*0.7+(timer.0*10.).sin()).sin(),(t*0.5+timer.0).sin(),(t*0.6-timer.0).cos()).normalize();
         let n=simplex3d(Vec3::new(dir.x*8.+t*0.1,dir.y*8.,dir.z*8.-t*0.1));
         let intensity=((n+1.)*0.5).powf(6.);
-        if intensity>0.4{
-            let h=SUN_R*0.06+SUN_R*0.22*intensity*se;
-            let br=SUN_R*0.012+SUN_R*0.03*intensity;
+        if intensity>0.2{
+            let h=SUN_R*0.08+SUN_R*0.3*intensity*se;
+            let br=SUN_R*0.015+SUN_R*0.04*intensity;
             commands.spawn((Mesh3d(meshes.add(spike_mesh(h,br))),
                 MeshMaterial3d(mats.add(StandardMaterial{base_color:Color::srgb(1.,0.85,0.4),
-                emissive:Color::srgb(4.,2.5,0.6).into(),unlit:true,..default()})),
+                emissive:Color::srgb(8.,6.,1.5).into(),unlit:true,..default()})),
                 Transform::from_translation(sp+dir*SUN_R).looking_at(sp,Vec3::Y),
                 SunSpike{birth:time.elapsed_secs(),life:6.0,base_radius:SUN_R,dir}));
         }
