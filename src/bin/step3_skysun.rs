@@ -174,7 +174,7 @@ fn setup(mut c:Commands,mut meshes:ResMut<Assets<Mesh>>,mut mats:ResMut<Assets<S
     // 方向光
     c.spawn((DirectionalLight{color:Color::srgb(1.,0.9,0.7),illuminance:8000.,shadows_enabled:false,..default()},Transform::default()));
     c.insert_resource(GlobalAmbientLight{color:Color::srgb(0.35,0.4,0.55),brightness:500.,affects_lightmapped_meshes:false});
-    c.spawn((Camera3d::default(),Bloom::default(),
+    c.spawn((Camera3d::default(),
         Projection::Perspective(PerspectiveProjection{fov:50_f32.to_radians(),..default()})));
     c.insert_resource(OC{yaw:-2.3,pitch:0.55,radius:WS*0.8,focus:Vec3::new(WH,0.,WH)});
     c.insert_resource(DayCycle{tick:800.});
